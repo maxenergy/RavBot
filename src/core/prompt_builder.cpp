@@ -278,9 +278,88 @@ std::string PromptBuilder::BuildWithComponents(
 }
 
 std::string PromptBuilder::build_skills_protocol() const {
-  // TODO: Implement in Task 1.1.2
-  // This should define skill calling format and parameter specifications
-  return "";
+  std::ostringstream protocol;
+  
+  // Load available skills
+  std::vector<SkillMetadata> skills;
+  if (config_) {
+    skills = skill_loader_->LoadSkills(config_->skills,
+                                       memory_manager_->GetWorkspacePath());
+  } else {
+    skills = skill_loader_->LoadSkillsFromDirectory(
+        memory_manager_->GetWorkspacePath() / "skills");
+  }
+  
+  // If no skills are loaded, return empty protocol
+  if (skills.empty()) {
+    return "";
+  }
+  
+  protocol << "## Skills Protocol\n\n";
+  protocol << "Skills are specialized capabilities that extend your functionality. "
+           << "Each skill provides one or more commands that map to specific tools.\n\n";
+  
+  protocol << "### Skill Invocation Format\n\n";
+  protocol << "To use a skill command:\n";
+  protocol << "1. Identify the appropriate skill based on the user's request\n";
+  protocol << "2. Use the corresponding tool with the required parameters\n";
+  protocol << "3. Skills marked with `always: true` are always available\n";
+  protocol << "4. Skills with slash commands can be triggered via `/command` syntax\n\n";
+  
+  protocol << "### Available Skills\n\n";
+  
+  for (const auto& skill : skills) {
+    protocol << "**" << skill.name << "**";
+    if (!skill.emoji.empty()) {
+      protocol << " " << skill.emoji;
+    }
+    protocol << "\n";
+    
+    if (!skill.description.empty()) {
+      protocol << "- Description: " << skill.description << "\n";
+    }
+    
+    if (skill.always) {
+      protocol << "- Availability: Always active\n";
+    }
+    
+    // List commands for this skill
+    if (!skill.commands.empty()) {
+      protocol << "- Commands:\n";
+      for (const auto& cmd : skill.commands) {
+        protocol << "  - `" << cmd.name << "`: " << cmd.description;
+        if (!cmd.tool_name.empty()) {
+          protocol << " (uses tool: `" << cmd.tool_name << "`)";
+        }
+        protocol << "\n";
+        
+        // Add argument mode information
+        if (cmd.arg_mode == "freeform") {
+          protocol << "    - Arguments: Freeform text input\n";
+        } else if (cmd.arg_mode == "structured") {
+          protocol << "    - Arguments: Structured JSON parameters\n";
+        }
+      }
+    }
+    
+    protocol << "\n";
+  }
+  
+  protocol << "### Parameter Specifications\n\n";
+  protocol << "When invoking tools associated with skills:\n";
+  protocol << "- Follow the tool's parameter schema exactly\n";
+  protocol << "- Required parameters must always be provided\n";
+  protocol << "- Optional parameters can be omitted or set to null\n";
+  protocol << "- Use appropriate data types (string, integer, boolean, array, object)\n";
+  protocol << "- For freeform commands, pass the user's input as the primary parameter\n\n";
+  
+  protocol << "### Best Practices\n\n";
+  protocol << "- Choose the most specific skill for the user's request\n";
+  protocol << "- Combine multiple skills when needed to accomplish complex tasks\n";
+  protocol << "- Provide clear feedback about which skill/tool you're using\n";
+  protocol << "- Handle tool errors gracefully and suggest alternatives\n";
+  
+  return protocol.str();
 }
 
 std::string PromptBuilder::build_memory_recall_rules() const {
