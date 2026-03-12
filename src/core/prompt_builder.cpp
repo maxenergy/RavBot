@@ -363,28 +363,376 @@ std::string PromptBuilder::build_skills_protocol() const {
 }
 
 std::string PromptBuilder::build_memory_recall_rules() const {
-  // TODO: Implement in Task 1.1.3
-  // This should guide when and how to retrieve historical memories
-  return "";
+  std::ostringstream rules;
+  
+  rules << "### When to Retrieve Historical Memories\n\n";
+  
+  rules << "You have access to a persistent memory system that stores information "
+        << "across conversations. Use memory retrieval strategically:\n\n";
+  
+  rules << "**Trigger Conditions for Memory Recall:**\n\n";
+  
+  rules << "1. **User References Past Context**\n";
+  rules << "   - When the user mentions \"last time\", \"previously\", \"before\", "
+        << "\"you said\", or similar temporal references\n";
+  rules << "   - When the user asks about past conversations, decisions, or actions\n";
+  rules << "   - Example: \"What did we discuss about the API design?\"\n\n";
+  
+  rules << "2. **Continuation of Previous Work**\n";
+  rules << "   - When the user resumes a task or project from a previous session\n";
+  rules << "   - When context from earlier conversations would inform the current request\n";
+  rules << "   - Example: \"Let's continue working on that feature\"\n\n";
+  
+  rules << "3. **User Preferences and Patterns**\n";
+  rules << "   - When making recommendations or suggestions\n";
+  rules << "   - When the user's past preferences or coding style would be relevant\n";
+  rules << "   - Example: \"How should I structure this component?\"\n\n";
+  
+  rules << "4. **Project-Specific Context**\n";
+  rules << "   - When working on a known project or codebase\n";
+  rules << "   - When architectural decisions or conventions were established previously\n";
+  rules << "   - Example: \"Add a new endpoint to the API\"\n\n";
+  
+  rules << "5. **Error Resolution**\n";
+  rules << "   - When debugging issues that may have been encountered before\n";
+  rules << "   - When similar problems were solved in past sessions\n";
+  rules << "   - Example: \"This error keeps happening\"\n\n";
+  
+  rules << "### How to Retrieve Memories\n\n";
+  
+  rules << "**Memory Search Strategy:**\n\n";
+  
+  rules << "1. **Formulate Specific Queries**\n";
+  rules << "   - Use relevant keywords from the user's request\n";
+  rules << "   - Include technical terms, project names, or specific topics\n";
+  rules << "   - Combine temporal and topical information when available\n\n";
+  
+  rules << "2. **Search Scope**\n";
+  rules << "   - Start with recent memories (last 7-30 days) for ongoing work\n";
+  rules << "   - Expand to older memories for established patterns or decisions\n";
+  rules << "   - Consider workspace-specific memories for project context\n\n";
+  
+  rules << "3. **Relevance Filtering**\n";
+  rules << "   - Prioritize memories directly related to the current request\n";
+  rules << "   - Consider semantic similarity, not just keyword matching\n";
+  rules << "   - Discard outdated or superseded information\n\n";
+  
+  rules << "4. **Memory Integration**\n";
+  rules << "   - Synthesize retrieved memories with current context\n";
+  rules << "   - Acknowledge when using information from past conversations\n";
+  rules << "   - Update or correct memories if new information contradicts old\n\n";
+  
+  rules << "### When NOT to Retrieve Memories\n\n";
+  
+  rules << "**Avoid unnecessary memory retrieval in these cases:**\n\n";
+  
+  rules << "- Simple, self-contained requests that don't require historical context\n";
+  rules << "- General knowledge questions unrelated to past interactions\n";
+  rules << "- When the current message provides all necessary information\n";
+  rules << "- For real-time information that changes frequently\n\n";
+  
+  rules << "### Memory Recall Best Practices\n\n";
+  
+  rules << "1. **Be Transparent**: Inform the user when you're using information "
+        << "from past conversations\n";
+  rules << "2. **Verify Relevance**: Ensure retrieved memories are still applicable "
+        << "and haven't been superseded\n";
+  rules << "3. **Respect Privacy**: Only recall memories relevant to the current task\n";
+  rules << "4. **Update Context**: If the user corrects or updates information, "
+        << "prioritize the new information\n";
+  rules << "5. **Graceful Degradation**: If memory retrieval fails or returns no results, "
+        << "proceed with available context\n\n";
+  
+  rules << "### Memory Types and Priority\n\n";
+  
+  rules << "When multiple memories are available, prioritize in this order:\n\n";
+  
+  rules << "1. **Explicit User Instructions**: Direct commands or preferences stated by the user\n";
+  rules << "2. **Project-Specific Decisions**: Architectural choices, conventions, patterns\n";
+  rules << "3. **Recent Context**: Information from recent sessions (last 7 days)\n";
+  rules << "4. **User Preferences**: Coding style, tool preferences, workflow patterns\n";
+  rules << "5. **Historical Reference**: Older information for background context\n";
+  
+  return rules.str();
 }
 
 std::string PromptBuilder::build_channel_instructions(
     const std::string& channel) const {
-  // TODO: Implement in Task 1.1.4
-  // Return channel-specific instructions if configured
+  std::ostringstream instructions;
+  
+  // Check if custom instructions are configured for this channel
   auto it = channel_instructions_.find(channel);
   if (it != channel_instructions_.end()) {
     return it->second;
   }
-  return "";
+  
+  // Generate default channel-specific instructions based on channel type
+  if (channel == "telegram") {
+    instructions << "### Telegram Channel Behavior\n\n";
+    
+    instructions << "You are communicating via Telegram. Follow these guidelines:\n\n";
+    
+    instructions << "**Message Formatting:**\n\n";
+    instructions << "- Telegram supports Markdown formatting (bold, italic, code, links)\n";
+    instructions << "- Use `**bold**` for emphasis, `*italic*` for subtle emphasis\n";
+    instructions << "- Use `` `code` `` for inline code and ``` for code blocks\n";
+    instructions << "- Keep messages concise and readable on mobile devices\n";
+    instructions << "- Break long responses into multiple messages if needed (max 4096 chars per message)\n\n";
+    
+    instructions << "**Reply Modes:**\n\n";
+    instructions << "- In private chats: respond directly to the user's message\n";
+    instructions << "- In group chats: use reply-to-message to maintain context\n";
+    instructions << "- In topics/threads: stay within the thread context\n";
+    instructions << "- Acknowledge the user by name when appropriate in group settings\n\n";
+    
+    instructions << "**Interaction Patterns:**\n\n";
+    instructions << "- Respond promptly to maintain conversation flow\n";
+    instructions << "- Use typing indicators (handled automatically) to show activity\n";
+    instructions << "- Support slash commands when defined (e.g., /help, /start)\n";
+    instructions << "- Handle media attachments (photos, documents) when present\n";
+    instructions << "- Respect group chat etiquette - be helpful but not intrusive\n\n";
+    
+    instructions << "**Context Management:**\n\n";
+    instructions << "- Maintain separate conversation contexts for different chats\n";
+    instructions << "- In group chats, track which user asked what\n";
+    instructions << "- In topics, maintain topic-specific context\n";
+    instructions << "- Remember user preferences within the session\n\n";
+    
+    instructions << "**Error Handling:**\n\n";
+    instructions << "- If a message fails to send, retry with shorter content\n";
+    instructions << "- If formatting breaks, fall back to plain text\n";
+    instructions << "- Inform users clearly if a requested action cannot be completed\n";
+    
+  } else if (channel == "discord") {
+    instructions << "### Discord Channel Behavior\n\n";
+    
+    instructions << "You are communicating via Discord. Follow these guidelines:\n\n";
+    
+    instructions << "**Message Formatting:**\n\n";
+    instructions << "- Discord supports Markdown and custom emoji\n";
+    instructions << "- Use `**bold**`, `*italic*`, `__underline__`, `~~strikethrough~~`\n";
+    instructions << "- Use ``` for code blocks with language syntax highlighting\n";
+    instructions << "- Maximum message length is 2000 characters\n";
+    instructions << "- Use embeds for rich, structured content when appropriate\n\n";
+    
+    instructions << "**Reply Modes:**\n\n";
+    instructions << "- Use @mentions to address specific users\n";
+    instructions << "- Reply to messages to maintain thread context\n";
+    instructions << "- In threads, stay focused on the thread topic\n";
+    instructions << "- Respect channel-specific rules and topics\n\n";
+    
+    instructions << "**Interaction Patterns:**\n\n";
+    instructions << "- Respond to slash commands when defined\n";
+    instructions << "- Support reactions for quick feedback\n";
+    instructions << "- Handle attachments and embeds\n";
+    instructions << "- Be mindful of server-specific culture and norms\n\n";
+    
+    instructions << "**Context Management:**\n\n";
+    instructions << "- Maintain separate contexts for different servers and channels\n";
+    instructions << "- Track conversation threads independently\n";
+    instructions << "- Remember server-specific settings and preferences\n";
+    
+  } else if (channel == "slack") {
+    instructions << "### Slack Channel Behavior\n\n";
+    
+    instructions << "You are communicating via Slack. Follow these guidelines:\n\n";
+    
+    instructions << "**Message Formatting:**\n\n";
+    instructions << "- Use Slack's mrkdwn format: `*bold*`, `_italic_`, `~strike~`\n";
+    instructions << "- Use ``` for code blocks\n";
+    instructions << "- Use > for quotes\n";
+    instructions << "- Keep messages professional and workplace-appropriate\n\n";
+    
+    instructions << "**Reply Modes:**\n\n";
+    instructions << "- Use @mentions to notify specific users\n";
+    instructions << "- Reply in threads to keep channels organized\n";
+    instructions << "- Use @channel or @here sparingly and only when necessary\n";
+    instructions << "- Respect workspace communication norms\n\n";
+    
+    instructions << "**Interaction Patterns:**\n\n";
+    instructions << "- Respond to slash commands\n";
+    instructions << "- Support interactive components (buttons, menus) when available\n";
+    instructions << "- Handle file uploads and shares\n";
+    instructions << "- Maintain professional tone suitable for workplace\n\n";
+    
+    instructions << "**Context Management:**\n\n";
+    instructions << "- Maintain separate contexts for different workspaces and channels\n";
+    instructions << "- Track thread conversations independently\n";
+    instructions << "- Remember workspace-specific settings\n";
+    
+  } else if (channel == "cli" || channel == "terminal") {
+    instructions << "### CLI/Terminal Channel Behavior\n\n";
+    
+    instructions << "You are communicating via command-line interface. Follow these guidelines:\n\n";
+    
+    instructions << "**Message Formatting:**\n\n";
+    instructions << "- Use plain text or ANSI color codes for emphasis\n";
+    instructions << "- Format code blocks with clear delimiters\n";
+    instructions << "- Use ASCII art sparingly and only when helpful\n";
+    instructions << "- Keep output concise and scannable\n\n";
+    
+    instructions << "**Interaction Patterns:**\n\n";
+    instructions << "- Provide clear, actionable responses\n";
+    instructions << "- Include command examples that can be copy-pasted\n";
+    instructions << "- Show file paths relative to current working directory\n";
+    instructions << "- Indicate when operations will modify files or system state\n\n";
+    
+    instructions << "**Context Management:**\n\n";
+    instructions << "- Remember the current working directory\n";
+    instructions << "- Track the current project context\n";
+    instructions << "- Maintain session-specific state\n";
+    
+  } else if (channel == "web" || channel == "ui") {
+    instructions << "### Web UI Channel Behavior\n\n";
+    
+    instructions << "You are communicating via web interface. Follow these guidelines:\n\n";
+    
+    instructions << "**Message Formatting:**\n\n";
+    instructions << "- Use Markdown for rich formatting\n";
+    instructions << "- Structure responses with headers and lists for readability\n";
+    instructions << "- Use code blocks with syntax highlighting\n";
+    instructions << "- Include links to relevant resources\n\n";
+    
+    instructions << "**Interaction Patterns:**\n\n";
+    instructions << "- Provide detailed, well-structured responses\n";
+    instructions << "- Use visual hierarchy (headers, lists, emphasis)\n";
+    instructions << "- Include examples and explanations\n";
+    instructions << "- Support interactive elements when available\n\n";
+    
+    instructions << "**Context Management:**\n\n";
+    instructions << "- Maintain session-specific context\n";
+    instructions << "- Track user preferences and settings\n";
+    instructions << "- Remember conversation history within the session\n";
+    
+  } else {
+    // Generic channel instructions for unknown channels
+    instructions << "### General Channel Behavior\n\n";
+    
+    instructions << "**Message Formatting:**\n\n";
+    instructions << "- Use clear, concise language\n";
+    instructions << "- Format code and technical content appropriately\n";
+    instructions << "- Structure responses for readability\n\n";
+    
+    instructions << "**Interaction Patterns:**\n\n";
+    instructions << "- Respond appropriately to the communication context\n";
+    instructions << "- Maintain professional and helpful tone\n";
+    instructions << "- Provide clear, actionable information\n\n";
+    
+    instructions << "**Context Management:**\n\n";
+    instructions << "- Maintain conversation context\n";
+    instructions << "- Track user preferences when possible\n";
+  }
+  
+  return instructions.str();
 }
 
 std::string PromptBuilder::build_runtime_metadata() const {
-  // TODO: Implement in Task 1.1.5
-  // This should include current time, workspace, platform, available tools
-  // summary, and session state
-  // For now, reuse existing get_runtime_info()
-  return get_runtime_info();
+  std::ostringstream metadata;
+  
+  // 1. Current time (ISO 8601 format)
+  auto now = std::chrono::system_clock::now();
+  auto time_t = std::chrono::system_clock::to_time_t(now);
+  std::tm tm;
+#ifdef _WIN32
+  gmtime_s(&tm, &time_t);
+#else
+  gmtime_r(&time_t, &tm);
+#endif
+  
+  metadata << "- **Current time**: " 
+           << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ") << "\n";
+  
+  // 2. Workspace path
+  metadata << "- **Workspace**: " 
+           << memory_manager_->GetWorkspacePath().string() << "\n";
+  
+  // 3. Platform information
+  metadata << "- **Platform**: ";
+#ifdef __linux__
+  metadata << "Linux";
+#elif defined(__APPLE__)
+  metadata << "macOS";
+#elif defined(_WIN32)
+  metadata << "Windows";
+#else
+  metadata << "Unknown";
+#endif
+  metadata << "\n";
+  
+  // 4. Available tools summary
+  auto tool_schemas = tool_registry_->GetToolSchemas();
+  metadata << "- **Available tools**: " << tool_schemas.size() << " total\n";
+  
+  // Group tools by category for better overview
+  std::map<std::string, int> tool_categories;
+  for (const auto& schema : tool_schemas) {
+    // Simple categorization based on tool name prefixes
+    std::string category = "general";
+    if (schema.name.find("read") == 0 || schema.name.find("write") == 0 || 
+        schema.name.find("edit") == 0 || schema.name.find("file") == 0) {
+      category = "file";
+    } else if (schema.name.find("exec") == 0 || schema.name.find("bash") == 0 || 
+               schema.name.find("process") == 0) {
+      category = "execution";
+    } else if (schema.name.find("web") == 0 || schema.name.find("search") == 0 || 
+               schema.name.find("fetch") == 0) {
+      category = "web";
+    } else if (schema.name.find("memory") == 0) {
+      category = "memory";
+    } else if (schema.name.find("mcp") == 0) {
+      category = "mcp";
+    } else if (schema.name.find("subagent") == 0 || schema.name.find("chain") == 0) {
+      category = "agent";
+    }
+    tool_categories[category]++;
+  }
+  
+  // Display tool category breakdown
+  if (!tool_categories.empty()) {
+    metadata << "  - Categories: ";
+    bool first = true;
+    for (const auto& [category, count] : tool_categories) {
+      if (!first) metadata << ", ";
+      metadata << category << " (" << count << ")";
+      first = false;
+    }
+    metadata << "\n";
+  }
+  
+  // 5. Session state information (if available from context)
+  // Note: This method doesn't have direct access to PromptContext,
+  // so session state would need to be passed separately or accessed
+  // through a session manager reference. For now, we provide a
+  // placeholder that can be enhanced when context is available.
+  
+  // 6. System capabilities summary
+  metadata << "- **System capabilities**:\n";
+  metadata << "  - Multi-turn conversation support\n";
+  metadata << "  - Tool execution and chaining\n";
+  metadata << "  - Memory persistence and retrieval\n";
+  
+  // Check if skills are available
+  std::vector<SkillMetadata> skills;
+  if (config_) {
+    skills = skill_loader_->LoadSkills(config_->skills,
+                                       memory_manager_->GetWorkspacePath());
+  } else {
+    skills = skill_loader_->LoadSkillsFromDirectory(
+        memory_manager_->GetWorkspacePath() / "skills");
+  }
+  
+  if (!skills.empty()) {
+    metadata << "  - " << skills.size() << " skill(s) loaded\n";
+  }
+  
+  // 7. Performance hints
+  metadata << "- **Performance notes**:\n";
+  if (tool_schemas.size() > 100) {
+    metadata << "  - Large tool set detected; using tool summary mode\n";
+  }
+  metadata << "  - Context window management active\n";
+  
+  return metadata.str();
 }
 
 std::string PromptBuilder::build_sender_trust_info(
