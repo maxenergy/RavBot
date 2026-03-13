@@ -282,6 +282,7 @@ if(BUILD_TESTS)
         tests/test_rpc_handlers.cpp
         tests/test_e2e.cpp
         tests/test_plugin_system.cpp
+        tests/test_plugin_manifest.cpp
         tests/test_channel_policy.cpp
         tests/test_advanced_features.cpp
         tests/test_exec_approval.cpp
