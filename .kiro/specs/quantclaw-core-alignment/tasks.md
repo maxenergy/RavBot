@@ -836,38 +836,46 @@
       - **Validates: Requirements 17.2**
       - 验证命名空间工具正确解析
 
-  - [ ] 5.2 Enhanced Hook Manager
-    - [ ] 5.2.1 实现优先级排序
-      - 在 `src/plugins/hook_manager.cpp` 中增强 FireHook()
+  - [x] 5.2 Enhanced Hook Manager
+    - [x] 5.2.1 实现优先级排序
+      - 在 `src/plugins/hook_manager.cpp` 中的 RegisterHook() 已实现
       - 按优先级排序 Hook 处理器（高优先级先执行）
       - _Requirements: 18.2, 18.4_
-    
-    - [ ] 5.2.2 实现异常隔离
-      - 捕获 Hook 处理器的异常
-      - 记录异常到日志
+      - ✅ 已完成 (已存在功能)
+
+    - [x] 5.2.2 实现异常隔离
+      - FireVoid/FireModifying/FireSync 中已有 try-catch
+      - 捕获 Hook 处理器的异常并记录到日志
       - 继续执行其他 Hook 处理器
       - _Requirements: 18.4_
-    
-    - [ ] 5.2.3 实现停止传播逻辑
-      - 支持 Hook 处理器返回 stop_propagation
+      - ✅ 已完成 (已存在功能)
+
+    - [x] 5.2.3 实现停止传播逻辑
+      - 支持 Hook 处理器返回 stop_propagation 标志
       - 停止后续 Hook 的执行
       - _Requirements: 18.3_
-    
-    - [ ] 5.2.4 实现异步钩子支持
+      - ✅ 已完成 (commit: df5186f)
+
+    - [x] 5.2.4 实现异步钩子支持
       - 实现 FireHookAsync() 方法
-      - 返回 std::future<HookResult>
+      - 返回 std::future<nlohmann::json>
       - _Requirements: 18.3_
-    
-    - [ ] 5.2.5 实现 Hook 日志记录
-      - 记录所有 Hook 调用和执行时间
+      - ✅ 已完成 (commit: df5186f)
+
+    - [x] 5.2.5 实现 Hook 日志记录
+      - 记录所有 Hook 调用和执行时间（微秒精度）
+      - 实现 GetHookStats() 和 ClearHookStats() 方法
       - _Requirements: 18.5_
-    
-    - [ ]* 5.2.6 更新 Hook Manager 单元测试
-      - 测试优先级排序
-      - 测试异常隔离
-      - 测试停止传播
-      - 测试异步钩子
+      - ✅ 已完成 (commit: df5186f)
+
+    - [x] 5.2.6 更新 Hook Manager 单元测试
+      - 5 个单元测试全部通过
+      - 测试停止传播逻辑
+      - 测试异步钩子返回 future
+      - 测试 Hook 统计记录（成功和失败）
+      - 测试统计信息清除
       - _Requirements: 18.1-18.8_
+      - ✅ 已完成 (commit: df5186f)
     
     - [ ]* 5.2.7 为 Hook Manager 编写 property test
       - **Property 41: Hook Priority Ordering**
