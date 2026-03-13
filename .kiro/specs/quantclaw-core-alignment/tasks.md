@@ -648,37 +648,42 @@
       - **Validates: Requirements 12.2, 12.3**
       - 验证外部内容被正确包装
 
-  - [ ] 4.2 Trust Model Manager 实现
-    - [ ] 4.2.1 创建 TrustModelManager 类
+  - [x] 4.2 Trust Model Manager 实现
+    - [x] 4.2.1 创建 TrustModelManager 类
       - 创建 `include/quantclaw/security/trust_model.hpp`
       - 创建 `src/security/trust_model.cpp`
       - 定义 SecurityPolicy 结构体
       - _Requirements: 14.1-14.8_
-    
-    - [ ] 4.2.2 实现信任级别分配
+      - ✅ 已完成 (commit: 20db1ec)
+
+    - [x] 4.2.2 实现信任级别分配
       - 实现 GetTrustLevel() 方法
       - 用户输入：semi_trusted
       - Web 搜索/获取：untrusted
       - 本地文件：trusted
       - 渠道消息：根据发送者决定
       - _Requirements: 14.2, 14.3, 14.4, 14.5_
-    
-    - [ ] 4.2.3 实现工具和发送者信任管理
+      - ✅ 已完成 (commit: 20db1ec)
+
+    - [x] 4.2.3 实现工具和发送者信任管理
       - 实现 SetToolTrustLevel() 方法
       - 实现 SetSenderTrustLevel() 方法
       - _Requirements: 14.6, 14.7_
-    
-    - [ ] 4.2.4 实现安全策略管理
+      - ✅ 已完成 (commit: 20db1ec)
+
+    - [x] 4.2.4 实现安全策略管理
       - 实现 GetPolicy() 方法
       - 为不同信任级别定义默认策略
       - untrusted: 最严格策略
       - _Requirements: 14.6_
-    
-    - [ ]* 4.2.5 为 Trust Model Manager 编写单元测试
+      - ✅ 已完成 (commit: 20db1ec)
+
+    - [x]* 4.2.5 为 Trust Model Manager 编写单元测试
       - 测试信任级别分配
       - 测试安全策略应用
       - _Requirements: 14.1-14.8_
-    
+      - ✅ 已完成 (commit: 20db1ec) - 11 个测试用例全部通过
+
     - [ ]* 4.2.6 为 Trust Model Manager 编写 property test
       - **Property 29: Trust Level Assignment**
       - **Validates: Requirements 14.1-14.5**
