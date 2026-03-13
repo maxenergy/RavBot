@@ -148,6 +148,7 @@ set(QUANTCLAW_CORE_SOURCES
     src/security/exec_approval.cpp
     src/security/rbac.cpp
     src/security/rate_limiter.cpp
+    src/security/external_content.cpp
     # Web
     src/web/web_server.cpp
     src/web/api_routes.cpp
@@ -298,6 +299,7 @@ if(BUILD_TESTS)
         tests/test_builtin_skills.cpp
         tests/test_comprehensive_context.cpp
         tests/test_context_pollution.cpp
+        tests/test_external_content.cpp
     )
 
     add_executable(quantclaw_tests ${TEST_SOURCES})
