@@ -133,6 +133,9 @@ set(QUANTCLAW_CORE_SOURCES
     src/channels/whatsapp_channel.cpp
     src/channels/line_channel.cpp
     src/channels/extension_channel.cpp
+    src/channels/deduplication_store.cpp
+    src/channels/lane_processor.cpp
+    src/channels/thread_binder.cpp
     # Plugins
     src/plugins/plugin_manifest.cpp
     src/plugins/plugin_registry.cpp
