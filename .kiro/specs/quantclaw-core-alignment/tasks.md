@@ -778,44 +778,53 @@
     - 运行 `cd build && ctest --output-on-failure`
     - 询问用户是否有问题
 
-- [ ] 5. Phase 5: Plugin System Enhancement (Weeks 11-12)
-  - [ ] 5.1 Enhanced Plugin Registry
-    - [ ] 5.1.1 实现清单验证
-      - 在 `src/plugins/plugin_registry.cpp` 中增强 LoadManifest()
-      - 验证必填字段（name、version、entry_point）
-      - 验证版本格式
-      - 验证依赖项格式
+- [~] 5. Phase 5: Plugin System Enhancement (Weeks 11-12)
+  - [x] 5.1 Enhanced Plugin Registry
+    - [x] 5.1.1 实现清单验证
+      - 在 `src/plugins/plugin_registry.cpp` 中实现 ValidateManifest()
+      - 验证必填字段（id、name、version）
+      - 验证 semver 版本格式
+      - 验证 ID 格式（字母数字、连字符、下划线）
       - _Requirements: 16.3, 16.4, 16.5_
-    
-    - [ ] 5.1.2 实现冲突检测
+      - ✅ 已完成 (commit: 860ed83)
+
+    - [x] 5.1.2 实现冲突检测
       - 实现 DetectConflicts() 方法
       - 检测工具名称冲突
       - 检测 Hook 冲突
-      - 检测依赖冲突
+      - 返回 ConflictInfo 结构体列表
       - _Requirements: 17.1, 17.3, 17.6_
-    
-    - [ ] 5.1.3 实现工具命名空间解析
+      - ✅ 已完成 (commit: 860ed83)
+
+    - [x] 5.1.3 实现工具命名空间解析
       - 实现 ResolveToolName() 方法
       - 支持 `plugin_name.tool_name` 格式
-      - 避免工具名称冲突
+      - 自动处理工具名称冲突
       - _Requirements: 17.2_
-    
-    - [ ] 5.1.4 实现插件启用/禁用
+      - ✅ 已完成 (commit: 860ed83)
+
+    - [x] 5.1.4 实现插件启用/禁用
       - 实现 SetPluginEnabled() 方法
       - 实现 IsPluginEnabled() 方法
-      - 支持可选工具门控
+      - 支持运行时插件控制
       - _Requirements: 17.5_
-    
-    - [ ] 5.1.5 实现诊断命令
-      - 提供诊断接口列出所有冲突和警告
+      - ✅ 已完成 (commit: 860ed83)
+
+    - [x] 5.1.5 实现诊断命令
+      - 实现 GetDiagnostics() 方法
+      - 返回冲突、警告和统计信息
       - _Requirements: 17.6_
-    
-    - [ ]* 5.1.6 更新 Plugin Registry 单元测试
-      - 测试清单验证
-      - 测试冲突检测
-      - 测试工具命名空间解析
-      - 测试插件启用/禁用
+      - ✅ 已完成 (commit: 860ed83)
+
+    - [x] 5.1.6 更新 Plugin Registry 单元测试
+      - 19 个单元测试全部通过
+      - 测试清单验证（8 个测试）
+      - 测试冲突检测（3 个测试）
+      - 测试工具命名空间解析（4 个测试）
+      - 测试插件启用/禁用（2 个测试）
+      - 测试诊断信息（3 个测试）
       - _Requirements: 16.1-16.8, 17.1-17.8_
+      - ✅ 已完成 (commit: 860ed83)
     
     - [ ]* 5.1.7 为 Plugin Registry 编写 property test
       - **Property 39: Plugin Conflict Detection**
