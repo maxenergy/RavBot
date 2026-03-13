@@ -118,6 +118,10 @@ class FailoverResolver {
   // Requirements: 5.2
   void SetRetryConfig(const RetryConfig& config);
 
+  // Reset all cooldowns (for testing and admin operations)
+  // Requirements: 2.1, 2.2, 2.3
+  void ResetCooldowns();
+
  private:
   std::string cooldown_key(const std::string& provider_id,
                            const std::string& profile_id) const;

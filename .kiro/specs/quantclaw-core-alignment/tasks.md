@@ -196,16 +196,18 @@
       - 支持配置 Failover 优先级列表
       - _Requirements: 5.4, 5.5_
     
-    - [~] 1.4.5 添加中止请求支持
+    - [x] 1.4.5 添加中止请求支持
       - 使用 std::atomic<bool> 作为中止标志
       - 在循环和长时间操作中检查中止标志
       - 实现资源清理逻辑
       - _Requirements: 7.3, 7.4, 7.5_
+      - ✅ 已实现（已存在于代码库中）
     
-    - [~] 1.4.6 添加日志记录
+    - [x] 1.4.6 添加日志记录
       - 记录所有重试和 Failover 操作
       - 记录使用的提供商和配置信息
       - _Requirements: 5.7, 5.8_
+      - ✅ 已实现（已存在于代码库中）
     
     - [ ]* 1.4.7 更新 Agent Loop 单元测试
       - 测试上下文窗口保护触发
@@ -232,21 +234,24 @@
 
 - [ ] 2. Phase 2: Provider Resilience (Weeks 4-5)
   - [ ] 2.1 Enhanced Failover Resolver
-    - [~] 2.1.1 添加 RetryConfig 结构体
+    - [x] 2.1.1 添加 RetryConfig 结构体
       - 在 `include/quantclaw/providers/failover_resolver.hpp` 中定义
       - 包含 max_retries、initial_backoff、backoff_multiplier、max_backoff
       - _Requirements: 5.2, 5.3_
+      - ✅ 已完成 (commit: 825d753)
     
-    - [~] 2.1.2 实现 FailoverStats 统计
+    - [x] 2.1.2 实现 FailoverStats 统计
       - 定义 FailoverStats 结构体
       - 记录总请求数、成功数、失败数、故障转移次数
       - 记录每个提供商和配置的使用次数
       - 实现 GetStats() 方法
       - _Requirements: 2.6_
+      - ✅ 已完成 (commit: 260c239)
     
-    - [~] 2.1.3 添加 SetRetryConfig() 方法
+    - [x] 2.1.3 添加 SetRetryConfig() 方法
       - 支持运行时配置重试参数
       - _Requirements: 5.2_
+      - ✅ 已完成 (commit: 即将提交)
     
     - [~] 2.1.4 添加 ResetCooldowns() 方法
       - 用于测试和管理员操作
@@ -265,12 +270,13 @@
       - 验证重试失败后触发故障转移
 
   - [ ] 2.2 Enhanced Cooldown Tracker
-    - [~] 2.2.1 添加 CooldownStats 统计
+    - [x] 2.2.1 添加 CooldownStats 统计
       - 在 `include/quantclaw/providers/cooldown_tracker.hpp` 中定义
       - 记录总冷却次数、活跃冷却数
       - 按错误类型统计冷却
       - 记录总冷却时间
       - _Requirements: 2.6_
+      - ✅ 已完成 (commit: b9d168b)
     
     - [~] 2.2.2 实现 GetAllStates() 方法
       - 返回所有配置的冷却状态

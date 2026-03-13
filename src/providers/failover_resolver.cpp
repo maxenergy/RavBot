@@ -234,4 +234,11 @@ void FailoverResolver::SetRetryConfig(const RetryConfig& config) {
                 config.backoff_multiplier, config.max_backoff_ms);
 }
 
+// 重置所有冷却状态
+// Requirements: 2.1, 2.2, 2.3
+void FailoverResolver::ResetCooldowns() {
+  cooldown_.Reset();
+  logger_->info("All cooldowns have been reset");
+}
+
 }  // namespace quantclaw
