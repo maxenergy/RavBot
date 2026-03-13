@@ -6,8 +6,10 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cmath>
 #include <codecvt>
 #include <locale>
+#include <optional>
 #include <sstream>
 #include <thread>
 #include <unordered_map>
@@ -44,6 +46,72 @@ static int estimate_tokens(const std::vector<Message>& messages) {
     }
   }
   return chars / 4;
+}
+
+static int estimate_tool_tokens(const std::vector<nlohmann::json>& tools) {
+  int chars = 0;
+  for (const auto& tool : tools) {
+    chars += static_cast<int>(tool.dump().size());
+  }
+  return chars / 4;
+}
+
+static std::vector<nlohmann::json>
+build_request_tools(const std::shared_ptr<ToolRegistry>& tool_registry) {
+  nlohmann::json tools_json = nlohmann::json::array();
+  for (const auto& schema : tool_registry->GetToolSchemas()) {
+    nlohmann::json tool;
+    tool["type"] = "function";
+    tool["function"]["name"] = schema.name;
+    tool["function"]["description"] = schema.description;
+    tool["function"]["parameters"] = schema.parameters;
+    tools_json.push_back(tool);
+  }
+  return tools_json.get<std::vector<nlohmann::json>>();
+}
+
+static std::vector<Message> compress_history_for_context_budget(
+    const std::vector<Message>& history, const std::string& system_prompt,
+    const std::string& latest_user_message,
+    const std::vector<nlohmann::json>& tools, int context_window,
+    std::shared_ptr<ContextPruner> context_pruner,
+    const std::shared_ptr<spdlog::logger>& logger) {
+  if (!context_pruner || history.empty() || context_window <= 0) {
+    return history;
+  }
+
+  constexpr double kCompressionThresholdRatio = 0.9;
+
+  int fixed_tokens = estimate_tool_tokens(tools);
+  if (!system_prompt.empty()) {
+    fixed_tokens += ContextPruner::EstimateTokens(
+        std::vector<Message>{Message{"system", system_prompt}});
+  }
+  fixed_tokens += ContextPruner::EstimateTokens(
+      std::vector<Message>{Message{"user", latest_user_message}});
+
+  const int threshold_tokens =
+      static_cast<int>(context_window * kCompressionThresholdRatio);
+  const int history_tokens = ContextPruner::EstimateTokens(history);
+  const int total_estimated = fixed_tokens + history_tokens;
+  if (total_estimated <= threshold_tokens) {
+    return history;
+  }
+
+  const int target_history_tokens =
+      std::max(0, threshold_tokens - fixed_tokens);
+  CompressionStats stats;
+  auto compressed =
+      ContextPruner::CompressWithStats(history, target_history_tokens, stats);
+
+  if (logger) {
+    logger->info(
+        "Context pruner triggered at 90% threshold: total={} threshold={} "
+        "history={} target_history={} removed={} saved={}",
+        total_estimated, threshold_tokens, history_tokens,
+        target_history_tokens, stats.messages_removed, stats.tokens_saved);
+  }
+  return compressed;
 }
 
 static bool has_non_tool_result_blocks(const Message& msg);
@@ -925,6 +993,7 @@ AgentLoop::AgentLoop(std::shared_ptr<MemoryManager> memory_manager,
       skill_loader_(skill_loader),
       tool_registry_(tool_registry),
       llm_provider_(llm_provider),
+      context_pruner_(std::make_shared<ContextPruner>()),
       logger_(logger),
       agent_config_(agent_config),
       resolved_model_name_(agent_config.model) {
@@ -991,6 +1060,284 @@ void AgentLoop::SetModel(const std::string& model_ref) {
   logger_->info("Model set to: {}", model_ref);
 }
 
+// ---------------------------------------------------------------------------
+// execute_with_retry — retry with exponential backoff, then failover chain
+//
+// Algorithm (mirrors OpenClaw pi-embedded-runner/run.ts):
+// 1. Attempt the API call on the current provider/profile.
+// 2. On retryable error, sleep with exponential backoff and retry up to
+//    max_retries times on the SAME provider/profile.
+// 3. After all retries exhausted, record failure with FailoverResolver
+//    and re-resolve to the next available provider/profile.
+// 4. Reset retry counter and repeat from step 1 with the new provider.
+// 5. If FailoverResolver returns nullopt (all options exhausted), throw
+//    a clear error describing the situation.
+// 6. Non-retryable errors (auth, billing, invalid request) skip retries
+//    but still attempt failover to a different provider.
+// ---------------------------------------------------------------------------
+ChatCompletionResponse AgentLoop::execute_with_retry(
+    ChatCompletionRequest& request, std::shared_ptr<LLMProvider>& provider,
+    const std::string& original_model, int max_retries) {
+  int failover_attempts = 0;
+  std::optional<ProviderError> last_provider_error;
+  // Limit failover attempts to prevent infinite loops; fallback_chain size + 1
+  // for the primary model, times profiles per provider.
+  constexpr int kMaxFailoverAttempts = 20;
+
+  while (failover_attempts < kMaxFailoverAttempts) {
+    // Retry loop for the current provider/profile
+    for (int retry = 0; retry <= max_retries; ++retry) {
+      if (stop_requested_) {
+        throw std::runtime_error("Agent turn stopped by user");
+      }
+
+      try {
+        sanitize_request_messages_for_provider(provider, request,
+                                               turn_validator_, logger_);
+        auto response = provider->ChatCompletion(request);
+
+        // Success — record with failover resolver
+        if (failover_resolver_ && !last_provider_id_.empty()) {
+          failover_resolver_->RecordSuccess(last_provider_id_, last_profile_id_,
+                                            session_key_);
+        }
+
+        if (failover_attempts > 0) {
+          logger_->info("Failover succeeded: provider={}, profile={}, model={}",
+                        last_provider_id_, last_profile_id_, request.model);
+        }
+
+        return response;
+
+      } catch (const ProviderError& pe) {
+        last_provider_error = pe;
+        logger_->warn(
+            "Provider error on {}:{} (retry {}/{}, failover #{}): [{}] {}",
+            last_provider_id_, last_profile_id_, retry, max_retries,
+            failover_attempts, ProviderErrorKindToString(pe.Kind()), pe.what());
+
+        // Context overflow is handled by the caller, not here
+        if (pe.Kind() == ProviderErrorKind::kContextOverflow) {
+          throw;
+        }
+
+        bool retryable = should_retry_provider_error(pe);
+
+        // If retryable and we have retries left, backoff and retry same
+        // provider
+        if (retryable && retry < max_retries) {
+          int backoff_sec =
+              static_cast<int>(kRetryInitialBackoffSec *
+                               std::pow(kRetryBackoffMultiplier, retry));
+          backoff_sec = std::min(backoff_sec, kRetryMaxBackoffSec);
+
+          // Honor Retry-After header if provided and larger
+          if (pe.RetryAfterSeconds() > 0 &&
+              pe.RetryAfterSeconds() > backoff_sec) {
+            backoff_sec = std::min(pe.RetryAfterSeconds(), kRetryMaxBackoffSec);
+          }
+
+          logger_->info("Retrying in {}s (attempt {}/{})", backoff_sec,
+                        retry + 1, max_retries);
+          if (!interruptible_sleep(std::chrono::seconds(backoff_sec))) {
+            logger_->info("Abort detected during retry backoff");
+            throw std::runtime_error("Agent turn stopped by user");
+          }
+          continue;
+        }
+
+        // Retries exhausted (or non-retryable) — attempt failover
+        if (failover_resolver_ && !last_provider_id_.empty()) {
+          failover_resolver_->RecordFailure(last_provider_id_, last_profile_id_,
+                                            pe.Kind(), pe.RetryAfterSeconds());
+        }
+
+        // Non-retryable errors that should not failover at all
+        if (pe.Kind() == ProviderErrorKind::kAuthError ||
+            pe.Kind() == ProviderErrorKind::kBillingError) {
+          // Still try failover — a different provider may work
+          logger_->warn(
+              "Non-retryable error ({}), attempting failover to different "
+              "provider",
+              ProviderErrorKindToString(pe.Kind()));
+        }
+
+        // Break out of retry loop to attempt failover
+        break;
+      }
+    }
+
+    // --- Failover: try next provider/profile ---
+
+    // Check abort before attempting failover
+    if (stop_requested_) {
+      logger_->info("Abort detected before failover attempt");
+      throw std::runtime_error("Agent turn stopped by user");
+    }
+
+    if (!failover_resolver_) {
+      if (last_provider_error.has_value()) {
+        throw *last_provider_error;
+      }
+      throw std::runtime_error("All retries exhausted for provider " +
+                               last_provider_id_ +
+                               " and no failover resolver configured");
+    }
+
+    // Restore original model so FailoverResolver walks the full chain
+    agent_config_.model = original_model;
+    auto resolved = resolve_provider();
+
+    if (!resolved || resolved == provider) {
+      // resolve_provider returns the same provider if no alternative found,
+      // or llm_provider_ as final fallback. Check if it's truly different.
+      if (!resolved) {
+        throw std::runtime_error(
+            "All failover options exhausted. Tried " +
+            std::to_string(failover_attempts + 1) + " provider(s) for model '" +
+            original_model +
+            "'. All providers/profiles are in cooldown or unavailable.");
+      }
+      // If we got back the same provider, all alternatives are exhausted
+      if (failover_attempts > 0) {
+        throw std::runtime_error(
+            "Failover chain exhausted after " +
+            std::to_string(failover_attempts + 1) +
+            " attempt(s). No healthy provider available for model '" +
+            original_model + "'.");
+      }
+    }
+
+    provider = resolved;
+    request.model = resolved_request_model();
+    failover_attempts++;
+
+    logger_->info(
+        "Failover attempt #{}: switching to provider={}, profile={}, "
+        "model={}",
+        failover_attempts, last_provider_id_, last_profile_id_, request.model);
+  }
+
+  throw std::runtime_error("Maximum failover attempts (" +
+                           std::to_string(kMaxFailoverAttempts) +
+                           ") reached for model '" + original_model + "'");
+}
+
+bool AgentLoop::execute_stream_with_retry(
+    ChatCompletionRequest& request, std::shared_ptr<LLMProvider>& provider,
+    const std::string& original_model,
+    const std::function<void(const ChatCompletionResponse&)>& stream_cb,
+    int max_retries) {
+  int failover_attempts = 0;
+  constexpr int kMaxFailoverAttempts = 20;
+
+  while (failover_attempts < kMaxFailoverAttempts) {
+    for (int retry = 0; retry <= max_retries; ++retry) {
+      if (stop_requested_) {
+        return false;
+      }
+
+      try {
+        sanitize_request_messages_for_provider(provider, request,
+                                               turn_validator_, logger_);
+        provider->ChatCompletionStream(request, stream_cb);
+
+        // Success
+        if (failover_resolver_ && !last_provider_id_.empty()) {
+          failover_resolver_->RecordSuccess(last_provider_id_, last_profile_id_,
+                                            session_key_);
+        }
+
+        if (failover_attempts > 0) {
+          logger_->info(
+              "Streaming failover succeeded: provider={}, profile={}, "
+              "model={}",
+              last_provider_id_, last_profile_id_, request.model);
+        }
+
+        return true;
+
+      } catch (const ProviderError& pe) {
+        logger_->warn(
+            "Streaming provider error on {}:{} (retry {}/{}, failover "
+            "#{}): [{}] {}",
+            last_provider_id_, last_profile_id_, retry, max_retries,
+            failover_attempts, ProviderErrorKindToString(pe.Kind()), pe.what());
+
+        if (pe.Kind() == ProviderErrorKind::kContextOverflow) {
+          throw;
+        }
+
+        bool retryable = should_retry_provider_error(pe);
+
+        if (retryable && retry < max_retries) {
+          int backoff_sec =
+              static_cast<int>(kRetryInitialBackoffSec *
+                               std::pow(kRetryBackoffMultiplier, retry));
+          backoff_sec = std::min(backoff_sec, kRetryMaxBackoffSec);
+
+          if (pe.RetryAfterSeconds() > 0 &&
+              pe.RetryAfterSeconds() > backoff_sec) {
+            backoff_sec = std::min(pe.RetryAfterSeconds(), kRetryMaxBackoffSec);
+          }
+
+          logger_->info("Streaming retry in {}s (attempt {}/{})", backoff_sec,
+                        retry + 1, max_retries);
+          if (!interruptible_sleep(std::chrono::seconds(backoff_sec))) {
+            logger_->info("Abort detected during streaming retry backoff");
+            return false;
+          }
+          continue;
+        }
+
+        if (failover_resolver_ && !last_provider_id_.empty()) {
+          failover_resolver_->RecordFailure(last_provider_id_, last_profile_id_,
+                                            pe.Kind(), pe.RetryAfterSeconds());
+        }
+
+        break;  // Exit retry loop, attempt failover
+      }
+    }
+
+    // --- Failover ---
+
+    // Check abort before attempting streaming failover
+    if (stop_requested_) {
+      logger_->info("Abort detected before streaming failover attempt");
+      return false;
+    }
+
+    if (!failover_resolver_) {
+      logger_->error("All streaming retries exhausted, no failover resolver");
+      return false;
+    }
+
+    agent_config_.model = original_model;
+    auto resolved = resolve_provider();
+
+    if (!resolved || (resolved == provider && failover_attempts > 0)) {
+      logger_->error(
+          "Streaming failover chain exhausted after {} attempt(s) for "
+          "model '{}'",
+          failover_attempts + 1, original_model);
+      return false;
+    }
+
+    provider = resolved;
+    request.model = resolved_request_model();
+    failover_attempts++;
+
+    logger_->info(
+        "Streaming failover attempt #{}: provider={}, profile={}, "
+        "model={}",
+        failover_attempts, last_provider_id_, last_profile_id_, request.model);
+  }
+
+  logger_->error("Maximum streaming failover attempts reached for model '{}'",
+                 original_model);
+  return false;
+}
+
 std::vector<Message> AgentLoop::ProcessMessage(
     const std::string& message, const std::vector<Message>& history,
     const std::string& system_prompt, const std::string& usage_session_key) {
@@ -1000,6 +1347,10 @@ std::vector<Message> AgentLoop::ProcessMessage(
   stop_requested_ = false;
 
   auto provider = resolve_provider();
+  const int ctx_window = agent_config_.context_window > 0
+                             ? agent_config_.context_window
+                             : get_context_window(resolved_request_model());
+  const auto request_tools = build_request_tools(tool_registry_);
 
   std::vector<Message> new_messages;
 
@@ -1030,6 +1381,9 @@ std::vector<Message> AgentLoop::ProcessMessage(
   effective_history = ContextPruner::Prune(effective_history, prune_opts);
   effective_history =
       focus_history_on_latest_turn(effective_history, message, logger_);
+  effective_history = compress_history_for_context_budget(
+      effective_history, system_prompt, message, request_tools, ctx_window,
+      context_pruner_, logger_);
 
   // Build context: system + history + new user message
   std::vector<Message> context;
@@ -1048,9 +1402,6 @@ std::vector<Message> AgentLoop::ProcessMessage(
   context.push_back(Message{"user", message});
 
   // --- Context window guard: check estimated tokens vs limit ---
-  int ctx_window = agent_config_.context_window > 0
-                       ? agent_config_.context_window
-                       : get_context_window(resolved_request_model());
   int estimated = estimate_tokens(context);
   if (estimated + agent_config_.max_tokens >
       ctx_window - kContextWindowMinTokens) {
@@ -1087,16 +1438,7 @@ std::vector<Message> AgentLoop::ProcessMessage(
   request.thinking = agent_config_.thinking;
 
   // Add tool schemas
-  nlohmann::json tools_json = nlohmann::json::array();
-  for (const auto& schema : tool_registry_->GetToolSchemas()) {
-    nlohmann::json tool;
-    tool["type"] = "function";
-    tool["function"]["name"] = schema.name;
-    tool["function"]["description"] = schema.description;
-    tool["function"]["parameters"] = schema.parameters;
-    tools_json.push_back(tool);
-  }
-  request.tools = tools_json.get<std::vector<nlohmann::json>>();
+  request.tools = request_tools;
   request.tool_choice_auto = true;
 
   // Save original model for failover re-resolution
@@ -1108,9 +1450,9 @@ std::vector<Message> AgentLoop::ProcessMessage(
 
   while (iterations < max_iterations_ && !stop_requested_) {
     try {
-      sanitize_request_messages_for_provider(provider, request, turn_validator_,
-                                             logger_);
-      auto response = provider->ChatCompletion(request);
+      // Use execute_with_retry for retry + failover chain traversal.
+      // Context overflow is re-thrown and handled below.
+      auto response = execute_with_retry(request, provider, original_model);
 
       // --- Usage tracking ---
       if (usage_accumulator_ && !effective_session_key.empty()) {
@@ -1121,12 +1463,6 @@ std::vector<Message> AgentLoop::ProcessMessage(
       logger_->debug("Token usage: prompt={} completion={}",
                      response.usage.prompt_tokens,
                      response.usage.completion_tokens);
-
-      // Record success for failover tracking
-      if (failover_resolver_ && !last_provider_id_.empty()) {
-        failover_resolver_->RecordSuccess(last_provider_id_, last_profile_id_,
-                                          session_key_);
-      }
 
       if (!response.tool_calls.empty()) {
         logger_->info("LLM requested {} tool calls",
@@ -1168,6 +1504,14 @@ std::vector<Message> AgentLoop::ProcessMessage(
               response.tool_calls[i].id, tool_results[i]));
         request.messages.push_back(results_msg);
         new_messages.push_back(results_msg);
+
+        // Check abort after tool execution — stop iterating immediately
+        // rather than sending another LLM request with partial tool results.
+        if (stop_requested_) {
+          logger_->info(
+              "Abort detected after tool execution, stopping iteration");
+          break;
+        }
 
         iterations++;
         continue;
@@ -1251,7 +1595,6 @@ std::vector<Message> AgentLoop::ProcessMessage(
         logger_->warn(
             "Context overflow (attempt {}/{}), compacting and retrying",
             overflow_retries, kOverflowCompactionMaxRetries);
-        // Aggressively compact: keep only recent messages
         int keep = std::max(2, static_cast<int>(request.messages.size()) / 2);
         std::vector<Message> compacted;
         if (!system_prompt.empty()) {
@@ -1267,62 +1610,20 @@ std::vector<Message> AgentLoop::ProcessMessage(
         continue;
       }
 
-      // Context overflow with retries exhausted — no point retrying
-      if (pe.Kind() == ProviderErrorKind::kContextOverflow) {
-        logger_->error("Context overflow: all {} compaction retries exhausted",
-                       kOverflowCompactionMaxRetries);
-        throw;
-      }
-
-      // Record failure for failover tracking (with Retry-After if provided)
-      if (failover_resolver_ && !last_provider_id_.empty()) {
-        failover_resolver_->RecordFailure(last_provider_id_, last_profile_id_,
-                                          pe.Kind(), pe.RetryAfterSeconds());
-
-        // Try to re-resolve with a different profile or fallback model
-        logger_->warn("Provider error ({}), attempting failover: {}",
-                      ProviderErrorKindToString(pe.Kind()), pe.what());
-
-        // Restore original model for re-resolution
-        agent_config_.model = original_model;
-        auto new_provider = resolve_provider();
-        if (new_provider && new_provider != provider) {
-          provider = new_provider;
-          request.model = resolved_request_model();
-          iterations++;
-          continue;
-        }
-      }
-
-      // No failover available or failover also failed
-      logger_->error("Provider error with no failover available: {}",
+      // All retries, failover, and compaction exhausted
+      logger_->error("Provider error after retry+failover exhausted: {}",
                      pe.what());
-      if (!should_retry_provider_error(pe)) {
-        logger_->error(
-            "Non-retryable provider error; aborting turn immediately");
-        throw;
-      }
-      if (iterations < max_iterations_ - 1) {
-        std::this_thread::sleep_for(
-            std::chrono::seconds(1 << std::min(iterations, 4)));
-        iterations++;
-        continue;
-      }
       throw;
 
     } catch (const std::exception& e) {
       logger_->error("Error in LLM processing: {}", e.what());
-      if (iterations < max_iterations_ - 1) {
-        std::this_thread::sleep_for(
-            std::chrono::seconds(1 << std::min(iterations, 4)));
-        iterations++;
-        continue;
-      }
       throw;
     }
   }
 
   if (stop_requested_) {
+    logger_->info("Agent turn aborted: returning {} partial message(s)",
+                  new_messages.size());
     Message stop_msg;
     stop_msg.role = "assistant";
     stop_msg.content.push_back(
@@ -1345,6 +1646,10 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
   stop_requested_ = false;
 
   auto provider = resolve_provider();
+  const int ctx_window = agent_config_.context_window > 0
+                             ? agent_config_.context_window
+                             : get_context_window(resolved_request_model());
+  const auto request_tools = build_request_tools(tool_registry_);
 
   std::vector<Message> new_messages;
 
@@ -1374,6 +1679,9 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
   effective_history = ContextPruner::Prune(effective_history, prune_opts);
   effective_history =
       focus_history_on_latest_turn(effective_history, message, logger_);
+  effective_history = compress_history_for_context_budget(
+      effective_history, system_prompt, message, request_tools, ctx_window,
+      context_pruner_, logger_);
 
   // Build context (system prompt always re-injected first)
   std::vector<Message> context;
@@ -1386,9 +1694,6 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
   context.push_back(Message{"user", message});
 
   // --- Context window guard ---
-  int ctx_window = agent_config_.context_window > 0
-                       ? agent_config_.context_window
-                       : get_context_window(resolved_request_model());
   int estimated = estimate_tokens(context);
   if (estimated + agent_config_.max_tokens >
       ctx_window - kContextWindowMinTokens) {
@@ -1420,16 +1725,7 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
   request.stream = true;
   request.thinking = agent_config_.thinking;
 
-  nlohmann::json tools_json = nlohmann::json::array();
-  for (const auto& schema : tool_registry_->GetToolSchemas()) {
-    nlohmann::json tool;
-    tool["type"] = "function";
-    tool["function"]["name"] = schema.name;
-    tool["function"]["description"] = schema.description;
-    tool["function"]["parameters"] = schema.parameters;
-    tools_json.push_back(tool);
-  }
-  request.tools = tools_json.get<std::vector<nlohmann::json>>();
+  request.tools = request_tools;
   request.tool_choice_auto = true;
 
   std::string original_model_stream = agent_config_.model;
@@ -1478,39 +1774,61 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
                 full_response.clear();
 
                 // Execute tool
-                try {
-                  auto result =
-                      tool_registry_->ExecuteTool(tc.name, tc.arguments);
-                  // --- Tool result truncation ---
-                  result = truncate_tool_result(result, kToolResultMaxChars,
-                                                kToolResultKeepLines);
-                  if (callback) {
-                    callback({events::kToolResult,
-                              {{"tool_use_id", tc.id}, {"content", result}}});
-                  }
-
-                  Message results_msg;
-                  results_msg.role = "user";
-                  results_msg.content.push_back(
-                      ContentBlock::MakeToolResult(tc.id, result));
-                  request.messages.push_back(results_msg);
-                  new_messages.push_back(results_msg);
-                } catch (const std::exception& e) {
-                  std::string error_content = "Error: " + std::string(e.what());
+                if (stop_requested_) {
+                  logger_->info(
+                      "Abort detected: skipping tool execution for {}",
+                      tc.name);
+                  std::string abort_content =
+                      "[Tool execution aborted by user]";
                   if (callback) {
                     callback({events::kToolResult,
                               {{"tool_use_id", tc.id},
-                               {"content", error_content},
+                               {"content", abort_content},
                                {"is_error", true}}});
                   }
 
                   Message results_msg;
                   results_msg.role = "user";
                   results_msg.content.push_back(
-                      ContentBlock::MakeToolResult(tc.id, error_content));
+                      ContentBlock::MakeToolResult(tc.id, abort_content));
                   request.messages.push_back(results_msg);
                   new_messages.push_back(results_msg);
-                }
+                } else {
+                  try {
+                    auto result =
+                        tool_registry_->ExecuteTool(tc.name, tc.arguments);
+                    // --- Tool result truncation ---
+                    result = truncate_tool_result(result, kToolResultMaxChars,
+                                                  kToolResultKeepLines);
+                    if (callback) {
+                      callback({events::kToolResult,
+                                {{"tool_use_id", tc.id}, {"content", result}}});
+                    }
+
+                    Message results_msg;
+                    results_msg.role = "user";
+                    results_msg.content.push_back(
+                        ContentBlock::MakeToolResult(tc.id, result));
+                    request.messages.push_back(results_msg);
+                    new_messages.push_back(results_msg);
+                  } catch (const std::exception& e) {
+                    std::string error_content =
+                        "Error: " + std::string(e.what());
+                    if (callback) {
+                      callback({events::kToolResult,
+                                {{"tool_use_id", tc.id},
+                                 {"content", error_content},
+                                 {"is_error", true}}});
+                    }
+
+                    Message results_msg;
+                    results_msg.role = "user";
+                    results_msg.content.push_back(
+                        ContentBlock::MakeToolResult(tc.id, error_content));
+                    request.messages.push_back(results_msg);
+                    new_messages.push_back(results_msg);
+                  }
+                }  // end abort check else
               }
               iterations++;
               return;  // Continue loop for tool results
@@ -1586,6 +1904,13 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
         failover_resolver_->RecordFailure(last_provider_id_, last_profile_id_,
                                           pe.Kind(), pe.RetryAfterSeconds());
 
+        // Check abort before attempting failover
+        if (stop_requested_) {
+          logger_->info(
+              "Abort detected before streaming ProcessMessage failover");
+          break;
+        }
+
         logger_->warn("Streaming provider error ({}), attempting failover: {}",
                       ProviderErrorKindToString(pe.Kind()), pe.what());
 
@@ -1627,8 +1952,31 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
 }
 
 void AgentLoop::Stop() {
-  stop_requested_ = true;
-  logger_->info("Agent stop requested");
+  bool was_running = !stop_requested_.exchange(true);
+  if (was_running) {
+    logger_->info("Abort requested: stopping agent loop and cleaning up");
+  } else {
+    logger_->debug("Abort requested but already stopping");
+  }
+}
+
+bool AgentLoop::interruptible_sleep(std::chrono::seconds duration) {
+  // Sleep in 100ms increments, checking abort flag each time.
+  // Returns true if full duration elapsed, false if interrupted.
+  auto end = std::chrono::steady_clock::now() + duration;
+  while (std::chrono::steady_clock::now() < end) {
+    if (stop_requested_) {
+      return false;
+    }
+    auto remaining = end - std::chrono::steady_clock::now();
+    auto sleep_chunk = std::min(
+        std::chrono::duration_cast<std::chrono::milliseconds>(remaining),
+        std::chrono::milliseconds(100));
+    if (sleep_chunk.count() > 0) {
+      std::this_thread::sleep_for(sleep_chunk);
+    }
+  }
+  return !stop_requested_.load();
 }
 
 void AgentLoop::SetConfig(const AgentConfig& config) {
@@ -1647,6 +1995,16 @@ AgentLoop::handle_tool_calls(const std::vector<nlohmann::json>& tool_calls) {
   std::vector<std::string> results;
 
   for (const auto& tool_call : tool_calls) {
+    // Check abort flag before each tool execution
+    if (stop_requested_) {
+      logger_->info("Abort detected: skipping remaining {} tool call(s)",
+                    tool_calls.size() - results.size());
+      for (size_t i = results.size(); i < tool_calls.size(); ++i) {
+        results.push_back("[Tool execution aborted by user]");
+      }
+      break;
+    }
+
     try {
       std::string tool_name = tool_call["function"]["name"];
       nlohmann::json arguments;
