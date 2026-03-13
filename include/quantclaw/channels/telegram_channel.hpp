@@ -4,6 +4,9 @@
 #pragma once
 
 #include "quantclaw/channels/channel_base.hpp"
+#include "quantclaw/channels/deduplication_store.hpp"
+#include "quantclaw/channels/lane_processor.hpp"
+#include "quantclaw/channels/thread_binder.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <thread>
@@ -46,6 +49,18 @@ public:
     nlohmann::json GetMe();
     nlohmann::json GetChat(const std::string& chat_id);
 
+    // Set deduplication store
+    // Requirements: 9.1, 9.2, 9.3
+    void SetDeduplicationStore(std::shared_ptr<DeduplicationStore> store);
+
+    // Set lane processor for sequential handling
+    // Requirements: 9.4, 9.5, 9.6
+    void SetLaneProcessor(std::shared_ptr<LaneProcessor> processor);
+
+    // Set thread binder for topic support
+    // Requirements: 10.1, 10.2, 10.3
+    void SetThreadBinder(std::shared_ptr<ThreadBinder> binder);
+
 protected:
     virtual nlohmann::json MakeApiRequest(const std::string& method, const nlohmann::json& params = {});
 
@@ -69,6 +84,23 @@ private:
     void LoadLastUpdateId();
     void SaveLastUpdateId();
 
+    // Check if update is duplicate
+    // Requirements: 9.1, 9.3
+    bool is_duplicate(int64_t update_id) const;
+
+    // Record processed update
+    // Requirements: 9.1, 9.2
+    void record_update(int64_t update_id);
+
+    // Get lane ID for message (chat_id for sequential processing)
+    // Requirements: 9.4
+    std::string get_lane_id(const nlohmann::json& message) const;
+
+    // Extract thread ID from message
+    // Requirements: 10.1
+    std::optional<std::string> extract_thread_id(
+        const nlohmann::json& message) const;
+
     TelegramConfig config_;
     std::shared_ptr<spdlog::logger> logger_;
     std::atomic<bool> running_{false};
@@ -78,9 +110,15 @@ private:
     int64_t last_update_id_ = 0;
     std::string bot_username_;
 
-    // Message deduplication
+    // Message deduplication (legacy, will be replaced by DeduplicationStore)
     std::unordered_set<std::string> processed_messages_;
     std::mutex processed_mutex_;
+
+    // Enhanced components
+    // Requirements: 9.1-9.8, 10.1-10.8
+    std::shared_ptr<DeduplicationStore> dedup_store_;
+    std::shared_ptr<LaneProcessor> lane_processor_;
+    std::shared_ptr<ThreadBinder> thread_binder_;
 };
 
 } // namespace quantclaw

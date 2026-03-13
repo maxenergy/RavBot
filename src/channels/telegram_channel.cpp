@@ -241,8 +241,39 @@ void TelegramChannel::PollingLoop() {
 }
 
 void TelegramChannel::HandleUpdate(const nlohmann::json& update) {
+    // 提取 update_id
+    // Requirements: 9.1, 9.3
+    if (!update.contains("update_id")) {
+        return;
+    }
+    int64_t update_id = update["update_id"].get<int64_t>();
+
+    // 检查去重
+    if (is_duplicate(update_id)) {
+        logger_->debug("Skipping duplicate update: {}", update_id);
+        return;
+    }
+
+    // 记录已处理
+    record_update(update_id);
+
+    // 处理消息
     if (update.contains("message")) {
-        HandleMessage(update["message"]);
+        const auto& message = update["message"];
+
+        // 提取 lane_id
+        // Requirements: 9.4, 9.5
+        std::string lane_id = get_lane_id(message);
+
+        // 如果配置了 LaneProcessor，使用顺序处理
+        if (lane_processor_) {
+            lane_processor_->Submit(lane_id, [this, message]() {
+                HandleMessage(message);
+            });
+        } else {
+            // 直接处理
+            HandleMessage(message);
+        }
     } else if (update.contains("callback_query")) {
         HandleCallbackQuery(update["callback_query"]);
     }
@@ -258,25 +289,37 @@ void TelegramChannel::HandleMessage(const nlohmann::json& message) {
     std::string user_id = ExtractUserId(message["from"]);
     int message_id = message["message_id"].get<int>();
 
-    // Create unique message key for deduplication
-    std::string message_key = chat_id + ":" + std::to_string(message_id);
+    // 提取 thread_id（如果有）
+    // Requirements: 10.1, 10.2
+    std::optional<std::string> thread_id = extract_thread_id(message);
 
-    // Check if already processed
-    {
-        std::lock_guard<std::mutex> lock(processed_mutex_);
-        if (processed_messages_.count(message_key) > 0) {
-            logger_->debug("Skipping duplicate message: {}", message_key);
-            return;
-        }
-        processed_messages_.insert(message_key);
-
-        // Keep only last 1000 messages to prevent memory leak
-        if (processed_messages_.size() > 1000) {
-            processed_messages_.clear();
+    // 获取会话键
+    std::string session_key;
+    if (thread_binder_) {
+        session_key = thread_binder_->GetSessionKey(chat_id, thread_id);
+    } else {
+        // 默认会话键
+        session_key = "agent:main:telegram:" + chat_id;
+        if (thread_id) {
+            session_key += ":" + *thread_id;
         }
     }
 
     // Check if message should be processed
+    if (!ShouldProcessMessage(message)) {
+        return;
+    }
+
+    // Check permissions
+    if (!IsAllowed(user_id)) {
+        logger_->warn("User {} not allowed", user_id);
+        return;
+    }
+
+    logger_->info("Received message from {} (session={}): {}", user_id,
+                  session_key, text.substr(0, 50));
+
+    // Forward to agent system via message handler
     if (!ShouldProcessMessage(message)) {
         return;
     }
@@ -434,6 +477,68 @@ void TelegramChannel::SaveLastUpdateId() {
     } catch (const std::exception& e) {
         logger_->warn("Failed to save last_update_id: {}", e.what());
     }
+}
+
+// Set deduplication store
+// Requirements: 9.1, 9.2, 9.3
+void TelegramChannel::SetDeduplicationStore(
+    std::shared_ptr<DeduplicationStore> store) {
+  dedup_store_ = std::move(store);
+  logger_->info("DeduplicationStore configured");
+}
+
+// Set lane processor
+// Requirements: 9.4, 9.5, 9.6
+void TelegramChannel::SetLaneProcessor(
+    std::shared_ptr<LaneProcessor> processor) {
+  lane_processor_ = std::move(processor);
+  logger_->info("LaneProcessor configured");
+}
+
+// Set thread binder
+// Requirements: 10.1, 10.2, 10.3
+void TelegramChannel::SetThreadBinder(std::shared_ptr<ThreadBinder> binder) {
+  thread_binder_ = std::move(binder);
+  logger_->info("ThreadBinder configured");
+}
+
+// Check if update is duplicate
+// Requirements: 9.1, 9.3
+bool TelegramChannel::is_duplicate(int64_t update_id) const {
+  if (dedup_store_) {
+    return dedup_store_->IsProcessed(update_id);
+  }
+  // Fallback: 如果没有配置 dedup_store，认为不重复
+  return false;
+}
+
+// Record processed update
+// Requirements: 9.1, 9.2
+void TelegramChannel::record_update(int64_t update_id) {
+  if (dedup_store_) {
+    dedup_store_->MarkProcessed(update_id);
+  }
+}
+
+// Get lane ID for message
+// Requirements: 9.4
+std::string TelegramChannel::get_lane_id(const nlohmann::json& message) const {
+  // 使用 chat_id 作为 lane_id，确保同一聊天的消息顺序处理
+  if (message.contains("chat")) {
+    return ExtractChatId(message["chat"]);
+  }
+  return "default";
+}
+
+// Extract thread ID from message
+// Requirements: 10.1
+std::optional<std::string> TelegramChannel::extract_thread_id(
+    const nlohmann::json& message) const {
+  // Telegram 的 topic/thread 支持
+  if (message.contains("message_thread_id")) {
+    return std::to_string(message["message_thread_id"].get<int64_t>());
+  }
+  return std::nullopt;
 }
 
 } // namespace quantclaw
