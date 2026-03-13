@@ -74,6 +74,31 @@ class PluginRegistry {
   // JSON summary of all plugins
   nlohmann::json ToJson() const;
 
+  // Enhanced Plugin Registry features
+  // Requirements: 16.3, 16.4, 16.5
+  bool ValidateManifest(const PluginManifest& manifest,
+                        std::string& error_message) const;
+
+  // Requirements: 17.1, 17.3, 17.6
+  struct ConflictInfo {
+    std::string type;           // "tool", "hook", "dependency"
+    std::string plugin_a;       // 第一个插件 ID
+    std::string plugin_b;       // 第二个插件 ID
+    std::string resource_name;  // 冲突的资源名称
+    std::string description;    // 冲突描述
+  };
+  std::vector<ConflictInfo> DetectConflicts() const;
+
+  // Requirements: 17.2
+  std::string ResolveToolName(const std::string& tool_name) const;
+
+  // Requirements: 17.5
+  void SetPluginEnabled(const std::string& plugin_id, bool enabled);
+  bool IsPluginEnabled(const std::string& plugin_id) const;
+
+  // Requirements: 17.6
+  nlohmann::json GetDiagnostics() const;
+
  private:
   // Discovery helpers
   std::vector<PluginCandidate> discover_candidates(

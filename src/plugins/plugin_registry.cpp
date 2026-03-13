@@ -4,6 +4,7 @@
 #include "quantclaw/plugins/plugin_registry.hpp"
 #include <algorithm>
 #include <fstream>
+#include <regex>
 
 namespace quantclaw {
 
@@ -368,6 +369,218 @@ bool PluginRegistry::should_enable(const std::string& plugin_id,
 
   // Non-bundled plugins are enabled by default
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Enhanced Plugin Registry features
+// ---------------------------------------------------------------------------
+
+// Validate plugin manifest
+// Requirements: 16.3, 16.4, 16.5
+bool PluginRegistry::ValidateManifest(const PluginManifest& manifest,
+                                       std::string& error_message) const {
+  // 验证必填字段
+  if (manifest.name.empty()) {
+    error_message = "Missing required field: name";
+    return false;
+  }
+
+  if (manifest.version.empty()) {
+    error_message = "Missing required field: version";
+    return false;
+  }
+
+  if (manifest.id.empty()) {
+    error_message = "Missing required field: id";
+    return false;
+  }
+
+  // 验证版本格式（semver: major.minor.patch）
+  std::regex version_regex(R"(^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$)");
+  if (!std::regex_match(manifest.version, version_regex)) {
+    error_message = "Invalid version format: " + manifest.version +
+                    " (expected semver: major.minor.patch)";
+    return false;
+  }
+
+  // 验证 ID 格式（只允许字母、数字、连字符、下划线）
+  std::regex id_regex(R"(^[a-zA-Z0-9_-]+$)");
+  if (!std::regex_match(manifest.id, id_regex)) {
+    error_message = "Invalid id format: " + manifest.id +
+                    " (only alphanumeric, hyphens, and underscores allowed)";
+    return false;
+  }
+
+  return true;
+}
+
+// Detect conflicts between plugins
+// Requirements: 17.1, 17.3, 17.6
+std::vector<PluginRegistry::ConflictInfo> PluginRegistry::DetectConflicts() const {
+  std::vector<ConflictInfo> conflicts;
+
+  // 检测工具名称冲突
+  std::map<std::string, std::vector<std::string>> tool_to_plugins;
+  for (const auto& plugin : plugins_) {
+    if (!plugin.enabled) continue;
+    for (const auto& tool : plugin.tool_names) {
+      tool_to_plugins[tool].push_back(plugin.id);
+    }
+  }
+
+  for (const auto& [tool, plugin_ids] : tool_to_plugins) {
+    if (plugin_ids.size() > 1) {
+      for (size_t i = 0; i < plugin_ids.size(); ++i) {
+        for (size_t j = i + 1; j < plugin_ids.size(); ++j) {
+          ConflictInfo conflict;
+          conflict.type = "tool";
+          conflict.plugin_a = plugin_ids[i];
+          conflict.plugin_b = plugin_ids[j];
+          conflict.resource_name = tool;
+          conflict.description = "Tool name '" + tool + "' is provided by multiple plugins";
+          conflicts.push_back(conflict);
+        }
+      }
+    }
+  }
+
+  // 检测 Hook 冲突
+  std::map<std::string, std::vector<std::string>> hook_to_plugins;
+  for (const auto& plugin : plugins_) {
+    if (!plugin.enabled) continue;
+    for (const auto& hook : plugin.hook_names) {
+      hook_to_plugins[hook].push_back(plugin.id);
+    }
+  }
+
+  for (const auto& [hook, plugin_ids] : hook_to_plugins) {
+    if (plugin_ids.size() > 1) {
+      // Hook 冲突是警告而非错误（多个插件可以监听同一个 Hook）
+      ConflictInfo conflict;
+      conflict.type = "hook";
+      conflict.plugin_a = plugin_ids[0];
+      conflict.plugin_b = plugin_ids[1];
+      conflict.resource_name = hook;
+      conflict.description = "Hook '" + hook + "' is registered by multiple plugins (this may be intentional)";
+      conflicts.push_back(conflict);
+    }
+  }
+
+  // 检测依赖冲突（循环依赖）
+  // TODO: 实现依赖图分析
+
+  return conflicts;
+}
+
+// Resolve tool name with namespace
+// Requirements: 17.2
+std::string PluginRegistry::ResolveToolName(const std::string& tool_name) const {
+  // 如果已经包含命名空间（plugin_name.tool_name），直接返回
+  if (tool_name.find('.') != std::string::npos) {
+    return tool_name;
+  }
+
+  // 查找提供该工具的插件
+  std::vector<std::string> providing_plugins;
+  for (const auto& plugin : plugins_) {
+    if (!plugin.enabled) continue;
+    if (std::find(plugin.tool_names.begin(), plugin.tool_names.end(), tool_name) !=
+        plugin.tool_names.end()) {
+      providing_plugins.push_back(plugin.id);
+    }
+  }
+
+  // 如果只有一个插件提供该工具，返回原名称
+  if (providing_plugins.size() == 1) {
+    return tool_name;
+  }
+
+  // 如果有多个插件提供该工具，返回带命名空间的名称（使用第一个）
+  if (!providing_plugins.empty()) {
+    return providing_plugins[0] + "." + tool_name;
+  }
+
+  // 工具不存在
+  return tool_name;
+}
+
+// Set plugin enabled/disabled
+// Requirements: 17.5
+void PluginRegistry::SetPluginEnabled(const std::string& plugin_id, bool enabled) {
+  auto it = id_index_.find(plugin_id);
+  if (it != id_index_.end()) {
+    plugins_[it->second].enabled = enabled;
+    logger_->info("Plugin {} {}", plugin_id, enabled ? "enabled" : "disabled");
+  }
+}
+
+// Check if plugin is enabled
+// Requirements: 17.5
+bool PluginRegistry::IsPluginEnabled(const std::string& plugin_id) const {
+  auto it = id_index_.find(plugin_id);
+  if (it != id_index_.end()) {
+    return plugins_[it->second].enabled;
+  }
+  return false;
+}
+
+// Get diagnostics (conflicts and warnings)
+// Requirements: 17.6
+nlohmann::json PluginRegistry::GetDiagnostics() const {
+  nlohmann::json diag;
+
+  // 收集冲突
+  auto conflicts = DetectConflicts();
+  nlohmann::json conflicts_json = nlohmann::json::array();
+  for (const auto& conflict : conflicts) {
+    nlohmann::json c;
+    c["type"] = conflict.type;
+    c["plugin_a"] = conflict.plugin_a;
+    c["plugin_b"] = conflict.plugin_b;
+    c["resource_name"] = conflict.resource_name;
+    c["description"] = conflict.description;
+    conflicts_json.push_back(c);
+  }
+  diag["conflicts"] = conflicts_json;
+
+  // 收集警告
+  nlohmann::json warnings = nlohmann::json::array();
+  for (const auto& plugin : plugins_) {
+    if (plugin.status == PluginStatus::kError) {
+      nlohmann::json w;
+      w["plugin_id"] = plugin.id;
+      w["type"] = "error";
+      w["message"] = plugin.error;
+      warnings.push_back(w);
+    }
+    if (!plugin.enabled) {
+      nlohmann::json w;
+      w["plugin_id"] = plugin.id;
+      w["type"] = "disabled";
+      w["message"] = "Plugin is disabled";
+      warnings.push_back(w);
+    }
+  }
+  diag["warnings"] = warnings;
+
+  // 统计信息
+  int total = plugins_.size();
+  int enabled = 0;
+  int disabled = 0;
+  int error = 0;
+  for (const auto& plugin : plugins_) {
+    if (plugin.enabled) enabled++;
+    else disabled++;
+    if (plugin.status == PluginStatus::kError) error++;
+  }
+  diag["stats"] = {
+      {"total", total},
+      {"enabled", enabled},
+      {"disabled", disabled},
+      {"error", error}
+  };
+
+  return diag;
 }
 
 }  // namespace quantclaw

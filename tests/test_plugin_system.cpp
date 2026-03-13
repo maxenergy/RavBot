@@ -1099,3 +1099,398 @@ TEST_F(HookManagerTest, ClearAllHandlers) {
   auto result = hooks.Fire("before_model_resolve", {});
   EXPECT_TRUE(result.empty());
 }
+
+// ================================================================
+// Phase 5.1 — Enhanced Plugin Registry Tests
+// ================================================================
+
+// Requirements: 16.3, 16.4, 16.5
+TEST_F(PluginRegistryTest, ValidateManifest_ValidManifest) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::PluginManifest manifest;
+  manifest.id = "test-plugin";
+  manifest.name = "Test Plugin";
+  manifest.version = "1.0.0";
+
+  std::string error;
+  EXPECT_TRUE(reg.ValidateManifest(manifest, error));
+  EXPECT_TRUE(error.empty());
+}
+
+TEST_F(PluginRegistryTest, ValidateManifest_MissingName) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::PluginManifest manifest;
+  manifest.id = "test-plugin";
+  manifest.version = "1.0.0";
+  // name is empty
+
+  std::string error;
+  EXPECT_FALSE(reg.ValidateManifest(manifest, error));
+  EXPECT_EQ(error, "Missing required field: name");
+}
+
+TEST_F(PluginRegistryTest, ValidateManifest_MissingVersion) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::PluginManifest manifest;
+  manifest.id = "test-plugin";
+  manifest.name = "Test Plugin";
+  // version is empty
+
+  std::string error;
+  EXPECT_FALSE(reg.ValidateManifest(manifest, error));
+  EXPECT_EQ(error, "Missing required field: version");
+}
+
+TEST_F(PluginRegistryTest, ValidateManifest_MissingId) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::PluginManifest manifest;
+  manifest.name = "Test Plugin";
+  manifest.version = "1.0.0";
+  // id is empty
+
+  std::string error;
+  EXPECT_FALSE(reg.ValidateManifest(manifest, error));
+  EXPECT_EQ(error, "Missing required field: id");
+}
+
+TEST_F(PluginRegistryTest, ValidateManifest_InvalidVersionFormat) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::PluginManifest manifest;
+  manifest.id = "test-plugin";
+  manifest.name = "Test Plugin";
+  manifest.version = "1.0";  // 不符合 semver
+
+  std::string error;
+  EXPECT_FALSE(reg.ValidateManifest(manifest, error));
+  EXPECT_TRUE(error.find("Invalid version format") != std::string::npos);
+}
+
+TEST_F(PluginRegistryTest, ValidateManifest_ValidSemverWithPrerelease) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::PluginManifest manifest;
+  manifest.id = "test-plugin";
+  manifest.name = "Test Plugin";
+  manifest.version = "1.0.0-alpha.1";
+
+  std::string error;
+  EXPECT_TRUE(reg.ValidateManifest(manifest, error));
+}
+
+TEST_F(PluginRegistryTest, ValidateManifest_ValidSemverWithBuildMetadata) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::PluginManifest manifest;
+  manifest.id = "test-plugin";
+  manifest.name = "Test Plugin";
+  manifest.version = "1.0.0+20250313";
+
+  std::string error;
+  EXPECT_TRUE(reg.ValidateManifest(manifest, error));
+}
+
+TEST_F(PluginRegistryTest, ValidateManifest_InvalidIdFormat) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::PluginManifest manifest;
+  manifest.id = "test plugin!";  // 包含非法字符
+  manifest.name = "Test Plugin";
+  manifest.version = "1.0.0";
+
+  std::string error;
+  EXPECT_FALSE(reg.ValidateManifest(manifest, error));
+  EXPECT_TRUE(error.find("Invalid id format") != std::string::npos);
+}
+
+// Requirements: 17.1, 17.3, 17.6
+TEST_F(PluginRegistryTest, DetectConflicts_NoConflicts) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  fs::create_directories(plugins_dir / "plugin-b");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+  {
+    std::ofstream ofs(plugins_dir / "plugin-b" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-b","name":"Plugin B","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  // Simulate sidecar updating with different tools
+  nlohmann::json sidecar_list = {
+      {"plugins", {
+          {{"id", "plugin-a"}, {"tools", {"tool1"}}},
+          {{"id", "plugin-b"}, {"tools", {"tool2"}}},
+      }},
+  };
+  reg.UpdateFromSidecar(sidecar_list);
+
+  auto conflicts = reg.DetectConflicts();
+  EXPECT_TRUE(conflicts.empty());
+}
+
+TEST_F(PluginRegistryTest, DetectConflicts_ToolNameConflict) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  fs::create_directories(plugins_dir / "plugin-b");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+  {
+    std::ofstream ofs(plugins_dir / "plugin-b" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-b","name":"Plugin B","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  // Simulate sidecar updating with same tool name
+  nlohmann::json sidecar_list = {
+      {"plugins", {
+          {{"id", "plugin-a"}, {"tools", {"shared-tool"}}},
+          {{"id", "plugin-b"}, {"tools", {"shared-tool"}}},
+      }},
+  };
+  reg.UpdateFromSidecar(sidecar_list);
+
+  auto conflicts = reg.DetectConflicts();
+  ASSERT_EQ(conflicts.size(), 1);
+  EXPECT_EQ(conflicts[0].type, "tool");
+  EXPECT_EQ(conflicts[0].resource_name, "shared-tool");
+}
+
+TEST_F(PluginRegistryTest, DetectConflicts_HookConflict) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  fs::create_directories(plugins_dir / "plugin-b");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+  {
+    std::ofstream ofs(plugins_dir / "plugin-b" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-b","name":"Plugin B","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  // Simulate sidecar updating with same hook name
+  nlohmann::json sidecar_list = {
+      {"plugins", {
+          {{"id", "plugin-a"}, {"hooks", {"shared-hook"}}},
+          {{"id", "plugin-b"}, {"hooks", {"shared-hook"}}},
+      }},
+  };
+  reg.UpdateFromSidecar(sidecar_list);
+
+  auto conflicts = reg.DetectConflicts();
+  ASSERT_EQ(conflicts.size(), 1);
+  EXPECT_EQ(conflicts[0].type, "hook");
+  EXPECT_EQ(conflicts[0].resource_name, "shared-hook");
+}
+
+// Requirements: 17.2
+TEST_F(PluginRegistryTest, ResolveToolName_NoConflict) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  nlohmann::json sidecar_list = {
+      {"plugins", {{{"id", "plugin-a"}, {"tools", {"unique-tool"}}}}},
+  };
+  reg.UpdateFromSidecar(sidecar_list);
+
+  std::string resolved = reg.ResolveToolName("unique-tool");
+  EXPECT_EQ(resolved, "unique-tool");
+}
+
+TEST_F(PluginRegistryTest, ResolveToolName_WithConflict) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  fs::create_directories(plugins_dir / "plugin-b");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+  {
+    std::ofstream ofs(plugins_dir / "plugin-b" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-b","name":"Plugin B","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  nlohmann::json sidecar_list = {
+      {"plugins", {
+          {{"id", "plugin-a"}, {"tools", {"shared-tool"}}},
+          {{"id", "plugin-b"}, {"tools", {"shared-tool"}}},
+      }},
+  };
+  reg.UpdateFromSidecar(sidecar_list);
+
+  std::string resolved = reg.ResolveToolName("shared-tool");
+  // 应该返回带命名空间的名称
+  EXPECT_TRUE(resolved == "plugin-a.shared-tool" || resolved == "plugin-b.shared-tool");
+}
+
+TEST_F(PluginRegistryTest, ResolveToolName_AlreadyNamespaced) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  nlohmann::json sidecar_list = {
+      {"plugins", {{{"id", "plugin-a"}, {"tools", {"tool1"}}}}},
+  };
+  reg.UpdateFromSidecar(sidecar_list);
+
+  std::string resolved = reg.ResolveToolName("plugin-a.tool1");
+  EXPECT_EQ(resolved, "plugin-a.tool1");
+}
+
+TEST_F(PluginRegistryTest, ResolveToolName_NonExistent) {
+  quantclaw::PluginRegistry reg(logger_);
+  quantclaw::QuantClawConfig config;
+  reg.Discover(config, test_dir_);
+
+  std::string resolved = reg.ResolveToolName("non-existent-tool");
+  EXPECT_EQ(resolved, "non-existent-tool");
+}
+
+// Requirements: 17.5
+TEST_F(PluginRegistryTest, SetPluginEnabled_RuntimeControl) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  EXPECT_TRUE(reg.IsPluginEnabled("plugin-a"));
+
+  reg.SetPluginEnabled("plugin-a", false);
+  EXPECT_FALSE(reg.IsPluginEnabled("plugin-a"));
+
+  reg.SetPluginEnabled("plugin-a", true);
+  EXPECT_TRUE(reg.IsPluginEnabled("plugin-a"));
+}
+
+TEST_F(PluginRegistryTest, IsPluginEnabled_NonExistent) {
+  quantclaw::PluginRegistry reg(logger_);
+  EXPECT_FALSE(reg.IsPluginEnabled("non-existent-plugin"));
+}
+
+// Requirements: 17.6
+TEST_F(PluginRegistryTest, GetDiagnostics_NoIssues) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  auto diag = reg.GetDiagnostics();
+  EXPECT_TRUE(diag["conflicts"].is_array());
+  EXPECT_EQ(diag["conflicts"].size(), 0);
+  EXPECT_TRUE(diag["warnings"].is_array());
+  EXPECT_TRUE(diag["stats"].is_object());
+  EXPECT_EQ(diag["stats"]["total"], 1);
+  EXPECT_EQ(diag["stats"]["enabled"], 1);
+  EXPECT_EQ(diag["stats"]["disabled"], 0);
+  EXPECT_EQ(diag["stats"]["error"], 0);
+}
+
+TEST_F(PluginRegistryTest, GetDiagnostics_WithConflicts) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  fs::create_directories(plugins_dir / "plugin-b");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+  {
+    std::ofstream ofs(plugins_dir / "plugin-b" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-b","name":"Plugin B","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+
+  nlohmann::json sidecar_list = {
+      {"plugins", {
+          {{"id", "plugin-a"}, {"tools", {"shared-tool"}}},
+          {{"id", "plugin-b"}, {"tools", {"shared-tool"}}},
+      }},
+  };
+  reg.UpdateFromSidecar(sidecar_list);
+
+  auto diag = reg.GetDiagnostics();
+  EXPECT_EQ(diag["conflicts"].size(), 1);
+  EXPECT_EQ(diag["stats"]["total"], 2);
+}
+
+TEST_F(PluginRegistryTest, GetDiagnostics_WithDisabledPlugin) {
+  auto plugins_dir = test_dir_ / "plugins";
+  fs::create_directories(plugins_dir / "plugin-a");
+  {
+    std::ofstream ofs(plugins_dir / "plugin-a" / "openclaw.plugin.json");
+    ofs << R"({"id":"plugin-a","name":"Plugin A","version":"1.0.0"})";
+  }
+
+  quantclaw::QuantClawConfig config;
+  config.plugins_config["load"]["paths"] = nlohmann::json::array({plugins_dir.string()});
+
+  quantclaw::PluginRegistry reg(logger_);
+  reg.Discover(config, test_dir_);
+  reg.SetPluginEnabled("plugin-a", false);
+
+  auto diag = reg.GetDiagnostics();
+  EXPECT_EQ(diag["stats"]["disabled"], 1);
+  EXPECT_GE(diag["warnings"].size(), 1);
+}

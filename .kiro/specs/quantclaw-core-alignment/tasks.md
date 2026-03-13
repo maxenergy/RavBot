@@ -734,34 +734,39 @@
       - **Validates: Requirements 15.1-15.5**
       - 验证所有安全事件被记录
 
-  - [ ] 4.4 Tool Registry 集成
-    - [ ] 4.4.1 集成 ExternalContentWrapper
+  - [x] 4.4 Tool Registry 集成
+    - [x] 4.4.1 集成 ExternalContentWrapper
       - 在 `src/tools/tool_registry.cpp` 中添加 ExternalContentWrapper 成员
       - 在工具调用返回时检查内容来源
       - 对 untrusted 内容自动包装
       - _Requirements: 12.1, 12.2, 12.8_
-    
-    - [ ] 4.4.2 为 web_search 添加内容包装
-      - 在 `src/tools/web_search.cpp` 中标记返回内容为 untrusted
+      - ✅ 已完成 (commit: c3aa60d)
+
+    - [x] 4.4.2 为 web_search 添加内容包装
+      - 在 `src/tools/tool_registry.cpp` 中标记返回内容为 untrusted
       - 自动用边界标记包装搜索结果
       - _Requirements: 12.2, 12.8_
-    
-    - [ ] 4.4.3 为 web_fetch 添加内容包装
-      - 在 `src/tools/web_fetch.cpp` 中标记返回内容为 untrusted
+      - ✅ 已完成 (commit: c3aa60d)
+
+    - [x] 4.4.3 为 web_fetch 添加内容包装
+      - 在 `src/tools/tool_registry.cpp` 中标记返回内容为 untrusted
       - 自动用边界标记包装获取的内容
       - _Requirements: 12.2, 12.8_
-    
-    - [ ] 4.4.4 集成 TrustModelManager
+      - ✅ 已完成 (commit: c3aa60d)
+
+    - [x] 4.4.4 集成 TrustModelManager
       - 添加 TrustModelManager 成员
       - 根据工具类型分配信任级别
       - _Requirements: 14.1-14.8_
-    
-    - [ ] 4.4.5 集成 SecurityAuditLogger
+      - ✅ 已完成 (commit: c3aa60d)
+
+    - [x] 4.4.5 集成 SecurityAuditLogger
       - 添加 SecurityAuditLogger 成员
       - 记录外部内容包装操作
       - 记录危险工具调用
       - _Requirements: 15.1, 15.3_
-    
+      - ✅ 已完成 (commit: c3aa60d)
+
     - [ ]* 4.4.6 更新 Tool Registry 单元测试
       - 测试外部内容包装
       - 测试信任级别分配
