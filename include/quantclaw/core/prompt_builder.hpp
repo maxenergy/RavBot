@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <spdlog/spdlog.h>
+#include "quantclaw/security/trust_model.hpp"
 
 namespace quantclaw {
 
@@ -16,13 +17,6 @@ class ToolRegistry;
 
 struct AgentConfig;
 struct QuantClawConfig;
-
-// Trust level for content sources and senders
-enum class TrustLevel {
-  kTrusted,      // Verified users, admins, local files
-  kSemiTrusted,  // Regular users, channel messages
-  kUntrusted     // Unknown users, web content, external sources
-};
 
 // Context information for prompt building
 struct PromptContext {

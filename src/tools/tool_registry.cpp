@@ -509,10 +509,25 @@ std::string ToolRegistry::ExecuteTool(const std::string& tool_name,
     if (!HasTool(tool_name)) throw std::runtime_error("Tool not found: " + tool_name);
     if (!check_permission(tool_name))
         throw std::runtime_error("Permission denied: tool '" + tool_name + "' is not allowed");
+
+    // 记录审计日志
+    // Requirements: 15.1, 15.3
+    bool is_dangerous = (tool_name == "exec" || tool_name == "write_file" ||
+                         tool_name == "edit_file" || tool_name == "apply_patch");
+    log_tool_execution(tool_name, parameters, is_dangerous);
+
     logger_->debug("Executing tool: {} params: {}", tool_name, parameters.dump());
     try {
         auto result = tools_[tool_name](parameters);
         logger_->debug("Tool {} succeeded", tool_name);
+
+        // 对不可信工具的输出进行包装
+        // Requirements: 12.2, 12.8
+        if (is_untrusted_tool(tool_name)) {
+            std::string url = parameters.value("url", parameters.value("query", ""));
+            result = wrap_external_content(result, tool_name, url);
+        }
+
         return result;
     } catch (const std::exception& e) {
         logger_->error("Tool {} failed: {}", tool_name, e.what());
@@ -1371,6 +1386,103 @@ std::string ToolRegistry::memory_get_tool(const nlohmann::json& params) {
     if (!f) throw std::runtime_error("Cannot read: " + rel_path);
     std::string content(std::istreambuf_iterator<char>(f), {});
     return nlohmann::json{{"path", rel_path}, {"content", content}}.dump();
+}
+
+// ---------------------------------------------------------------------------
+// Security Integration
+// ---------------------------------------------------------------------------
+
+// Set external content wrapper
+// Requirements: 12.1-12.8
+void ToolRegistry::SetExternalContentWrapper(
+    std::shared_ptr<ExternalContentWrapper> wrapper) {
+    content_wrapper_ = wrapper;
+    logger_->info("ExternalContentWrapper configured");
+}
+
+// Set trust model manager
+// Requirements: 14.1-14.8
+void ToolRegistry::SetTrustModelManager(
+    std::shared_ptr<TrustModelManager> trust_manager) {
+    trust_manager_ = trust_manager;
+    logger_->info("TrustModelManager configured");
+}
+
+// Set security audit logger
+// Requirements: 15.1-15.8
+void ToolRegistry::SetSecurityAuditLogger(
+    std::shared_ptr<SecurityAuditLogger> audit_logger) {
+    audit_logger_ = audit_logger;
+    logger_->info("SecurityAuditLogger configured");
+}
+
+// Set security context
+void ToolRegistry::SetSecurityContext(const std::string& user_id,
+                                       const std::string& session_id) {
+    current_user_id_ = user_id;
+    current_session_id_ = session_id;
+}
+
+// Wrap external content with boundary markers
+// Requirements: 12.2, 12.8
+std::string ToolRegistry::wrap_external_content(
+    const std::string& content,
+    const std::string& tool_name,
+    const std::string& url) const {
+    if (!content_wrapper_) {
+        return content;
+    }
+
+    ContentSource source;
+    source.tool_name = tool_name;
+    source.url = url;
+    source.content_type = "text";
+
+    // 生成时间戳
+    auto now = std::chrono::system_clock::now();
+    auto time_t_val = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream oss;
+    oss << std::put_time(std::gmtime(&time_t_val), "%Y-%m-%dT%H:%M:%SZ");
+    source.timestamp = oss.str();
+
+    return content_wrapper_->Wrap(content, source);
+}
+
+// Check if tool produces untrusted content
+// Requirements: 14.2, 14.3, 14.4
+bool ToolRegistry::is_untrusted_tool(const std::string& tool_name) const {
+    // Web 搜索和获取工具产生不可信内容
+    static const std::unordered_set<std::string> untrusted_tools = {
+        "web_search", "web_fetch"
+    };
+    return untrusted_tools.find(tool_name) != untrusted_tools.end();
+}
+
+// Log tool execution for audit
+// Requirements: 15.1, 15.3
+void ToolRegistry::log_tool_execution(
+    const std::string& tool_name,
+    const nlohmann::json& parameters,
+    bool is_dangerous) const {
+    if (!audit_logger_) {
+        return;
+    }
+
+    // 记录外部内容包装
+    if (is_untrusted_tool(tool_name)) {
+        std::string url = parameters.value("url", parameters.value("query", ""));
+        size_t content_size = 0;  // 实际大小在工具执行后才知道
+        audit_logger_->LogContentWrapping(
+            current_user_id_, current_session_id_,
+            tool_name, url, content_size);
+    }
+
+    // 记录危险工具调用
+    if (is_dangerous) {
+        audit_logger_->LogDangerousToolCall(
+            current_user_id_, current_session_id_,
+            tool_name, parameters, true);
+    }
 }
 
 } // namespace quantclaw

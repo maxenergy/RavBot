@@ -689,15 +689,16 @@
       - **Validates: Requirements 14.1-14.5**
       - 验证内容来源正确分配信任级别
 
-  - [ ] 4.3 Security Audit Logger 实现
-    - [ ] 4.3.1 创建 SecurityAuditLogger 类
+  - [x] 4.3 Security Audit Logger 实现
+    - [x] 4.3.1 创建 SecurityAuditLogger 类
       - 创建 `include/quantclaw/security/audit_logger.hpp`
       - 创建 `src/security/audit_logger.cpp`
       - 定义 AuditEntry 结构体
       - 使用 spdlog 作为日志后端
       - _Requirements: 15.1-15.8_
-    
-    - [ ] 4.3.2 实现各类安全事件记录方法
+      - ✅ 已完成 (commit: b2a43f4)
+
+    - [x] 4.3.2 实现各类安全事件记录方法
       - 实现 LogContentWrapping()
       - 实现 LogMarkerSanitization()
       - 实现 LogDangerousToolCall()
@@ -705,25 +706,29 @@
       - 实现 LogPolicyChange()
       - 日志路径：`~/.quantclaw/logs/audit/<date>.jsonl`
       - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5_
-    
-    - [ ] 4.3.3 实现日志导出和过滤
+      - ✅ 已完成 (commit: b2a43f4)
+
+    - [x] 4.3.3 实现日志导出和过滤
       - 实现 Export() 方法
       - 支持按时间范围过滤
       - 支持按事件类型过滤
       - 支持按用户过滤
       - _Requirements: 15.6, 15.7_
-    
-    - [ ] 4.3.4 实现日志轮转
+      - ✅ 已完成 (commit: b2a43f4)
+
+    - [x] 4.3.4 实现日志轮转
       - 实现 Rotate() 方法
       - 按日期轮转日志文件
       - _Requirements: 15.8_
-    
-    - [ ]* 4.3.5 为 Security Audit Logger 编写单元测试
+      - ✅ 已完成 (commit: b2a43f4) - 自动按日期分文件
+
+    - [x]* 4.3.5 为 Security Audit Logger 编写单元测试
       - 测试各类事件记录
       - 测试日志导出和过滤
       - 测试日志轮转
       - _Requirements: 15.1-15.8_
-    
+      - ✅ 已完成 (commit: b2a43f4) - 13 个测试用例全部通过
+
     - [ ]* 4.3.6 为 Security Audit Logger 编写 property test
       - **Property 45: Security Audit Logging**
       - **Validates: Requirements 15.1-15.5**
