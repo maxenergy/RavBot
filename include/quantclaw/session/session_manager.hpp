@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <mutex>
 #include <shared_mutex>
+#include <functional>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include "quantclaw/core/content_block.hpp"
@@ -79,6 +80,39 @@ struct SessionInfo {
     std::string channel;
 };
 
+// --- Session Policy ---
+// Requirements: 11.1, 11.2, 11.3
+
+struct SessionPolicy {
+    std::optional<std::string> model_override;
+    std::vector<std::string> tool_whitelist;
+    std::optional<std::string> output_format;
+    std::optional<int> rate_limit;  // Messages per minute
+    std::map<std::string, std::string> custom_settings;
+
+    nlohmann::json ToJson() const;
+    static SessionPolicy FromJson(const nlohmann::json& j);
+};
+
+// --- Transcript Event ---
+// Requirements: 8.1, 8.2, 8.3
+
+struct TranscriptEvent {
+    std::string event_type;  // "message_added", "message_modified", "message_deleted"
+    std::string session_key;
+    std::string timestamp;
+    nlohmann::json data;
+
+    nlohmann::json ToJson() const;
+};
+
+using TranscriptEventCallback = std::function<void(const TranscriptEvent&)>;
+
+struct TranscriptSubscription {
+    std::string subscription_id;
+    TranscriptEventCallback callback;
+};
+
 // --- Session Handle ---
 
 struct SessionHandle {
@@ -136,6 +170,24 @@ public:
     // Update display name
     void UpdateDisplayName(const std::string& session_key, const std::string& name);
 
+    // Set session policy
+    // Requirements: 11.1, 11.2
+    void SetPolicy(const std::string& session_key, const SessionPolicy& policy);
+
+    // Get session policy
+    // Requirements: 11.3
+    SessionPolicy GetPolicy(const std::string& session_key) const;
+
+    // Subscribe to transcript events
+    // Requirements: 8.1, 8.2, 8.3
+    std::string Subscribe(const std::string& session_key,
+                          TranscriptEventCallback callback);
+
+    // Unsubscribe from events
+    // Requirements: 8.7
+    void Unsubscribe(const std::string& session_key,
+                     const std::string& subscription_id);
+
     // Persistence
     void SaveStore();
     void LoadStore();
@@ -148,9 +200,24 @@ private:
     // session_key -> SessionInfo
     std::unordered_map<std::string, SessionInfo> store_;
 
+    // Policy store
+    // Requirements: 11.1, 11.2
+    std::unordered_map<std::string, SessionPolicy> policies_;
+    mutable std::shared_mutex policy_mutex_;
+
+    // Event subscribers
+    // Requirements: 8.1, 8.2
+    std::unordered_map<std::string, std::vector<TranscriptSubscription>> subscribers_;
+    mutable std::shared_mutex subscriber_mutex_;
+    uint64_t subscription_counter_ = 0;
+
     std::string generate_session_id() const;
     std::string get_timestamp() const;
     std::filesystem::path transcript_path(const std::string& session_id) const;
+
+    // Emit transcript event
+    // Requirements: 8.2, 8.6
+    void emit_event(const std::string& session_key, const TranscriptEvent& event);
 
     // Shared boilerplate: normalize key, look up session, open transcript,
     // write entry, update updated_at, and SaveStore. Returns true on success.

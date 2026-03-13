@@ -272,6 +272,16 @@ void SessionManager::AppendMessage(const std::string& session_key, const Session
     // Update timestamp
     it->second.updated_at = get_timestamp();
     SaveStore();
+
+    // 触发消息添加事件
+    // Requirements: 8.2, 8.6
+    lock.unlock();  // 释放锁以避免死锁
+    TranscriptEvent event;
+    event.event_type = "message_added";
+    event.session_key = normalized;
+    event.timestamp = msg.timestamp;
+    event.data = msg.ToJsonl();
+    emit_event(normalized, event);
 }
 
 bool SessionManager::AppendTranscriptEntry(const std::string& session_key,
@@ -515,6 +525,170 @@ std::string SessionManager::get_timestamp() const {
 
 std::filesystem::path SessionManager::transcript_path(const std::string& session_id) const {
     return sessions_dir_ / (session_id + ".jsonl");
+}
+
+// --- SessionPolicy 实现 ---
+// Requirements: 11.1, 11.2, 11.3
+
+nlohmann::json SessionPolicy::ToJson() const {
+    nlohmann::json j = nlohmann::json::object();
+
+    if (model_override) {
+        j["modelOverride"] = *model_override;
+    }
+
+    if (!tool_whitelist.empty()) {
+        j["toolWhitelist"] = tool_whitelist;
+    }
+
+    if (output_format) {
+        j["outputFormat"] = *output_format;
+    }
+
+    if (rate_limit) {
+        j["rateLimit"] = *rate_limit;
+    }
+
+    if (!custom_settings.empty()) {
+        j["customSettings"] = custom_settings;
+    }
+
+    return j;
+}
+
+SessionPolicy SessionPolicy::FromJson(const nlohmann::json& j) {
+    SessionPolicy policy;
+
+    if (j.contains("modelOverride")) {
+        policy.model_override = j["modelOverride"].get<std::string>();
+    }
+
+    if (j.contains("toolWhitelist")) {
+        policy.tool_whitelist = j["toolWhitelist"].get<std::vector<std::string>>();
+    }
+
+    if (j.contains("outputFormat")) {
+        policy.output_format = j["outputFormat"].get<std::string>();
+    }
+
+    if (j.contains("rateLimit")) {
+        policy.rate_limit = j["rateLimit"].get<int>();
+    }
+
+    if (j.contains("customSettings")) {
+        policy.custom_settings = j["customSettings"].get<std::map<std::string, std::string>>();
+    }
+
+    return policy;
+}
+
+// --- TranscriptEvent 实现 ---
+// Requirements: 8.1, 8.2
+
+nlohmann::json TranscriptEvent::ToJson() const {
+    return {
+        {"eventType", event_type},
+        {"sessionKey", session_key},
+        {"timestamp", timestamp},
+        {"data", data}
+    };
+}
+
+// --- SessionManager Policy 方法 ---
+
+void SessionManager::SetPolicy(const std::string& session_key, const SessionPolicy& policy) {
+    std::string normalized_key = NormalizeSessionKey(session_key);
+
+    {
+        std::unique_lock<std::shared_mutex> lock(policy_mutex_);
+        policies_[normalized_key] = policy;
+    }
+
+    logger_->info("Set policy for session: {}", normalized_key);
+
+    // 触发策略变更事件
+    // Requirements: 11.4, 11.7
+    TranscriptEvent event;
+    event.event_type = "policy_changed";
+    event.session_key = normalized_key;
+    event.timestamp = get_timestamp();
+    event.data = policy.ToJson();
+
+    emit_event(normalized_key, event);
+}
+
+SessionPolicy SessionManager::GetPolicy(const std::string& session_key) const {
+    std::string normalized_key = NormalizeSessionKey(session_key);
+
+    std::shared_lock<std::shared_mutex> lock(policy_mutex_);
+    auto it = policies_.find(normalized_key);
+    if (it != policies_.end()) {
+        return it->second;
+    }
+
+    // 返回默认策略
+    return SessionPolicy{};
+}
+
+// --- SessionManager 事件订阅方法 ---
+
+std::string SessionManager::Subscribe(const std::string& session_key,
+                                       TranscriptEventCallback callback) {
+    std::string normalized_key = NormalizeSessionKey(session_key);
+
+    // 生成订阅 ID
+    std::string subscription_id;
+    {
+        std::unique_lock<std::shared_mutex> lock(subscriber_mutex_);
+        subscription_id = "sub_" + std::to_string(++subscription_counter_);
+
+        TranscriptSubscription sub;
+        sub.subscription_id = subscription_id;
+        sub.callback = std::move(callback);
+
+        subscribers_[normalized_key].push_back(std::move(sub));
+    }
+
+    logger_->debug("Subscribed to session events: session={}, sub_id={}",
+                   normalized_key, subscription_id);
+
+    return subscription_id;
+}
+
+void SessionManager::Unsubscribe(const std::string& session_key,
+                                  const std::string& subscription_id) {
+    std::string normalized_key = NormalizeSessionKey(session_key);
+
+    std::unique_lock<std::shared_mutex> lock(subscriber_mutex_);
+    auto it = subscribers_.find(normalized_key);
+    if (it != subscribers_.end()) {
+        auto& subs = it->second;
+        subs.erase(
+            std::remove_if(subs.begin(), subs.end(),
+                          [&subscription_id](const TranscriptSubscription& sub) {
+                              return sub.subscription_id == subscription_id;
+                          }),
+            subs.end());
+
+        logger_->debug("Unsubscribed from session events: session={}, sub_id={}",
+                       normalized_key, subscription_id);
+    }
+}
+
+void SessionManager::emit_event(const std::string& session_key,
+                                 const TranscriptEvent& event) {
+    std::shared_lock<std::shared_mutex> lock(subscriber_mutex_);
+    auto it = subscribers_.find(session_key);
+    if (it != subscribers_.end()) {
+        for (const auto& sub : it->second) {
+            try {
+                sub.callback(event);
+            } catch (const std::exception& e) {
+                logger_->error("Event callback error: session={}, sub_id={}, error={}",
+                              session_key, sub.subscription_id, e.what());
+            }
+        }
+    }
 }
 
 } // namespace quantclaw
