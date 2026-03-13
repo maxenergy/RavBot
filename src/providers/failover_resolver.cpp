@@ -45,6 +45,11 @@ std::optional<ResolvedProvider> FailoverResolver::Resolve(
 
     if (result) {
       result->is_fallback = true;
+      // 记录故障转移
+      {
+        std::lock_guard<std::mutex> lock(mu_);
+        stats_.failover_count++;
+      }
       logger_->warn("Primary model '{}' unavailable, falling back to '{}'",
                     model, fallback_model);
       return result;
@@ -61,9 +66,18 @@ void FailoverResolver::RecordSuccess(const std::string& provider_id,
                                       const std::string& session_key) {
   cooldown_.RecordSuccess(cooldown_key(provider_id, profile_id));
 
-  if (!session_key.empty()) {
+  // 更新统计信息
+  {
     std::lock_guard<std::mutex> lock(mu_);
-    session_pins_[session_key] = {provider_id, profile_id};
+    stats_.total_requests++;
+    stats_.successful_requests++;
+    stats_.provider_usage[provider_id]++;
+    std::string profile_key = provider_id + ":" + profile_id;
+    stats_.profile_usage[profile_key]++;
+
+    if (!session_key.empty()) {
+      session_pins_[session_key] = {provider_id, profile_id};
+    }
   }
 }
 
@@ -73,6 +87,14 @@ void FailoverResolver::RecordFailure(const std::string& provider_id,
                                       int retry_after_seconds) {
   cooldown_.RecordFailure(cooldown_key(provider_id, profile_id), kind,
                           retry_after_seconds);
+
+  // 更新统计信息
+  {
+    std::lock_guard<std::mutex> lock(mu_);
+    stats_.total_requests++;
+    stats_.failed_requests++;
+  }
+
   logger_->warn("Provider {}:{} failed ({}), cooldown set{}",
                 provider_id, profile_id,
                 ProviderErrorKindToString(kind),
@@ -192,6 +214,13 @@ std::optional<ResolvedProvider> FailoverResolver::try_resolve_model(
   }
 
   return std::nullopt;
+}
+
+// 获取故障转移统计信息
+// Requirements: 2.6
+FailoverStats FailoverResolver::GetStats() const {
+  std::lock_guard<std::mutex> lock(mu_);
+  return stats_;
 }
 
 }  // namespace quantclaw

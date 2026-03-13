@@ -38,6 +38,21 @@ struct AuthProfile {
   std::string api_key_env;  // Env var name (resolved at startup)
 };
 
+// 故障转移统计信息
+// Requirements: 2.6
+struct FailoverStats {
+  int total_requests = 0;        // 总请求数
+  int successful_requests = 0;   // 成功请求数
+  int failed_requests = 0;       // 失败请求数
+  int failover_count = 0;        // 故障转移次数
+
+  // 每个提供商的使用统计：provider_id -> 使用次数
+  std::unordered_map<std::string, int> provider_usage;
+
+  // 每个配置的使用统计：provider_id:profile_id -> 使用次数
+  std::unordered_map<std::string, int> profile_usage;
+};
+
 // Result of a failover resolution attempt.
 struct ResolvedProvider {
   std::shared_ptr<LLMProvider> provider;
@@ -95,6 +110,10 @@ class FailoverResolver {
   // Get cooldown tracker (for status queries).
   const CooldownTracker& GetCooldownTracker() const { return cooldown_; }
 
+  // Get failover statistics
+  // Requirements: 2.6
+  FailoverStats GetStats() const;
+
  private:
   std::string cooldown_key(const std::string& provider_id,
                            const std::string& profile_id) const;
@@ -120,6 +139,9 @@ class FailoverResolver {
     std::string profile_id;
   };
   std::unordered_map<std::string, SessionPin> session_pins_;
+
+  // Failover statistics (mutable for const GetStats())
+  mutable FailoverStats stats_;
 };
 
 }  // namespace quantclaw
