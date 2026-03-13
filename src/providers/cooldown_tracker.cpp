@@ -147,4 +147,55 @@ std::chrono::seconds CooldownTracker::ComputeCooldown(
   return std::chrono::seconds(cooldown);
 }
 
+// 获取所有配置的冷却状态
+// Requirements: 2.1, 2.2, 2.3
+std::unordered_map<std::string, std::chrono::seconds>
+CooldownTracker::GetAllStates() const {
+  std::lock_guard<std::mutex> lock(mu_);
+  std::unordered_map<std::string, std::chrono::seconds> result;
+
+  auto now = std::chrono::steady_clock::now();
+  for (const auto& [key, state] : states_) {
+    if (state.cooldown_until > now) {
+      auto remaining = std::chrono::duration_cast<std::chrono::seconds>(
+          state.cooldown_until - now);
+      result[key] = remaining;
+    }
+  }
+
+  return result;
+}
+
+// 获取冷却统计信息
+// Requirements: 2.6
+CooldownStats CooldownTracker::GetStats() const {
+  std::lock_guard<std::mutex> lock(mu_);
+  CooldownStats stats;
+
+  auto now = std::chrono::steady_clock::now();
+  for (const auto& [key, state] : states_) {
+    // 统计总冷却次数
+    if (state.consecutive_failures > 0) {
+      stats.total_cooldowns += state.consecutive_failures;
+    }
+
+    // 统计活跃冷却数
+    if (state.cooldown_until > now) {
+      stats.active_cooldowns++;
+
+      // 累计总冷却时间
+      auto remaining = std::chrono::duration_cast<std::chrono::seconds>(
+          state.cooldown_until - now);
+      stats.total_cooldown_time_sec += remaining.count();
+    }
+
+    // 按错误类型统计
+    if (state.last_error != ProviderErrorKind::kUnknown) {
+      stats.cooldowns_by_error_type[state.last_error]++;
+    }
+  }
+
+  return stats;
+}
+
 }  // namespace quantclaw

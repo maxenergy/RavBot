@@ -12,6 +12,17 @@
 
 namespace quantclaw {
 
+// 冷却统计信息
+// Requirements: 2.6
+struct CooldownStats {
+  int total_cooldowns = 0;      // 总冷却次数
+  int active_cooldowns = 0;     // 当前活跃的冷却数
+  int total_cooldown_time_sec = 0;  // 总冷却时间（秒）
+
+  // 按错误类型统计冷却次数
+  std::unordered_map<ProviderErrorKind, int> cooldowns_by_error_type;
+};
+
 // Tracks per-key cooldown state with exponential backoff.
 // Keys are typically "provider_id:profile_id" or "provider_id".
 class CooldownTracker {
@@ -44,6 +55,14 @@ class CooldownTracker {
   // (at most once per kProbeInterval while in cooldown).
   // If allowed, updates the internal last_probe_at timestamp.
   bool TryProbe(const std::string& key);
+
+  // 获取所有配置的冷却状态
+  // Requirements: 2.1, 2.2, 2.3
+  std::unordered_map<std::string, std::chrono::seconds> GetAllStates() const;
+
+  // 获取冷却统计信息
+  // Requirements: 2.6
+  CooldownStats GetStats() const;
 
   // Minimum interval between probe attempts for a key in cooldown.
   static constexpr std::chrono::seconds kProbeInterval{30};
