@@ -1615,3 +1615,41 @@ TEST_F(HookManagerTest, ClearHookStats) {
 
 // Requirements: 18.2, 18.4 - 优先级排序已在现有测试中验证
 // Requirements: 18.4 - 异常隔离已在现有测试中验证
+
+// ================================================================
+// Phase 5.3 — Enhanced Sidecar Manager Tests
+// ================================================================
+
+// Requirements: 19.8 - 状态查询
+TEST(SidecarManagerTest, GetStatus_InitialState) {
+  auto logger = make_null_logger("sidecar_test");
+  quantclaw::SidecarManager manager(logger);
+
+  auto status = manager.GetStatus();
+  EXPECT_EQ(status.state, quantclaw::SidecarState::kStopped);
+  EXPECT_EQ(status.pid, quantclaw::platform::kInvalidPid);
+  EXPECT_EQ(status.restart_count, 0);
+  EXPECT_TRUE(status.last_error.empty());
+}
+
+// Requirements: 19.4 - 设置最大重启次数
+TEST(SidecarManagerTest, SetMaxRestartAttempts) {
+  auto logger = make_null_logger("sidecar_test");
+  quantclaw::SidecarManager manager(logger);
+
+  manager.SetMaxRestartAttempts(5);
+
+  auto status = manager.GetStatus();
+  EXPECT_EQ(status.max_restarts, 5);
+}
+
+// Requirements: 19.8 - 获取重启次数
+TEST(SidecarManagerTest, GetRestartCount) {
+  auto logger = make_null_logger("sidecar_test");
+  quantclaw::SidecarManager manager(logger);
+
+  EXPECT_EQ(manager.GetRestartCount(), 0);
+}
+
+// Requirements: 19.2, 19.3 - 健康检查和自动重启已在 monitor_loop 中实现
+// 注意: 完整的进程管理测试需要实际的 sidecar 脚本,这里只测试状态管理

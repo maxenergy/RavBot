@@ -35,6 +35,26 @@ struct SidecarResponse {
   static SidecarResponse FromJson(const nlohmann::json& j);
 };
 
+// Sidecar 状态枚举 (Requirements: 19.8)
+enum class SidecarState {
+  kStopped,    // 已停止
+  kStarting,   // 启动中
+  kRunning,    // 运行中
+  kRestarting, // 重启中
+  kFailed      // 失败（达到最大重启次数）
+};
+
+// Sidecar 状态信息 (Requirements: 19.8)
+struct SidecarStatus {
+  SidecarState state;
+  platform::ProcessId pid;
+  int restart_count;
+  int max_restarts;
+  std::string last_error;
+  std::chrono::system_clock::time_point last_restart_time;
+  std::chrono::milliseconds uptime;
+};
+
 // Manages the Node.js sidecar subprocess lifecycle.
 // nginx-style: fork/exec, heartbeat, graceful reload/stop, crash restart.
 class SidecarManager {
@@ -80,6 +100,15 @@ class SidecarManager {
   // Get sidecar PID
   platform::ProcessId pid() const { return pid_; }
 
+  // Get detailed sidecar status (Requirements: 19.8)
+  SidecarStatus GetStatus() const;
+
+  // Set maximum restart attempts (Requirements: 19.4)
+  void SetMaxRestartAttempts(int max_restarts);
+
+  // Get restart count
+  int GetRestartCount() const { return restart_count_; }
+
  private:
   void monitor_loop();
   bool spawn_sidecar();
@@ -101,8 +130,11 @@ class SidecarManager {
   std::mutex ipc_mu_;
 
   std::thread monitor_thread_;
-  int restart_count_ = 0;
+  std::atomic<int> restart_count_{0};
   std::chrono::steady_clock::time_point last_restart_;
+  std::chrono::steady_clock::time_point start_time_;  // 启动时间
+  std::string last_error_;  // 最后错误信息
+  mutable std::mutex status_mu_;  // 保护状态信息
 
   std::atomic<int> rpc_id_{1};
 };

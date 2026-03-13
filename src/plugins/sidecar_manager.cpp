@@ -65,6 +65,7 @@ bool SidecarManager::Start(const Options& opts) {
   running_ = true;
   stopping_ = false;
   restart_count_ = 0;
+  start_time_ = std::chrono::steady_clock::now();  // 记录启动时间
 
   monitor_thread_ = std::thread([this] { monitor_loop(); });
 
@@ -170,6 +171,59 @@ bool SidecarManager::IsRunning() const {
   return platform::is_process_alive(p);
 }
 
+// Requirements: 19.8 - 获取详细状态信息
+SidecarStatus SidecarManager::GetStatus() const {
+  SidecarStatus status;
+
+  std::lock_guard<std::mutex> lock(status_mu_);
+
+  status.pid = pid_.load();
+  status.restart_count = restart_count_.load();
+  status.max_restarts = opts_.max_restarts;
+  status.last_error = last_error_;
+
+  // 计算运行时间
+  if (start_time_.time_since_epoch().count() > 0) {
+    auto now = std::chrono::steady_clock::now();
+    status.uptime = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_);
+  } else {
+    status.uptime = std::chrono::milliseconds(0);
+  }
+
+  // 最后重启时间
+  if (last_restart_.time_since_epoch().count() > 0) {
+    auto system_now = std::chrono::system_clock::now();
+    auto steady_now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(steady_now - last_restart_);
+    status.last_restart_time = system_now - elapsed;
+  } else {
+    status.last_restart_time = std::chrono::system_clock::time_point();
+  }
+
+  // 确定状态
+  if (stopping_) {
+    status.state = SidecarState::kStopped;
+  } else if (!running_) {
+    if (restart_count_.load() >= opts_.max_restarts) {
+      status.state = SidecarState::kFailed;
+    } else {
+      status.state = SidecarState::kStopped;
+    }
+  } else if (IsRunning()) {
+    status.state = SidecarState::kRunning;
+  } else {
+    status.state = SidecarState::kRestarting;
+  }
+
+  return status;
+}
+
+// Requirements: 19.4 - 设置最大重启次数
+void SidecarManager::SetMaxRestartAttempts(int max_restarts) {
+  opts_.max_restarts = max_restarts;
+  logger_->info("Sidecar max restart attempts set to {}", max_restarts);
+}
+
 void SidecarManager::monitor_loop() {
   while (running_ && !stopping_) {
     std::this_thread::sleep_for(
@@ -183,9 +237,18 @@ void SidecarManager::monitor_loop() {
       logger_->warn("Sidecar process died unexpectedly");
       pid_ = platform::kInvalidPid;
 
-      if (restart_count_ >= opts_.max_restarts) {
+      {
+        std::lock_guard<std::mutex> lock(status_mu_);
+        last_error_ = "Sidecar process died unexpectedly";
+      }
+
+      if (restart_count_.load() >= opts_.max_restarts) {
         logger_->error("Sidecar max restarts ({}) exceeded, giving up",
                        opts_.max_restarts);
+        {
+          std::lock_guard<std::mutex> lock(status_mu_);
+          last_error_ = "Max restart attempts exceeded";
+        }
         running_ = false;
         break;
       }
@@ -207,10 +270,18 @@ void SidecarManager::monitor_loop() {
       }
 
       if (spawn_sidecar()) {
-        restart_count_++;
+        restart_count_.fetch_add(1);
         last_restart_ = std::chrono::steady_clock::now();
+        {
+          std::lock_guard<std::mutex> lock(status_mu_);
+          last_error_.clear();  // 清除错误信息
+        }
       } else {
         logger_->error("Failed to restart sidecar");
+        {
+          std::lock_guard<std::mutex> lock(status_mu_);
+          last_error_ = "Failed to restart sidecar";
+        }
       }
       continue;
     }
@@ -331,7 +402,8 @@ void SidecarManager::remove_pid_file() {
 }
 
 int SidecarManager::next_backoff_ms() {
-  int backoff = kBaseBackoffMs * (1 << std::min(restart_count_, 6));
+  int count = restart_count_.load();
+  int backoff = kBaseBackoffMs * (1 << std::min(count, 6));
   return std::min(backoff, kMaxBackoffMs);
 }
 
