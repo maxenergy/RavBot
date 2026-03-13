@@ -321,107 +321,119 @@
     - 询问用户是否有问题
 
 - [ ] 3. Phase 3: Gateway/Session/Channel Integration (Weeks 6-8)
-  - [ ] 3.1 Message Sanitizer 实现
-    - [ ] 3.1.1 创建 MessageSanitizer 类
+  - [x] 3.1 Message Sanitizer 实现
+    - [x] 3.1.1 创建 MessageSanitizer 类
       - 创建 `include/quantclaw/gateway/message_sanitizer.hpp`
       - 创建 `src/gateway/message_sanitizer.cpp`
       - _Requirements: 7.1, 7.2, 13.1, 13.2_
-    
-    - [ ] 3.1.2 实现边界标记移除
+      - ✅ 已完成 (commit: 7afbbdb)
+
+    - [x] 3.1.2 实现边界标记移除
       - 实现 RemoveBoundaryMarkers() 方法
       - 定义已知的边界标记模式
       - 扫描并移除所有边界标记
       - _Requirements: 13.1, 13.2_
-    
-    - [ ] 3.1.3 实现 SanitizeInput() 方法
+      - ✅ 已完成 (commit: 7afbbdb)
+
+    - [x] 3.1.3 实现 SanitizeInput() 方法
       - 移除潜在的恶意内容
       - 调用 RemoveBoundaryMarkers()
       - 验证消息大小限制
       - _Requirements: 7.1, 13.1_
-    
-    - [ ] 3.1.4 实现 NormalizeAttachment() 方法
+      - ✅ 已完成 (commit: 7afbbdb)
+
+    - [x] 3.1.4 实现 NormalizeAttachment() 方法
       - 规范化附件格式
       - 验证附件类型和大小
       - _Requirements: 7.2_
-    
-    - [ ] 3.1.5 实现 ValidateMessage() 方法
+      - ✅ 已完成 (commit: 7afbbdb, a8a9323)
+
+    - [x] 3.1.5 实现 ValidateMessage() 方法
       - 验证消息结构完整性
       - _Requirements: 7.1, 7.2_
-    
+      - ✅ 已完成 (commit: 7afbbdb, a8a9323)
+
     - [ ]* 3.1.6 为 Message Sanitizer 编写单元测试
       - 测试边界标记移除
       - 测试附件规范化
       - 测试消息验证
       - _Requirements: 7.1, 7.2, 13.1, 13.2_
-    
+
     - [ ]* 3.1.7 为 Message Sanitizer 编写 property test
       - **Property 28: Boundary Marker Sanitization**
       - **Validates: Requirements 13.1, 13.2**
       - 验证所有边界标记被移除
 
-  - [ ] 3.2 Route Manager 实现
-    - [ ] 3.2.1 创建 RouteManager 类
+  - [x] 3.2 Route Manager 实现
+    - [x] 3.2.1 创建 RouteManager 类
       - 创建 `include/quantclaw/gateway/route_manager.hpp`
       - 创建 `src/gateway/route_manager.cpp`
       - 定义 RouteMetadata、DeliveryStatus、MessagePriority 枚举
       - _Requirements: 6.1, 6.2, 6.3, 6.4_
-    
-    - [ ] 3.2.2 实现 AttachMetadata() 方法
+      - ✅ 已完成 (commit: 2c8ab74)
+
+    - [x] 3.2.2 实现 AttachMetadata() 方法
       - 为消息附加路由元数据
       - 生成唯一的消息 ID
       - 记录时间戳和来源渠道
       - _Requirements: 6.1_
-    
-    - [ ] 3.2.3 实现 InheritRoute() 方法
+      - ✅ 已完成 (commit: 2c8ab74)
+
+    - [x] 3.2.3 实现 InheritRoute() 方法
       - 从父消息继承路由信息
       - 用于工具结果等子消息
       - _Requirements: 6.2_
-    
-    - [ ] 3.2.4 实现交付状态跟踪
+      - ✅ 已完成 (commit: 2c8ab74)
+
+    - [x] 3.2.4 实现交付状态跟踪
       - 实现 RecordDelivery() 方法
       - 实现 GetDeliveryStatus() 方法
       - 持久化交付日志
       - _Requirements: 6.5, 6.6_
-    
-    - [ ] 3.2.5 实现消息优先级支持
+      - ✅ 已完成 (commit: 2c8ab74)
+
+    - [x] 3.2.5 实现消息优先级支持
       - 支持 Low、Normal、High、Urgent 优先级
       - _Requirements: 6.8_
-    
+      - ✅ 已完成 (commit: 2c8ab74)
+
     - [ ]* 3.2.6 为 Route Manager 编写单元测试
       - 测试元数据附加
       - 测试路由继承
       - 测试交付状态跟踪
       - _Requirements: 6.1-6.8_
-    
+
     - [ ]* 3.2.7 为 Route Manager 编写 property test
       - **Property 35: Route Metadata Attachment**
       - **Validates: Requirements 6.1**
       - 验证所有消息都附加路由元数据
-    
+
     - [ ]* 3.2.8 为 Route Manager 编写 property test
       - **Property 36: Route Metadata Inheritance**
       - **Validates: Requirements 6.2**
       - 验证子消息继承父消息路由
 
-  - [ ] 3.3 Gateway Server 增强
-    - [ ] 3.3.1 集成 MessageSanitizer
+  - [x] 3.3 Gateway Server 增强
+    - [x] 3.3.1 集成 MessageSanitizer
       - 在 `src/gateway/gateway_server.cpp` 中添加 MessageSanitizer 成员
-      - 实现 SetMessageSanitizer() 方法
-      - 在接收消息时调用 sanitize_message()
-      - _Requirements: 7.1, 7.2_
-    
-    - [ ] 3.3.2 集成 RouteManager
+      - 在接收消息时调用 SanitizeInput()
+      - _Requirements: 7.1, 7.2, 3.3.1_
+      - ✅ 已完成 (commit: a8a9323)
+
+    - [x] 3.3.2 集成 RouteManager
       - 添加 RouteManager 成员
-      - 实现 SetRouteManager() 方法
       - 在处理消息时附加路由元数据
-      - _Requirements: 6.1, 6.2_
-    
-    - [ ] 3.3.3 实现中止请求处理
+      - 记录交付状态
+      - _Requirements: 6.1, 6.2, 3.3.2_
+      - ✅ 已完成 (commit: a8a9323)
+
+    - [x] 3.3.3 实现中止请求处理
       - 实现 AbortRequest() 方法
-      - 维护 abort_flags_ 映射
-      - 通知 Agent Loop 中止执行
-      - _Requirements: 7.3, 7.4, 7.5_
-    
+      - 维护 active_requests_ 映射跟踪活跃请求
+      - 发送中止事件通知客户端
+      - _Requirements: 7.3, 7.4, 7.5, 3.3.3_
+      - ✅ 已完成 (commit: a8a9323)
+
     - [ ] 3.3.4 优化事件推送
       - 实现 SendEventTo() 方法
       - 实现 BroadcastEvent() 方法
