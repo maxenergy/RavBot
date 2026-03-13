@@ -1494,3 +1494,124 @@ TEST_F(PluginRegistryTest, GetDiagnostics_WithDisabledPlugin) {
   EXPECT_EQ(diag["stats"]["disabled"], 1);
   EXPECT_GE(diag["warnings"].size(), 1);
 }
+
+// ================================================================
+// Phase 5.2 — Enhanced Hook Manager Tests
+// ================================================================
+
+// Requirements: 18.3 - 停止传播逻辑
+TEST_F(HookManagerTest, StopPropagation) {
+  quantclaw::HookManager hooks(logger_);
+
+  std::vector<std::string> calls;
+  // Use a modifying hook so handlers run sequentially
+  hooks.RegisterHook("before_model_resolve", "first",
+                      [&calls](const nlohmann::json&) -> nlohmann::json {
+                        calls.push_back("first");
+                        return {{"from", "first"}};
+                      }, 100);  // Higher priority, runs first
+
+  hooks.RegisterHook("before_model_resolve", "second",
+                      [&calls](const nlohmann::json&) -> nlohmann::json {
+                        calls.push_back("second");
+                        return {{"from", "second"}, {"stop_propagation", true}};
+                      }, 50);   // Medium priority, runs second
+
+  hooks.RegisterHook("before_model_resolve", "third",
+                      [&calls](const nlohmann::json&) -> nlohmann::json {
+                        calls.push_back("third");
+                        return {{"from", "third"}};
+                      }, 10);   // Lower priority, should not run
+
+  auto result = hooks.Fire("before_model_resolve", {});
+
+  // Only first and second should have run
+  ASSERT_EQ(calls.size(), 2);
+  EXPECT_EQ(calls[0], "first");
+  EXPECT_EQ(calls[1], "second");
+
+  // Result should have data from both handlers
+  EXPECT_EQ(result["from"], "second");  // second overwrites first
+  EXPECT_FALSE(result.contains("stop_propagation"));  // Flag removed
+}
+
+// Requirements: 18.3 - 异步钩子支持
+TEST_F(HookManagerTest, FireHookAsync) {
+  quantclaw::HookManager hooks(logger_);
+
+  std::atomic<bool> called{false};
+  hooks.RegisterHook("before_model_resolve", "async-test",
+                      [&called](const nlohmann::json&) -> nlohmann::json {
+                        called = true;
+                        return {{"result", "async"}};
+                      });
+
+  auto future = hooks.FireHookAsync("before_model_resolve", {{"test", true}});
+
+  // Wait for completion
+  auto result = future.get();
+
+  EXPECT_TRUE(called.load());
+  EXPECT_EQ(result["result"], "async");
+}
+
+// Requirements: 18.5 - Hook 日志记录
+TEST_F(HookManagerTest, HookStatsRecording) {
+  quantclaw::HookManager hooks(logger_);
+
+  hooks.RegisterHook("before_model_resolve", "stats-test",
+                      [](const nlohmann::json&) -> nlohmann::json {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                        return {{"ok", true}};
+                      });
+
+  hooks.ClearHookStats();
+  hooks.Fire("before_model_resolve", {});
+
+  auto stats = hooks.GetHookStats();
+  ASSERT_EQ(stats.size(), 1);
+  EXPECT_EQ(stats[0].hook_name, "before_model_resolve");
+  EXPECT_EQ(stats[0].plugin_id, "stats-test");
+  EXPECT_TRUE(stats[0].success);
+  EXPECT_TRUE(stats[0].error.empty());
+  EXPECT_GT(stats[0].execution_time_us, 0);  // Should have some execution time
+}
+
+// Requirements: 18.5 - Hook 统计包含失败信息
+TEST_F(HookManagerTest, HookStatsRecordFailure) {
+  quantclaw::HookManager hooks(logger_);
+
+  hooks.RegisterHook("before_model_resolve", "failing-handler",
+                      [](const nlohmann::json&) -> nlohmann::json {
+                        throw std::runtime_error("test error");
+                      });
+
+  hooks.ClearHookStats();
+  hooks.Fire("before_model_resolve", {});
+
+  auto stats = hooks.GetHookStats();
+  ASSERT_EQ(stats.size(), 1);
+  EXPECT_EQ(stats[0].hook_name, "before_model_resolve");
+  EXPECT_EQ(stats[0].plugin_id, "failing-handler");
+  EXPECT_FALSE(stats[0].success);
+  EXPECT_EQ(stats[0].error, "test error");
+}
+
+// Requirements: 18.5 - 清除统计信息
+TEST_F(HookManagerTest, ClearHookStats) {
+  quantclaw::HookManager hooks(logger_);
+
+  hooks.RegisterHook("before_model_resolve", "test",
+                      [](const nlohmann::json&) -> nlohmann::json {
+                        return {{"ok", true}};
+                      });
+
+  hooks.Fire("before_model_resolve", {});
+  EXPECT_FALSE(hooks.GetHookStats().empty());
+
+  hooks.ClearHookStats();
+  EXPECT_TRUE(hooks.GetHookStats().empty());
+}
+
+// Requirements: 18.2, 18.4 - 优先级排序已在现有测试中验证
+// Requirements: 18.4 - 异常隔离已在现有测试中验证

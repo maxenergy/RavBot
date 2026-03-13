@@ -4,6 +4,7 @@
 #include "quantclaw/plugins/hook_manager.hpp"
 #include "quantclaw/plugins/sidecar_manager.hpp"
 #include <algorithm>
+#include <chrono>
 #include <future>
 #include <thread>
 #include <unordered_map>
@@ -113,6 +114,7 @@ void HookManager::FireAsync(const std::string& hook_name,
 }
 
 // Void mode: fire-and-forget, parallel execution.
+// Requirements: 18.5 - 记录执行时间
 nlohmann::json HookManager::FireVoid(
     const std::string& hook_name,
     const std::vector<HookRegistration>& handlers,
@@ -122,11 +124,25 @@ nlohmann::json HookManager::FireVoid(
   for (const auto& reg : handlers) {
     futures.push_back(std::async(std::launch::async,
         [this, &reg, &event, &hook_name]() {
+          auto start = std::chrono::steady_clock::now();
+          bool success = true;
+          std::string error_msg;
+
           try {
             reg.handler(event);
           } catch (const std::exception& e) {
+            success = false;
+            error_msg = e.what();
             logger_->error("Hook {} handler from {} failed: {}",
                            hook_name, reg.plugin_id, e.what());
+          }
+
+          // 记录统计信息 (Requirements: 18.5)
+          auto end = std::chrono::steady_clock::now();
+          auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+          {
+            std::lock_guard<std::mutex> lock(stats_mu_);
+            hook_stats_.push_back({hook_name, reg.plugin_id, duration.count(), success, error_msg});
           }
         }));
   }
@@ -143,6 +159,7 @@ nlohmann::json HookManager::FireVoid(
 }
 
 // Modifying mode: sequential, results merged via merge_patch.
+// Requirements: 18.3 - 支持停止传播逻辑
 nlohmann::json HookManager::FireModifying(
     const std::string& hook_name,
     const std::vector<HookRegistration>& handlers,
@@ -151,14 +168,48 @@ nlohmann::json HookManager::FireModifying(
 
   // Run native handlers sequentially in priority order
   for (const auto& reg : handlers) {
+    auto start = std::chrono::steady_clock::now();
+    bool success = true;
+    std::string error_msg;
+
     try {
       auto result = reg.handler(event);
       if (result.is_object()) {
+        // 检查是否请求停止传播 (Requirements: 18.3)
+        if (result.contains("stop_propagation") &&
+            result["stop_propagation"].is_boolean() &&
+            result["stop_propagation"].get<bool>()) {
+          // 移除 stop_propagation 标志后合并结果
+          result.erase("stop_propagation");
+          merged_result.merge_patch(result);
+
+          // 记录统计信息
+          auto end = std::chrono::steady_clock::now();
+          auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+          {
+            std::lock_guard<std::mutex> lock(stats_mu_);
+            hook_stats_.push_back({hook_name, reg.plugin_id, duration.count(), true, ""});
+          }
+
+          logger_->debug("Hook {} handler from {} requested stop_propagation",
+                        hook_name, reg.plugin_id);
+          return merged_result;  // 停止传播
+        }
         merged_result.merge_patch(result);
       }
     } catch (const std::exception& e) {
+      success = false;
+      error_msg = e.what();
       logger_->error("Hook {} handler from {} failed: {}",
                      hook_name, reg.plugin_id, e.what());
+    }
+
+    // 记录统计信息 (Requirements: 18.5)
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    {
+      std::lock_guard<std::mutex> lock(stats_mu_);
+      hook_stats_.push_back({hook_name, reg.plugin_id, duration.count(), success, error_msg});
     }
   }
 
@@ -172,6 +223,7 @@ nlohmann::json HookManager::FireModifying(
 }
 
 // Sync mode: synchronous only, for hot paths like tool_result_persist.
+// Requirements: 18.5 - 记录执行时间
 nlohmann::json HookManager::FireSync(
     const std::string& hook_name,
     const std::vector<HookRegistration>& handlers,
@@ -180,14 +232,28 @@ nlohmann::json HookManager::FireSync(
 
   // Run native handlers sequentially
   for (const auto& reg : handlers) {
+    auto start = std::chrono::steady_clock::now();
+    bool success = true;
+    std::string error_msg;
+
     try {
       auto result = reg.handler(event);
       if (result.is_object()) {
         merged_result.merge_patch(result);
       }
     } catch (const std::exception& e) {
+      success = false;
+      error_msg = e.what();
       logger_->error("Hook {} handler from {} failed: {}",
                      hook_name, reg.plugin_id, e.what());
+    }
+
+    // 记录统计信息 (Requirements: 18.5)
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    {
+      std::lock_guard<std::mutex> lock(stats_mu_);
+      hook_stats_.push_back({hook_name, reg.plugin_id, duration.count(), success, error_msg});
     }
   }
 
@@ -270,6 +336,27 @@ size_t HookManager::HandlerCount(const std::string& hook_name) const {
   auto it = hooks_.find(hook_name);
   if (it == hooks_.end()) return 0;
   return it->second.size();
+}
+
+// Requirements: 18.3 - 异步钩子支持
+std::future<nlohmann::json> HookManager::FireHookAsync(
+    const std::string& hook_name,
+    const nlohmann::json& event) {
+  return std::async(std::launch::async, [this, hook_name, event]() {
+    return Fire(hook_name, event);
+  });
+}
+
+// Requirements: 18.5 - 获取 Hook 执行统计
+std::vector<HookStats> HookManager::GetHookStats() const {
+  std::lock_guard<std::mutex> lock(stats_mu_);
+  return hook_stats_;
+}
+
+// 清除 Hook 统计信息
+void HookManager::ClearHookStats() {
+  std::lock_guard<std::mutex> lock(stats_mu_);
+  hook_stats_.clear();
 }
 
 }  // namespace quantclaw

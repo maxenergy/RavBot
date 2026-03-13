@@ -4,6 +4,7 @@
 #pragma once
 
 #include <functional>
+#include <future>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -45,11 +46,26 @@ constexpr const char* kGatewayStop = "gateway_stop";
 // A hook handler registered by C++ code or forwarded to sidecar
 using HookHandler = std::function<nlohmann::json(const nlohmann::json& event)>;
 
+// Hook execution result
+struct HookResult {
+  nlohmann::json data;           // 返回数据
+  bool stop_propagation = false; // 是否停止传播到后续 Hook
+};
+
 struct HookRegistration {
   std::string plugin_id;
   std::string hook_name;
   HookHandler handler;
   int priority = 0;  // higher runs first
+};
+
+// Hook execution statistics
+struct HookStats {
+  std::string hook_name;
+  std::string plugin_id;
+  int64_t execution_time_us;  // 执行时间（微秒）
+  bool success;               // 是否成功
+  std::string error;          // 错误信息（如果失败）
 };
 
 // Hook execution mode — matches OpenClaw semantics.
@@ -90,6 +106,16 @@ class HookManager {
   void FireAsync(const std::string& hook_name,
                  const nlohmann::json& event);
 
+  // Fire a hook asynchronously and return a future (Requirements: 18.3)
+  std::future<nlohmann::json> FireHookAsync(const std::string& hook_name,
+                                             const nlohmann::json& event);
+
+  // Get hook execution statistics (Requirements: 18.5)
+  std::vector<HookStats> GetHookStats() const;
+
+  // Clear hook statistics
+  void ClearHookStats();
+
   // List all registered hooks
   std::vector<std::string> RegisteredHooks() const;
 
@@ -124,6 +150,10 @@ class HookManager {
 
   mutable std::mutex mu_;
   std::map<std::string, std::vector<HookRegistration>> hooks_;
+
+  // Hook execution statistics (Requirements: 18.5)
+  mutable std::mutex stats_mu_;
+  std::vector<HookStats> hook_stats_;
 };
 
 }  // namespace quantclaw
