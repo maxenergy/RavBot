@@ -1308,3 +1308,323 @@ TEST_F(PromptBuilderTest, OutputConstraintsOmittedWhenDisabled) {
   EXPECT_EQ(prompt.find("## Output Constraints"), std::string::npos);
   EXPECT_EQ(prompt.find("### Response Formatting Guidelines"), std::string::npos);
 }
+
+// --- BuildWithComponents tests for operation guards (Task 1.1.8) ---
+
+TEST_F(PromptBuilderTest, BuildWithComponentsIncludesOperationGuards) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify operation guards section is included
+  EXPECT_NE(prompt.find("## Operation Guards"), std::string::npos);
+  EXPECT_NE(prompt.find("### Dangerous Operation Approval Process"), std::string::npos);
+  EXPECT_NE(prompt.find("**Operations Requiring Approval:**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Approval Process:**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Best Practices:**"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesDestructiveFileOperations) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify destructive file operations are documented
+  EXPECT_NE(prompt.find("**Destructive File Operations**"), std::string::npos);
+  EXPECT_NE(prompt.find("Recursive deletions"), std::string::npos);
+  EXPECT_NE(prompt.find("rm -rf"), std::string::npos);
+  EXPECT_NE(prompt.find("Overwriting existing files without backup"), std::string::npos);
+  EXPECT_NE(prompt.find("Modifying system configuration files"), std::string::npos);
+  EXPECT_NE(prompt.find("Explain what will be deleted/modified and ask for confirmation"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesSystemLevelCommands) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify system-level commands are documented
+  EXPECT_NE(prompt.find("**System-Level Commands**"), std::string::npos);
+  EXPECT_NE(prompt.find("Commands requiring root/administrator privileges"), std::string::npos);
+  EXPECT_NE(prompt.find("System service management"), std::string::npos);
+  EXPECT_NE(prompt.find("Package installation or system updates"), std::string::npos);
+  EXPECT_NE(prompt.find("Network configuration changes"), std::string::npos);
+  EXPECT_NE(prompt.find("Firewall or security policy modifications"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesDataModificationAtScale) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify data modification at scale is documented
+  EXPECT_NE(prompt.find("**Data Modification at Scale**"), std::string::npos);
+  EXPECT_NE(prompt.find("Batch updates to databases"), std::string::npos);
+  EXPECT_NE(prompt.find("Mass file renaming or moving operations"), std::string::npos);
+  EXPECT_NE(prompt.find("Bulk API calls that modify external resources"), std::string::npos);
+  EXPECT_NE(prompt.find("Operations affecting multiple users or accounts"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesExternalNetworkOperations) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify external network operations are documented
+  EXPECT_NE(prompt.find("**External Network Operations**"), std::string::npos);
+  EXPECT_NE(prompt.find("Sending emails or messages to external recipients"), std::string::npos);
+  EXPECT_NE(prompt.find("Making API calls that create, update, or delete external resources"), std::string::npos);
+  EXPECT_NE(prompt.find("Uploading data to external services"), std::string::npos);
+  EXPECT_NE(prompt.find("Webhook or callback registration"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesCodeExecutionInProduction) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify code execution in production is documented
+  EXPECT_NE(prompt.find("**Code Execution in Production**"), std::string::npos);
+  EXPECT_NE(prompt.find("Deploying code to production environments"), std::string::npos);
+  EXPECT_NE(prompt.find("Running database migrations on production data"), std::string::npos);
+  EXPECT_NE(prompt.find("Executing scripts with production credentials"), std::string::npos);
+  EXPECT_NE(prompt.find("Modifying production configuration"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesCredentialManagement) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify credential and secret management is documented
+  EXPECT_NE(prompt.find("**Credential and Secret Management**"), std::string::npos);
+  EXPECT_NE(prompt.find("Reading, writing, or modifying API keys or passwords"), std::string::npos);
+  EXPECT_NE(prompt.find("Accessing credential stores or secret management systems"), std::string::npos);
+  EXPECT_NE(prompt.find("Sharing or transmitting authentication tokens"), std::string::npos);
+  EXPECT_NE(prompt.find("Modifying access control lists or permissions"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesApprovalProcess) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify approval process steps are documented
+  EXPECT_NE(prompt.find("**Approval Process:**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Assess the Risk**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Inform the User**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Request Confirmation**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Execute Safely**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Verify and Report**"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesRiskAssessment) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify risk assessment guidance
+  EXPECT_NE(prompt.find("Determine the potential impact"), std::string::npos);
+  EXPECT_NE(prompt.find("data loss, system instability, security risk"), std::string::npos);
+  EXPECT_NE(prompt.find("Identify what resources will be affected"), std::string::npos);
+  EXPECT_NE(prompt.find("Consider reversibility"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesUserInformationGuidance) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify user information guidance
+  EXPECT_NE(prompt.find("Clearly describe what the operation will do"), std::string::npos);
+  EXPECT_NE(prompt.find("Explain the potential consequences"), std::string::npos);
+  EXPECT_NE(prompt.find("Highlight any irreversible changes"), std::string::npos);
+  EXPECT_NE(prompt.find("Provide the specific command or action that will be executed"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesConfirmationGuidance) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify confirmation request guidance
+  EXPECT_NE(prompt.find("Ask a clear yes/no question"), std::string::npos);
+  EXPECT_NE(prompt.find("Wait for explicit user approval before proceeding"), std::string::npos);
+  EXPECT_NE(prompt.find("Do not assume consent from vague or ambiguous responses"), std::string::npos);
+  EXPECT_NE(prompt.find("If the user seems uncertain, offer to explain further"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesSafeExecutionGuidance) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify safe execution guidance
+  EXPECT_NE(prompt.find("Use the safest method available"), std::string::npos);
+  EXPECT_NE(prompt.find("move to trash instead of permanent delete"), std::string::npos);
+  EXPECT_NE(prompt.find("Apply appropriate sandboxing or resource limits"), std::string::npos);
+  EXPECT_NE(prompt.find("Log the operation for audit purposes"), std::string::npos);
+  EXPECT_NE(prompt.find("Monitor execution and be prepared to abort"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesVerificationGuidance) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify verification and reporting guidance
+  EXPECT_NE(prompt.find("Confirm the operation completed successfully"), std::string::npos);
+  EXPECT_NE(prompt.find("Report any errors or unexpected outcomes"), std::string::npos);
+  EXPECT_NE(prompt.find("Provide verification steps if appropriate"), std::string::npos);
+  EXPECT_NE(prompt.find("Suggest next steps or follow-up actions"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesAutomaticApprovalExceptions) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify automatic approval exceptions are documented
+  EXPECT_NE(prompt.find("**Automatic Approval Exceptions:**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Trusted Users**: Operations from verified administrators"), std::string::npos);
+  EXPECT_NE(prompt.find("**Allowlisted Commands**: Pre-approved safe commands"), std::string::npos);
+  EXPECT_NE(prompt.find("**Workspace-Scoped Operations**: File operations within the designated workspace"), std::string::npos);
+  EXPECT_NE(prompt.find("**Read-Only Operations**: Operations that only read data"), std::string::npos);
+  EXPECT_NE(prompt.find("**Sandboxed Execution**: Operations running in isolated sandbox"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesConfigurationOptions) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify configuration options are documented
+  EXPECT_NE(prompt.find("**Configuration:**"), std::string::npos);
+  EXPECT_NE(prompt.find("`tools.exec.ask` setting"), std::string::npos);
+  EXPECT_NE(prompt.find("`off`: No approval required"), std::string::npos);
+  EXPECT_NE(prompt.find("`on-miss`: Require approval only for commands not in allowlist"), std::string::npos);
+  EXPECT_NE(prompt.find("`always`: Require approval for all exec operations"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesBestPractices) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify best practices are documented
+  EXPECT_NE(prompt.find("**Best Practices:**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Default to Safety**: When in doubt, ask for approval"), std::string::npos);
+  EXPECT_NE(prompt.find("**Be Transparent**: Always explain what you're about to do"), std::string::npos);
+  EXPECT_NE(prompt.find("**Provide Context**: Help the user understand why the operation is necessary"), std::string::npos);
+  EXPECT_NE(prompt.find("**Offer Alternatives**: Suggest safer approaches when available"), std::string::npos);
+  EXPECT_NE(prompt.find("**Respect Boundaries**: Never try to circumvent approval mechanisms"), std::string::npos);
+  EXPECT_NE(prompt.find("**Fail Safely**: If approval is denied or times out, do not proceed"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesExampleApprovalRequest) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify example approval request is included
+  EXPECT_NE(prompt.find("**Example Approval Request:**"), std::string::npos);
+  EXPECT_NE(prompt.find("⚠️  Dangerous Operation Detected"), std::string::npos);
+  EXPECT_NE(prompt.find("Impact:"), std::string::npos);
+  EXPECT_NE(prompt.find("This operation cannot be undone"), std::string::npos);
+  EXPECT_NE(prompt.find("Do you want to proceed? (yes/no)"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesSecurityNote) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify security note is included
+  EXPECT_NE(prompt.find("**Security Note:**"), std::string::npos);
+  EXPECT_NE(prompt.find("defense-in-depth measure"), std::string::npos);
+  EXPECT_NE(prompt.find("Sandboxing and containerization"), std::string::npos);
+  EXPECT_NE(prompt.find("File system permissions and access controls"), std::string::npos);
+  EXPECT_NE(prompt.find("Rate limiting and resource quotas"), std::string::npos);
+  EXPECT_NE(prompt.find("Audit logging and monitoring"), std::string::npos);
+  EXPECT_NE(prompt.find("Input validation and sanitization"), std::string::npos);
+  EXPECT_NE(prompt.find("multiple layers of security"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsOmittedWhenDisabled) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = false;  // Disabled
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Operation guards should not be included when disabled
+  EXPECT_EQ(prompt.find("## Operation Guards"), std::string::npos);
+  EXPECT_EQ(prompt.find("### Dangerous Operation Approval Process"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesAllOperationCategories) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify all 6 operation categories are documented
+  EXPECT_NE(prompt.find("1. **Destructive File Operations**"), std::string::npos);
+  EXPECT_NE(prompt.find("2. **System-Level Commands**"), std::string::npos);
+  EXPECT_NE(prompt.find("3. **Data Modification at Scale**"), std::string::npos);
+  EXPECT_NE(prompt.find("4. **External Network Operations**"), std::string::npos);
+  EXPECT_NE(prompt.find("5. **Code Execution in Production**"), std::string::npos);
+  EXPECT_NE(prompt.find("6. **Credential and Secret Management**"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, OperationGuardsIncludesAllApprovalSteps) {
+  quantclaw::PromptComponents components;
+  components.include_operation_guards = true;
+  quantclaw::PromptContext context;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify all 5 approval process steps are documented
+  EXPECT_NE(prompt.find("1. **Assess the Risk**"), std::string::npos);
+  EXPECT_NE(prompt.find("2. **Inform the User**"), std::string::npos);
+  EXPECT_NE(prompt.find("3. **Request Confirmation**"), std::string::npos);
+  EXPECT_NE(prompt.find("4. **Execute Safely**"), std::string::npos);
+  EXPECT_NE(prompt.find("5. **Verify and Report**"), std::string::npos);
+}

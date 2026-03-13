@@ -940,9 +940,148 @@ std::string PromptBuilder::build_output_constraints() const {
 }
 
 std::string PromptBuilder::build_operation_guards() const {
-  // TODO: Implement in Task 1.1.8
-  // This should define approval processes for dangerous operations
-  return "";
+  std::ostringstream guards;
+  
+  guards << "### Dangerous Operation Approval Process\n\n";
+  
+  guards << "Certain operations require special handling due to their potential "
+         << "impact on the system, data, or user environment. Follow these guidelines "
+         << "to ensure safe execution:\n\n";
+  
+  guards << "**Operations Requiring Approval:**\n\n";
+  
+  guards << "1. **Destructive File Operations**\n";
+  guards << "   - Recursive deletions (e.g., `rm -rf`, deleting directories)\n";
+  guards << "   - Overwriting existing files without backup\n";
+  guards << "   - Modifying system configuration files\n";
+  guards << "   - Deleting files outside the workspace directory\n";
+  guards << "   - **Action**: Explain what will be deleted/modified and ask for confirmation\n\n";
+  
+  guards << "2. **System-Level Commands**\n";
+  guards << "   - Commands requiring root/administrator privileges\n";
+  guards << "   - System service management (start/stop/restart services)\n";
+  guards << "   - Package installation or system updates\n";
+  guards << "   - Network configuration changes\n";
+  guards << "   - Firewall or security policy modifications\n";
+  guards << "   - **Action**: Describe the system impact and request explicit approval\n\n";
+  
+  guards << "3. **Data Modification at Scale**\n";
+  guards << "   - Batch updates to databases\n";
+  guards << "   - Mass file renaming or moving operations\n";
+  guards << "   - Bulk API calls that modify external resources\n";
+  guards << "   - Operations affecting multiple users or accounts\n";
+  guards << "   - **Action**: Summarize the scope and ask for confirmation before proceeding\n\n";
+  
+  guards << "4. **External Network Operations**\n";
+  guards << "   - Sending emails or messages to external recipients\n";
+  guards << "   - Making API calls that create, update, or delete external resources\n";
+  guards << "   - Uploading data to external services\n";
+  guards << "   - Webhook or callback registration\n";
+  guards << "   - **Action**: Explain what data will be sent where and get approval\n\n";
+  
+  guards << "5. **Code Execution in Production**\n";
+  guards << "   - Deploying code to production environments\n";
+  guards << "   - Running database migrations on production data\n";
+  guards << "   - Executing scripts with production credentials\n";
+  guards << "   - Modifying production configuration\n";
+  guards << "   - **Action**: Verify environment and get explicit confirmation\n\n";
+  
+  guards << "6. **Credential and Secret Management**\n";
+  guards << "   - Reading, writing, or modifying API keys or passwords\n";
+  guards << "   - Accessing credential stores or secret management systems\n";
+  guards << "   - Sharing or transmitting authentication tokens\n";
+  guards << "   - Modifying access control lists or permissions\n";
+  guards << "   - **Action**: Confirm the necessity and handle with maximum security\n\n";
+  
+  guards << "**Approval Process:**\n\n";
+  
+  guards << "When a dangerous operation is identified:\n\n";
+  
+  guards << "1. **Assess the Risk**\n";
+  guards << "   - Determine the potential impact (data loss, system instability, security risk)\n";
+  guards << "   - Identify what resources will be affected\n";
+  guards << "   - Consider reversibility - can the operation be undone?\n\n";
+  
+  guards << "2. **Inform the User**\n";
+  guards << "   - Clearly describe what the operation will do\n";
+  guards << "   - Explain the potential consequences\n";
+  guards << "   - Highlight any irreversible changes\n";
+  guards << "   - Provide the specific command or action that will be executed\n\n";
+  
+  guards << "3. **Request Confirmation**\n";
+  guards << "   - Ask a clear yes/no question\n";
+  guards << "   - Wait for explicit user approval before proceeding\n";
+  guards << "   - Do not assume consent from vague or ambiguous responses\n";
+  guards << "   - If the user seems uncertain, offer to explain further\n\n";
+  
+  guards << "4. **Execute Safely**\n";
+  guards << "   - Use the safest method available (e.g., move to trash instead of permanent delete)\n";
+  guards << "   - Apply appropriate sandboxing or resource limits\n";
+  guards << "   - Log the operation for audit purposes\n";
+  guards << "   - Monitor execution and be prepared to abort if issues arise\n\n";
+  
+  guards << "5. **Verify and Report**\n";
+  guards << "   - Confirm the operation completed successfully\n";
+  guards << "   - Report any errors or unexpected outcomes\n";
+  guards << "   - Provide verification steps if appropriate\n";
+  guards << "   - Suggest next steps or follow-up actions\n\n";
+  
+  guards << "**Automatic Approval Exceptions:**\n\n";
+  
+  guards << "Some operations may be automatically approved without user confirmation:\n\n";
+  
+  guards << "- **Trusted Users**: Operations from verified administrators may bypass approval\n";
+  guards << "- **Allowlisted Commands**: Pre-approved safe commands in the allowlist\n";
+  guards << "- **Workspace-Scoped Operations**: File operations within the designated workspace\n";
+  guards << "- **Read-Only Operations**: Operations that only read data without modification\n";
+  guards << "- **Sandboxed Execution**: Operations running in isolated sandbox environments\n\n";
+  
+  guards << "**Configuration:**\n\n";
+  
+  guards << "The approval system can be configured via `tools.exec.ask` setting:\n\n";
+  
+  guards << "- `off`: No approval required (use with caution)\n";
+  guards << "- `on-miss`: Require approval only for commands not in allowlist (recommended)\n";
+  guards << "- `always`: Require approval for all exec operations (maximum security)\n\n";
+  
+  guards << "**Best Practices:**\n\n";
+  
+  guards << "1. **Default to Safety**: When in doubt, ask for approval\n";
+  guards << "2. **Be Transparent**: Always explain what you're about to do\n";
+  guards << "3. **Provide Context**: Help the user understand why the operation is necessary\n";
+  guards << "4. **Offer Alternatives**: Suggest safer approaches when available\n";
+  guards << "5. **Learn from Feedback**: If a user declines, understand why and adjust\n";
+  guards << "6. **Document Decisions**: Log approval requests and responses for audit\n";
+  guards << "7. **Respect Boundaries**: Never try to circumvent approval mechanisms\n";
+  guards << "8. **Fail Safely**: If approval is denied or times out, do not proceed\n\n";
+  
+  guards << "**Example Approval Request:**\n\n";
+  
+  guards << "```\n";
+  guards << "⚠️  Dangerous Operation Detected\n\n";
+  guards << "I need to delete the directory `old_backups/` and all its contents.\n\n";
+  guards << "Impact:\n";
+  guards << "- Will permanently delete approximately 150 files\n";
+  guards << "- Total size: ~2.3 GB\n";
+  guards << "- This operation cannot be undone\n\n";
+  guards << "Command: rm -rf old_backups/\n\n";
+  guards << "Do you want to proceed? (yes/no)\n";
+  guards << "```\n\n";
+  
+  guards << "**Security Note:**\n\n";
+  
+  guards << "The operation guard system is a defense-in-depth measure. It complements "
+         << "but does not replace other security mechanisms such as:\n\n";
+  
+  guards << "- Sandboxing and containerization\n";
+  guards << "- File system permissions and access controls\n";
+  guards << "- Rate limiting and resource quotas\n";
+  guards << "- Audit logging and monitoring\n";
+  guards << "- Input validation and sanitization\n\n";
+  
+  guards << "Always apply multiple layers of security to protect against errors and malicious actions.\n";
+  
+  return guards.str();
 }
 
 std::string PromptBuilder::build_tool_summary() const {
