@@ -540,7 +540,7 @@
       - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
       - ✅ 已完成 (commit: ddc0718)
 
-    - [ ] 3.5.4 集成到 TelegramChannel
+    - [x] 3.5.4 集成到 TelegramChannel
       - 在 `src/channels/telegram_channel.cpp` 中集成三个组件
       - 实现 SetDeduplicationStore() 方法
       - 实现 SetLaneProcessor() 方法
@@ -549,7 +549,8 @@
       - 提取 lane_id 并提交到 LaneProcessor
       - 提取 thread_id 并映射到会话
       - _Requirements: 9.1-9.8, 10.1-10.8_
-    
+      - ✅ 已完成 (commit: ecdf507)
+
     - [ ] 3.5.5 实现持久化存储初始化
       - 在 TelegramChannel 启动时加载 dedup 和 thread 数据
       - 定期保存数据（每 5 分钟或关闭时）
