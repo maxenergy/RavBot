@@ -507,8 +507,8 @@
       - **Validates: Requirements 8.1, 8.2**
       - 验证所有 transcript 更新触发事件
 
-  - [ ] 3.5 Telegram Channel 增强
-    - [ ] 3.5.1 实现 DeduplicationStore
+  - [~] 3.5 Telegram Channel 增强
+    - [x] 3.5.1 实现 DeduplicationStore
       - 创建 `include/quantclaw/channels/deduplication_store.hpp`
       - 创建 `src/channels/deduplication_store.cpp`
       - 实现 IsProcessed()、MarkProcessed() 方法
@@ -517,8 +517,9 @@
       - 实现 Cleanup() 清理过期记录
       - 存储路径：`~/.quantclaw/channels/telegram/dedup.json`
       - _Requirements: 9.1, 9.2, 9.3, 9.7, 9.8_
-    
-    - [ ] 3.5.2 实现 LaneProcessor
+      - ✅ 已完成 (commit: ddc0718)
+
+    - [x] 3.5.2 实现 LaneProcessor
       - 创建 `include/quantclaw/channels/lane_processor.hpp`
       - 创建 `src/channels/lane_processor.cpp`
       - 实现 Submit() 方法（按 lane_id 顺序处理）
@@ -526,8 +527,9 @@
       - 实现 GetQueueSize() 方法
       - 实现 Shutdown() 方法
       - _Requirements: 9.4, 9.5, 9.6_
-    
-    - [ ] 3.5.3 实现 ThreadBinder
+      - ✅ 已完成 (commit: ddc0718)
+
+    - [x] 3.5.3 实现 ThreadBinder
       - 创建 `include/quantclaw/channels/thread_binder.hpp`
       - 创建 `src/channels/thread_binder.cpp`
       - 实现 GetSessionKey() 方法
@@ -536,7 +538,8 @@
       - 实现 Save()、Load() 持久化方法
       - 存储路径：`~/.quantclaw/channels/telegram/threads.json`
       - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
-    
+      - ✅ 已完成 (commit: ddc0718)
+
     - [ ] 3.5.4 集成到 TelegramChannel
       - 在 `src/channels/telegram_channel.cpp` 中集成三个组件
       - 实现 SetDeduplicationStore() 方法
