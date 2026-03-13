@@ -457,21 +457,23 @@
       - **Validates: Requirements 7.3, 7.4, 7.5**
       - 验证中止请求在 5 秒内生效
 
-  - [ ] 3.4 Session Manager 增强
-    - [ ] 3.4.1 实现 SessionPolicy 支持
+  - [~] 3.4 Session Manager 增强
+    - [x] 3.4.1 实现 SessionPolicy 支持
       - 在 `include/quantclaw/session/session_manager.hpp` 中定义 SessionPolicy 结构体
       - 实现 SetPolicy() 方法
       - 实现 GetPolicy() 方法
       - 添加 policies_ 映射和互斥锁
       - _Requirements: 11.1, 11.2, 11.3_
-    
-    - [ ] 3.4.2 实现事件订阅系统
+      - ✅ 已完成 (commit: 93104c6)
+
+    - [x] 3.4.2 实现事件订阅系统
       - 定义 TranscriptEvent 和 TranscriptSubscription 结构体
       - 实现 Subscribe() 方法
       - 实现 Unsubscribe() 方法
       - 实现 emit_event() 方法
       - _Requirements: 8.1, 8.2, 8.3, 8.7_
-    
+      - ✅ 已完成 (commit: 93104c6)
+
     - [ ] 3.4.3 集成策略应用到 Agent Loop
       - 在 Agent Loop 执行前读取会话策略
       - 应用模型覆盖、工具白名单、输出格式
@@ -482,11 +484,12 @@
       - 启动时加载策略
       - _Requirements: 11.1, 11.2_
     
-    - [ ] 3.4.5 实现策略变更事件
+    - [x] 3.4.5 实现策略变更事件
       - 策略变更时触发事件
       - 记录到审计日志
       - _Requirements: 11.4, 11.7_
-    
+      - ✅ 已完成 (commit: 93104c6)
+
     - [ ]* 3.4.6 更新 Session Manager 单元测试
       - 测试策略设置和获取
       - 测试事件订阅和取消订阅
