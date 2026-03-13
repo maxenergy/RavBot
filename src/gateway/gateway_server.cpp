@@ -11,6 +11,9 @@ namespace quantclaw::gateway {
 
 GatewayServer::GatewayServer(int port, std::shared_ptr<spdlog::logger> logger)
     : port_(port), logger_(logger) {
+    // 初始化 RouteManager
+    // Requirements: 3.3.2
+    route_manager_ = std::make_shared<RouteManager>(logger_);
     logger_->info("GatewayServer created on port {}", port_);
 }
 
@@ -236,12 +239,31 @@ void GatewayServer::handle_message(const std::string& conn_id,
                                     ix::WebSocket& ws,
                                     const std::string& data) {
     try {
-        auto j = nlohmann::json::parse(data);
+        // 清理输入消息
+        // Requirements: 3.3.1, 7.1, 13.1
+        std::string sanitized_data = sanitizer_.SanitizeInput(data);
+
+        auto j = nlohmann::json::parse(sanitized_data);
         auto type = ParseFrameType(j);
 
         switch (type) {
             case FrameType::kRequest: {
                 auto request = RpcRequest::FromJson(j);
+
+                // 为请求附加路由元数据
+                // Requirements: 3.3.2, 6.1
+                auto metadata = route_manager_->AttachMetadata(
+                    "websocket",  // source_channel
+                    conn_id,      // target_session
+                    false         // is_external
+                );
+
+                // 记录活跃请求（用于中止）
+                // Requirements: 3.3.3
+                {
+                    std::lock_guard<std::mutex> lock(active_requests_mutex_);
+                    active_requests_[request.id] = conn_id;
+                }
 
                 // Special handling for connect.hello / connect (OpenClaw)
                 bool is_openclaw = (request.method == methods::kOcConnect);
@@ -254,20 +276,40 @@ void GatewayServer::handle_message(const std::string& conn_id,
                         hello_ok.snapshot = BuildSnapshot();
                         auto resp = RpcResponse::success(request.id, hello_ok.ToJson());
                         ws.send(resp.ToJson().dump());
+
+                        // 记录交付状态
+                        // Requirements: 6.5
+                        route_manager_->RecordDelivery(metadata.message_id, DeliveryStatus::kDelivered);
                     } else {
                         auto resp = RpcResponse::failure(request.id,
                             "Authentication failed", "AUTH_FAILED");
                         ws.send(resp.ToJson().dump());
+
+                        // 记录交付失败
+                        // Requirements: 6.5
+                        route_manager_->RecordDelivery(metadata.message_id, DeliveryStatus::kFailed);
+                    }
+
+                    // 清理活跃请求
+                    {
+                        std::lock_guard<std::mutex> lock(active_requests_mutex_);
+                        active_requests_.erase(request.id);
                     }
                     return;
                 }
 
                 handle_rpc_request(conn_id, ws, request);
+
+                // 清理活跃请求
+                {
+                    std::lock_guard<std::mutex> lock(active_requests_mutex_);
+                    active_requests_.erase(request.id);
+                }
                 break;
             }
 
             default:
-                logger_->warn("Unexpected frame type from client: {}", data);
+                logger_->warn("Unexpected frame type from client: {}", sanitized_data);
                 break;
         }
     } catch (const std::exception& e) {
@@ -428,6 +470,40 @@ bool GatewayServer::handle_hello(const std::string& conn_id,
 
     logger_->info("Client {} authenticated: role={}, client={}, type={}",
                   conn_id, hello.role, hello.client_name, it->second.client_type);
+    return true;
+}
+
+// 中止正在执行的请求
+// Requirements: 3.3.3
+bool GatewayServer::AbortRequest(const std::string& connection_id,
+                                  const std::string& request_id) {
+    std::lock_guard<std::mutex> lock(active_requests_mutex_);
+
+    auto it = active_requests_.find(request_id);
+    if (it == active_requests_.end()) {
+        logger_->warn("Request not found for abort: request_id={}", request_id);
+        return false;
+    }
+
+    if (it->second != connection_id) {
+        logger_->warn("Connection mismatch for abort: request_id={}, expected={}, got={}",
+                      request_id, it->second, connection_id);
+        return false;
+    }
+
+    // 移除活跃请求
+    active_requests_.erase(it);
+
+    // 发送中止事件
+    RpcEvent abort_event;
+    abort_event.event = "request.aborted";
+    abort_event.payload = {
+        {"requestId", request_id},
+        {"reason", "User requested abort"}
+    };
+    SendEventTo(connection_id, abort_event);
+
+    logger_->info("Request aborted: request_id={}, conn_id={}", request_id, connection_id);
     return true;
 }
 

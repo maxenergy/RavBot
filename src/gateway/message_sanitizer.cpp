@@ -47,42 +47,54 @@ std::string MessageSanitizer::SanitizeInput(const std::string& input) {
 
 // 规范化附件格式
 // Requirements: 7.2
-bool MessageSanitizer::NormalizeAttachment(Attachment& attachment) {
-  // 验证附件大小
-  if (attachment.data.size() > kMaxAttachmentSize) {
-    return false;
+nlohmann::json MessageSanitizer::NormalizeAttachment(const nlohmann::json& attachment) {
+  nlohmann::json normalized = attachment;
+
+  // 验证附件必需字段
+  if (!attachment.contains("data") || !attachment.contains("mime_type")) {
+    return nlohmann::json::object();  // 返回空对象表示无效
   }
 
-  // 验证附件类型（基本的 MIME 类型检查）
-  if (attachment.mime_type.empty()) {
-    return false;
+  // 验证附件大小
+  std::string data = attachment["data"].get<std::string>();
+  if (data.size() > kMaxAttachmentSize) {
+    return nlohmann::json::object();  // 超过大小限制
   }
 
   // 规范化 MIME 类型为小写
-  std::transform(attachment.mime_type.begin(), attachment.mime_type.end(),
-                 attachment.mime_type.begin(), ::tolower);
+  std::string mime_type = attachment["mime_type"].get<std::string>();
+  std::transform(mime_type.begin(), mime_type.end(), mime_type.begin(), ::tolower);
+  normalized["mime_type"] = mime_type;
 
-  return true;
+  return normalized;
 }
 
 // 验证消息结构完整性
 // Requirements: 7.1, 7.2
-bool MessageSanitizer::ValidateMessage(const Message& message) {
-  // 验证消息内容不为空
-  if (message.content.empty() && message.attachments.empty()) {
+bool MessageSanitizer::ValidateMessage(const nlohmann::json& message) {
+  // 验证消息必需字段
+  if (!message.contains("content") && !message.contains("attachments")) {
     return false;
   }
 
   // 验证角色有效
-  if (message.role != "user" && message.role != "assistant" &&
-      message.role != "system") {
-    return false;
+  if (message.contains("role")) {
+    std::string role = message["role"].get<std::string>();
+    if (role != "user" && role != "assistant" && role != "system") {
+      return false;
+    }
   }
 
   // 验证所有附件
-  for (const auto& attachment : message.attachments) {
-    if (attachment.data.size() > kMaxAttachmentSize) {
-      return false;
+  if (message.contains("attachments") && message["attachments"].is_array()) {
+    for (const auto& attachment : message["attachments"]) {
+      if (!attachment.contains("data")) {
+        return false;
+      }
+      std::string data = attachment["data"].get<std::string>();
+      if (data.size() > kMaxAttachmentSize) {
+        return false;
+      }
     }
   }
 

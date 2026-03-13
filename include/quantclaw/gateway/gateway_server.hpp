@@ -14,6 +14,8 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include "quantclaw/gateway/protocol.hpp"
+#include "quantclaw/gateway/message_sanitizer.hpp"
+#include "quantclaw/gateway/route_manager.hpp"
 #include "quantclaw/security/rbac.hpp"
 #include "quantclaw/security/rate_limiter.hpp"
 #include "quantclaw/common/noncopyable.hpp"
@@ -114,6 +116,18 @@ public:
     // Enable rate limiting
     void SetRateLimiter(std::shared_ptr<RateLimiter> limiter) { rate_limiter_ = std::move(limiter); }
 
+    // 获取 MessageSanitizer（用于测试）
+    // Requirements: 3.3.1
+    MessageSanitizer* GetSanitizer() { return &sanitizer_; }
+
+    // 获取 RouteManager（用于测试）
+    // Requirements: 3.3.2
+    RouteManager* GetRouteManager() { return route_manager_.get(); }
+
+    // 中止正在执行的请求
+    // Requirements: 3.3.3
+    bool AbortRequest(const std::string& connection_id, const std::string& request_id);
+
 private:
     void on_connection(std::shared_ptr<ix::ConnectionState> state,
                        ix::WebSocket& ws,
@@ -156,6 +170,19 @@ private:
     // Security
     std::shared_ptr<RBACChecker> rbac_checker_;
     std::shared_ptr<RateLimiter> rate_limiter_;
+
+    // 消息清理器
+    // Requirements: 3.3.1
+    MessageSanitizer sanitizer_;
+
+    // 路由管理器
+    // Requirements: 3.3.2
+    std::shared_ptr<RouteManager> route_manager_;
+
+    // 正在执行的请求（用于中止）
+    // Requirements: 3.3.3
+    std::mutex active_requests_mutex_;
+    std::unordered_map<std::string, std::string> active_requests_;  // request_id -> connection_id
 };
 
 } // namespace quantclaw::gateway

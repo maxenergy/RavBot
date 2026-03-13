@@ -5,8 +5,7 @@
 
 #include <string>
 #include <vector>
-
-#include "quantclaw/gateway/protocol.hpp"
+#include <nlohmann/json.hpp>
 
 namespace quantclaw {
 
@@ -24,11 +23,11 @@ class MessageSanitizer {
   // 规范化附件格式
   // 验证附件类型和大小
   // Requirements: 7.2
-  bool NormalizeAttachment(Attachment& attachment);
+  nlohmann::json NormalizeAttachment(const nlohmann::json& attachment);
 
   // 验证消息结构完整性
   // Requirements: 7.1, 7.2
-  bool ValidateMessage(const Message& message);
+  bool ValidateMessage(const nlohmann::json& message);
 
  private:
   // 移除所有边界标记

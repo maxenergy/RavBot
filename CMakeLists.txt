@@ -110,6 +110,8 @@ set(QUANTCLAW_CORE_SOURCES
     src/gateway/device_pairing.cpp
     src/gateway/daemon_manager.cpp
     src/gateway/command_queue.cpp
+    src/gateway/message_sanitizer.cpp
+    src/gateway/route_manager.cpp
     # Session
     src/session/session_manager.cpp
     src/session/session_maintenance.cpp
