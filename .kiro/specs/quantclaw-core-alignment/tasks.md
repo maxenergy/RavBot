@@ -995,40 +995,46 @@
       - **Validates: Requirements 21.6**
       - 验证配置合并的正确性
 
-  - [ ] 6.2 Plugin Manifest Parser
-    - [ ] 6.2.1 实现清单解析
+  - [x] 6.2 Plugin Manifest Parser
+    - [x] 6.2.1 实现清单解析
       - 在 `src/plugins/plugin_manifest.cpp` 中实现解析逻辑
       - 解析 JSON 格式的清单文件
       - 验证清单结构
       - _Requirements: 22.1_
-    
-    - [ ] 6.2.2 实现清单验证
+      - ✅ 已完成: commit 07e1c81
+
+    - [x] 6.2.2 实现清单验证
       - 验证必填字段（name、version、entry_point）
       - 验证 schema 版本兼容性
       - 返回描述性错误信息
       - _Requirements: 22.2, 22.5_
-    
-    - [ ] 6.2.3 实现依赖验证
+      - ✅ 已完成: commit 07e1c81
+
+    - [x] 6.2.3 实现依赖验证
       - 验证依赖项格式
       - 检查依赖的有效性
       - _Requirements: 22.6_
-    
-    - [ ] 6.2.4 实现清单格式化
+      - ✅ 已完成: commit 07e1c81
+
+    - [x] 6.2.4 实现清单格式化
       - 实现 ToJson() 方法
       - 支持生成清单模板
       - _Requirements: 22.3, 22.7_
-    
-    - [ ] 6.2.5 支持扩展字段
+      - ✅ 已完成: commit 07e1c81
+
+    - [x] 6.2.5 支持扩展字段
       - 允许插件定义自定义元数据
       - 保留未知字段
       - _Requirements: 22.8_
-    
-    - [ ]* 6.2.6 为 Plugin Manifest Parser 编写单元测试
+      - ✅ 已完成: commit 07e1c81
+
+    - [x] 6.2.6 为 Plugin Manifest Parser 编写单元测试
       - 测试清单解析
       - 测试清单验证
       - 测试依赖验证
       - 测试清单格式化
       - _Requirements: 22.1-22.8_
+      - ✅ 已完成: 36 个测试全部通过
     
     - [ ]* 6.2.7 为 Plugin Manifest Parser 编写 property test
       - **Property 24: Manifest Round-Trip Preservation**
