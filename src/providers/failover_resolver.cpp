@@ -223,4 +223,15 @@ FailoverStats FailoverResolver::GetStats() const {
   return stats_;
 }
 
+// 设置重试配置
+// Requirements: 5.2
+void FailoverResolver::SetRetryConfig(const RetryConfig& config) {
+  std::lock_guard<std::mutex> lock(mu_);
+  retry_config_ = config;
+  logger_->info("Retry config updated: max_retries={}, initial_backoff={}ms, "
+                "multiplier={}, max_backoff={}ms",
+                config.max_retries, config.initial_backoff_ms,
+                config.backoff_multiplier, config.max_backoff_ms);
+}
+
 }  // namespace quantclaw

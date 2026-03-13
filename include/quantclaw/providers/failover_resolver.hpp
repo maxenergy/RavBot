@@ -114,6 +114,10 @@ class FailoverResolver {
   // Requirements: 2.6
   FailoverStats GetStats() const;
 
+  // Set retry configuration at runtime
+  // Requirements: 5.2
+  void SetRetryConfig(const RetryConfig& config);
+
  private:
   std::string cooldown_key(const std::string& provider_id,
                            const std::string& profile_id) const;
@@ -142,6 +146,9 @@ class FailoverResolver {
 
   // Failover statistics (mutable for const GetStats())
   mutable FailoverStats stats_;
+
+  // Retry configuration
+  RetryConfig retry_config_;
 };
 
 }  // namespace quantclaw
