@@ -2,20 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "quantclaw/core/agent_loop.hpp"
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
-#include "quantclaw/gateway/protocol.hpp"
-#include "quantclaw/core/skill_loader.hpp"
-#include "quantclaw/providers/provider_registry.hpp"
-#include "quantclaw/providers/failover_resolver.hpp"
-#include "quantclaw/providers/provider_error.hpp"
-#include "quantclaw/core/session_compaction.hpp"
-#include "quantclaw/core/context_pruner.hpp"
+
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <codecvt>
+#include <locale>
+#include <sstream>
+#include <thread>
+#include <unordered_map>
+#include <unordered_set>
+
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
-#include <sstream>
-#include <chrono>
-#include <thread>
+
+#include "quantclaw/core/context_pruner.hpp"
+#include "quantclaw/core/memory_manager.hpp"
+#include "quantclaw/core/session_compaction.hpp"
+#include "quantclaw/core/skill_loader.hpp"
+#include "quantclaw/gateway/protocol.hpp"
+#include "quantclaw/providers/failover_resolver.hpp"
+#include "quantclaw/providers/provider_error.hpp"
+#include "quantclaw/providers/provider_registry.hpp"
+#include "quantclaw/tools/tool_registry.hpp"
 
 // Bring event name constants into scope
 namespace events = quantclaw::gateway::events;
@@ -24,59 +33,886 @@ namespace quantclaw {
 
 // Estimate token count for a message list (rough: 4 chars ≈ 1 token)
 static int estimate_tokens(const std::vector<Message>& messages) {
-    int chars = 0;
-    for (const auto& msg : messages) {
-        chars += static_cast<int>(msg.role.size());
-        for (const auto& block : msg.content) {
-            chars += static_cast<int>(block.text.size());
-            chars += static_cast<int>(block.content.size());
-            if (!block.input.is_null())
-                chars += static_cast<int>(block.input.dump().size());
-        }
+  int chars = 0;
+  for (const auto& msg : messages) {
+    chars += static_cast<int>(msg.role.size());
+    for (const auto& block : msg.content) {
+      chars += static_cast<int>(block.text.size());
+      chars += static_cast<int>(block.content.size());
+      if (!block.input.is_null())
+        chars += static_cast<int>(block.input.dump().size());
     }
-    return chars / 4;
+  }
+  return chars / 4;
+}
+
+static bool has_non_tool_result_blocks(const Message& msg);
+
+struct SalientTokenStats {
+  std::unordered_map<std::string, int> weights;
+  std::unordered_set<std::string> anchor_tokens;
+  int total_weight = 0;
+};
+
+static std::u32string utf8_to_u32(const std::string& text) {
+  try {
+    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+    return converter.from_bytes(text);
+  } catch (const std::range_error&) {
+    return {};
+  }
+}
+
+static std::string u32_to_utf8(const std::u32string& text) {
+  std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+  return converter.to_bytes(text);
+}
+
+static bool is_cjk_codepoint(char32_t cp) {
+  return (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF) ||
+         (cp >= 0xF900 && cp <= 0xFAFF);
+}
+
+static bool is_ascii_token_char(char32_t cp) {
+  if (cp > 0x7F) {
+    return false;
+  }
+  const auto ch = static_cast<unsigned char>(cp);
+  return std::isalnum(ch) || ch == '_' || ch == '-' || ch == '.' || ch == '/' ||
+         ch == ':' || ch == '#';
+}
+
+static bool is_ascii_text(const std::string& text) {
+  return std::all_of(text.begin(), text.end(),
+                     [](unsigned char ch) { return ch <= 0x7F; });
+}
+
+static bool is_latin_stopword(const std::string& token) {
+  static const std::unordered_set<std::string> kStopwords = {
+      "a",    "an",     "and",  "are",    "be",   "but",  "can",  "check",
+      "find", "for",    "from", "help",   "how",  "i",    "in",   "into",
+      "is",   "it",     "look", "me",     "more", "need", "of",   "on",
+      "or",   "please", "read", "search", "show", "tell", "that", "the",
+      "this", "to",     "up",   "want",   "what", "with", "you"};
+  return kStopwords.count(token) > 0;
+}
+
+static bool is_generic_cjk_token(const std::u32string& token) {
+  if (token.empty()) {
+    return true;
+  }
+
+  static const std::unordered_set<std::string> kStopTokens = {
+      u8"一个", u8"一下", u8"什么", u8"今天", u8"可以",
+      u8"帮我", u8"帮忙", u8"现在", u8"相关", u8"需要"};
+  const auto utf8 = u32_to_utf8(token);
+  if (kStopTokens.count(utf8) > 0) {
+    return true;
+  }
+
+  static const std::unordered_set<char32_t> kStopChars = {
+      U'的', U'了', U'吗', U'呢', U'吧', U'啊', U'我', U'你', U'他',
+      U'她', U'它', U'们', U'是', U'在', U'有', U'和', U'与', U'及',
+      U'并', U'或', U'就', U'都', U'很', U'太', U'也', U'再', U'还',
+      U'把', U'被', U'让', U'给', U'从', U'向', U'到', U'将', U'会',
+      U'能', U'可', U'要', U'想', U'来', U'去', U'说', U'问', U'做'};
+  for (char32_t cp : token) {
+    if (kStopChars.count(cp) > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void add_salient_token(SalientTokenStats& stats,
+                              const std::string& token, int weight,
+                              bool anchor) {
+  if (token.empty() || weight <= 0) {
+    return;
+  }
+  if (stats.weights.emplace(token, weight).second) {
+    stats.total_weight += weight;
+  }
+  if (anchor) {
+    stats.anchor_tokens.insert(token);
+  }
+}
+
+static SalientTokenStats extract_salient_tokens(const std::string& text) {
+  SalientTokenStats stats;
+  const auto codepoints = utf8_to_u32(text);
+
+  std::string ascii_run;
+  std::u32string cjk_run;
+
+  auto flush_ascii = [&]() {
+    if (ascii_run.empty()) {
+      return;
+    }
+    std::string token;
+    token.reserve(ascii_run.size());
+    for (char ch : ascii_run) {
+      token.push_back(
+          static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+    }
+
+    const bool has_symbol =
+        token.find_first_of("0123456789/._-:#") != std::string::npos;
+    if ((token.size() >= 3 || has_symbol) && !is_latin_stopword(token)) {
+      add_salient_token(stats, token, has_symbol || token.size() >= 5 ? 3 : 2,
+                        has_symbol || token.size() >= 5);
+    }
+    ascii_run.clear();
+  };
+
+  auto flush_cjk = [&]() {
+    if (cjk_run.size() < 2) {
+      cjk_run.clear();
+      return;
+    }
+
+    const size_t max_window = std::min<size_t>(3, cjk_run.size());
+    for (size_t window = 2; window <= max_window; ++window) {
+      for (size_t i = 0; i + window <= cjk_run.size(); ++i) {
+        const auto token_u32 = cjk_run.substr(i, window);
+        if (is_generic_cjk_token(token_u32)) {
+          continue;
+        }
+        add_salient_token(stats, u32_to_utf8(token_u32), window >= 3 ? 2 : 1,
+                          window >= 3);
+      }
+    }
+
+    cjk_run.clear();
+  };
+
+  for (char32_t cp : codepoints) {
+    if (is_ascii_token_char(cp)) {
+      flush_cjk();
+      ascii_run.push_back(static_cast<char>(cp));
+      continue;
+    }
+    if (is_cjk_codepoint(cp)) {
+      flush_ascii();
+      cjk_run.push_back(cp);
+      continue;
+    }
+    flush_ascii();
+    flush_cjk();
+  }
+
+  flush_ascii();
+  flush_cjk();
+  return stats;
+}
+
+static bool looks_like_follow_up_message(const std::string& text) {
+  std::string lower = text;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  static const std::vector<std::string> kMarkers = {
+      "based on that", "continue",     "elaborate",  "expand on",  "go on",
+      "more detail",   "tell me more", "what else",  u8"上面",     u8"前面",
+      u8"刚才",        u8"再详细",     u8"展开",     u8"接着",     u8"接着说",
+      u8"继续",        u8"继续说",     u8"详细一点", u8"详细一些", u8"补充",
+      u8"进一步"};
+
+  return std::any_of(kMarkers.begin(), kMarkers.end(),
+                     [&](const std::string& marker) {
+                       return lower.find(marker) != std::string::npos;
+                     });
+}
+
+static bool has_lookup_intent(const std::string& text) {
+  std::string lower = text;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  static const std::vector<std::string> kAsciiMarkers = {
+      "search",   "look up", "lookup",        "find ",        "find on",
+      "research", "browse",  "github search", "search github"};
+  for (const auto& marker : kAsciiMarkers) {
+    if (lower.find(marker) != std::string::npos) {
+      return true;
+    }
+  }
+
+  static const std::vector<std::string> kCjkMarkers = {
+      u8"搜索",   u8"查找", u8"帮我找",   u8"帮我搜", u8"查一下",
+      u8"搜一下", u8"检索", u8"研究一下", u8"查查",   u8"找一下"};
+  for (const auto& marker : kCjkMarkers) {
+    if (text.find(marker) != std::string::npos) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static bool
+response_looks_like_unfulfilled_lookup_preamble(const std::string& text) {
+  if (text.empty()) {
+    return false;
+  }
+
+  std::string lower = text;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  const bool has_url = lower.find("http://") != std::string::npos ||
+                       lower.find("https://") != std::string::npos ||
+                       lower.find("github.com") != std::string::npos;
+  const bool has_list = text.find("\n1.") != std::string::npos ||
+                        text.find("\n- ") != std::string::npos ||
+                        text.find("\n•") != std::string::npos;
+  if (has_url || has_list) {
+    return false;
+  }
+
+  static const std::vector<std::string> kAsciiMarkers = {
+      "let me search",          "i'll search",
+      "i will search",          "let me look that up",
+      "i'll look that up",      "based on the search results",
+      "let me get more detail", "let me gather more detail"};
+  for (const auto& marker : kAsciiMarkers) {
+    if (lower.find(marker) != std::string::npos) {
+      return true;
+    }
+  }
+
+  static const std::vector<std::string> kCjkMarkers = {
+      u8"根据搜索结果", u8"让我为你获取更详细的信息",
+      u8"让我帮你查找", u8"让我帮你搜索",
+      u8"我来帮你搜索", u8"我来帮你查找",
+      u8"让我继续查",   u8"让我获取更详细的信息"};
+  for (const auto& marker : kCjkMarkers) {
+    if (text.find(marker) != std::string::npos) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static int count_substring_occurrences(const std::string& text,
+                                       const std::string& needle) {
+  if (needle.empty()) {
+    return 0;
+  }
+
+  int count = 0;
+  size_t pos = 0;
+  while ((pos = text.find(needle, pos)) != std::string::npos) {
+    ++count;
+    pos += needle.size();
+  }
+  return count;
+}
+
+static bool
+response_looks_like_raw_search_results_dump(const std::string& text) {
+  if (text.empty()) {
+    return false;
+  }
+
+  std::string lower = text;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  const bool has_preface =
+      lower.find("here are the search results for") != std::string::npos ||
+      lower.find("search results for") != std::string::npos ||
+      text.find(u8"以下是搜索结果") != std::string::npos ||
+      text.find(u8"以下是 \"") != std::string::npos;
+  const bool has_disclaimer =
+      lower.find("may not be fully accurate or up-to-date") !=
+          std::string::npos ||
+      text.find(u8"可能不完全准确") != std::string::npos;
+  const bool has_numbered_list = text.find("\n1.") != std::string::npos ||
+                                 text.find("\n1. **") != std::string::npos;
+  const int source_count = count_substring_occurrences(text, "Source: ") +
+                           count_substring_occurrences(text, u8"来源：");
+
+  return (has_preface && has_numbered_list && source_count >= 2) ||
+         (has_disclaimer && source_count >= 2);
+}
+
+static std::string collect_message_text(const Message& msg) {
+  std::string text = msg.text();
+  for (const auto& block : msg.content) {
+    if (block.type == "tool_result" && !block.content.empty()) {
+      if (!text.empty()) {
+        text += "\n";
+      }
+      text += block.content.substr(0, 200);
+    }
+  }
+  return text;
+}
+
+static std::string collect_turn_text(const std::vector<Message>& history,
+                                     size_t turn_start) {
+  std::string combined;
+  for (size_t i = turn_start; i < history.size(); ++i) {
+    const auto text = collect_message_text(history[i]);
+    if (text.empty()) {
+      continue;
+    }
+    if (!combined.empty()) {
+      combined += "\n";
+    }
+    combined += text;
+  }
+  return combined;
+}
+
+static bool
+latest_message_relates_to_recent_turn(const std::string& latest_user_text,
+                                      const std::string& recent_turn_text) {
+  const auto latest_tokens = extract_salient_tokens(latest_user_text);
+  const auto recent_tokens = extract_salient_tokens(recent_turn_text);
+  if (latest_tokens.total_weight <= 0 || recent_tokens.weights.empty()) {
+    return false;
+  }
+
+  std::string recent_lower = recent_turn_text;
+  std::transform(
+      recent_lower.begin(), recent_lower.end(), recent_lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+  bool has_ascii_anchor = false;
+  bool matched_ascii_anchor = false;
+  for (const auto& token : latest_tokens.anchor_tokens) {
+    if (!is_ascii_text(token)) {
+      continue;
+    }
+    has_ascii_anchor = true;
+    if (recent_lower.find(token) != std::string::npos) {
+      matched_ascii_anchor = true;
+      break;
+    }
+  }
+  if (has_ascii_anchor && !matched_ascii_anchor) {
+    return false;
+  }
+
+  int matched_weight = 0;
+  bool matched_anchor = latest_tokens.anchor_tokens.empty();
+  for (const auto& [token, weight] : latest_tokens.weights) {
+    if (recent_tokens.weights.count(token) == 0) {
+      continue;
+    }
+    matched_weight += weight;
+    if (latest_tokens.anchor_tokens.count(token) > 0) {
+      matched_anchor = true;
+    }
+  }
+
+  if (!matched_anchor || matched_weight <= 0) {
+    return false;
+  }
+
+  const double overlap_ratio =
+      static_cast<double>(matched_weight) / latest_tokens.total_weight;
+  return overlap_ratio >= 0.25;
+}
+
+static std::vector<Message>
+focus_history_on_latest_turn(const std::vector<Message>& history,
+                             const std::string& latest_user_text,
+                             const std::shared_ptr<spdlog::logger>& logger) {
+  if (history.empty()) {
+    return history;
+  }
+
+  size_t last_user_turn = history.size();
+  for (size_t i = history.size(); i-- > 0;) {
+    if (has_non_tool_result_blocks(history[i])) {
+      last_user_turn = i;
+      break;
+    }
+  }
+
+  if (last_user_turn >= history.size()) {
+    return history;
+  }
+
+  const auto recent_turn_text = collect_turn_text(history, last_user_turn);
+  const bool keep_recent_turn =
+      looks_like_follow_up_message(latest_user_text) ||
+      latest_message_relates_to_recent_turn(latest_user_text, recent_turn_text);
+
+  if (!keep_recent_turn) {
+    if (logger) {
+      logger->info(
+          "Context focus: dropped {} stale history messages for new user turn",
+          history.size());
+    }
+    return {};
+  }
+
+  size_t slice_start = last_user_turn;
+  if (slice_start == history.size() - 1 && slice_start > 0 &&
+      history[slice_start].role == "user" &&
+      history[slice_start - 1].role == "assistant") {
+    --slice_start;
+  }
+
+  if (slice_start == 0) {
+    return history;
+  }
+
+  std::vector<Message> focused(history.begin() + slice_start, history.end());
+  if (logger) {
+    logger->info(
+        "Context focus: narrowed history from {} to {} messages around recent "
+        "turn",
+        history.size(), focused.size());
+  }
+  return focused;
+}
+
+static bool should_retry_provider_error(const ProviderError& error) {
+  switch (error.Kind()) {
+    case ProviderErrorKind::kRateLimit:
+    case ProviderErrorKind::kTransient:
+    case ProviderErrorKind::kTimeout:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static bool
+is_anthropic_provider(const std::shared_ptr<LLMProvider>& provider) {
+  return provider && provider->GetProviderName() == "anthropic";
+}
+
+static std::unordered_set<std::string>
+collect_tool_use_ids(const Message& msg) {
+  std::unordered_set<std::string> ids;
+  for (const auto& block : msg.content) {
+    if (block.type == "tool_use" && !block.id.empty()) {
+      ids.insert(block.id);
+    }
+  }
+  return ids;
+}
+
+static std::vector<Message>
+repair_anthropic_tool_pairing(const std::vector<Message>& messages) {
+  std::vector<Message> repaired;
+  repaired.reserve(messages.size());
+
+  for (size_t i = 0; i < messages.size(); ++i) {
+    const auto& msg = messages[i];
+
+    if (msg.role != "assistant") {
+      if (msg.role == "user") {
+        Message filtered_user;
+        filtered_user.role = msg.role;
+        for (const auto& block : msg.content) {
+          if (block.type != "tool_result") {
+            filtered_user.content.push_back(block);
+          }
+        }
+        if (!filtered_user.content.empty()) {
+          repaired.push_back(std::move(filtered_user));
+        }
+      } else {
+        repaired.push_back(msg);
+      }
+      continue;
+    }
+
+    auto tool_use_ids = collect_tool_use_ids(msg);
+    if (tool_use_ids.empty()) {
+      repaired.push_back(msg);
+      continue;
+    }
+
+    std::unordered_set<std::string> matched_tool_ids;
+    Message filtered_next_user;
+    bool consumed_next_user = false;
+
+    if (i + 1 < messages.size() && messages[i + 1].role == "user") {
+      const auto& next_user = messages[i + 1];
+      filtered_next_user.role = next_user.role;
+
+      for (const auto& block : next_user.content) {
+        if (block.type == "tool_result") {
+          if (!block.tool_use_id.empty() &&
+              tool_use_ids.count(block.tool_use_id) > 0) {
+            matched_tool_ids.insert(block.tool_use_id);
+            filtered_next_user.content.push_back(block);
+          }
+        } else {
+          filtered_next_user.content.push_back(block);
+        }
+      }
+
+      consumed_next_user = true;
+    }
+
+    Message filtered_assistant;
+    filtered_assistant.role = msg.role;
+    for (const auto& block : msg.content) {
+      if (block.type != "tool_use") {
+        filtered_assistant.content.push_back(block);
+        continue;
+      }
+      if (matched_tool_ids.count(block.id) > 0) {
+        filtered_assistant.content.push_back(block);
+      }
+    }
+
+    if (filtered_assistant.content.empty() && !msg.content.empty()) {
+      filtered_assistant.content.push_back(
+          ContentBlock::MakeText("[tool calls omitted]"));
+    }
+    repaired.push_back(std::move(filtered_assistant));
+
+    if (consumed_next_user) {
+      if (!filtered_next_user.content.empty()) {
+        repaired.push_back(std::move(filtered_next_user));
+      }
+      ++i;
+    }
+  }
+
+  return repaired;
+}
+
+static std::vector<Message>
+merge_consecutive_user_messages(const std::vector<Message>& messages) {
+  std::vector<Message> merged;
+  merged.reserve(messages.size());
+
+  for (const auto& msg : messages) {
+    if (!merged.empty() && msg.role == "user" && merged.back().role == "user") {
+      merged.back().content.insert(merged.back().content.end(),
+                                   msg.content.begin(), msg.content.end());
+      continue;
+    }
+    merged.push_back(msg);
+  }
+
+  return merged;
+}
+
+static bool has_tool_use_blocks(const Message& msg) {
+  for (const auto& block : msg.content) {
+    if (block.type == "tool_use") {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool has_only_tool_result_blocks(const Message& msg) {
+  if (msg.role != "user" || msg.content.empty()) {
+    return false;
+  }
+  for (const auto& block : msg.content) {
+    if (block.type != "tool_result") {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool has_non_tool_result_blocks(const Message& msg) {
+  if (msg.role != "user") {
+    return false;
+  }
+  for (const auto& block : msg.content) {
+    if (block.type != "tool_result") {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::vector<Message>
+trim_anthropic_replay_to_current_turn(const std::vector<Message>& messages) {
+  if (messages.empty()) {
+    return messages;
+  }
+
+  // Only trim if the last message is a tool_result (tool replay scenario)
+  if (!has_only_tool_result_blocks(messages.back())) {
+    return messages;
+  }
+
+  size_t first_non_system = 0;
+  while (first_non_system < messages.size() &&
+         messages[first_non_system].role == "system") {
+    ++first_non_system;
+  }
+
+  // Find the start of the current turn by looking backwards for the last user
+  // message with non-tool_result content (i.e., the user's actual question)
+  size_t turn_start = messages.size();
+  for (size_t i = messages.size(); i-- > first_non_system;) {
+    if (has_non_tool_result_blocks(messages[i])) {
+      turn_start = i;
+      break;
+    }
+  }
+
+  if (turn_start >= messages.size()) {
+    return messages;
+  }
+
+  std::vector<Message> trimmed;
+  trimmed.reserve(first_non_system + (messages.size() - turn_start));
+  trimmed.insert(trimmed.end(), messages.begin(),
+                 messages.begin() + first_non_system);
+  trimmed.insert(trimmed.end(), messages.begin() + turn_start, messages.end());
+  return trimmed;
+}
+
+static std::vector<Message>
+collapse_completed_anthropic_tool_turns(const std::vector<Message>& messages) {
+  std::vector<Message> collapsed;
+  collapsed.reserve(messages.size());
+
+  for (size_t i = 0; i < messages.size(); ++i) {
+    const auto& msg = messages[i];
+
+    const bool can_collapse =
+        i + 3 < messages.size() && msg.role == "assistant" &&
+        has_tool_use_blocks(msg) &&
+        has_only_tool_result_blocks(messages[i + 1]) &&
+        messages[i + 2].role == "assistant" &&
+        !has_tool_use_blocks(messages[i + 2]) && messages[i + 3].role == "user";
+
+    if (!can_collapse) {
+      collapsed.push_back(msg);
+      continue;
+    }
+
+    collapsed.push_back(messages[i + 2]);
+    i += 2;
+  }
+
+  return collapsed;
+}
+
+static std::string extract_tool_schema_name(const nlohmann::json& tool_schema) {
+  if (tool_schema.contains("function") && tool_schema["function"].is_object() &&
+      tool_schema["function"].contains("name") &&
+      tool_schema["function"]["name"].is_string()) {
+    return tool_schema["function"]["name"].get<std::string>();
+  }
+  if (tool_schema.contains("name") && tool_schema["name"].is_string()) {
+    return tool_schema["name"].get<std::string>();
+  }
+  return "";
+}
+
+static std::unordered_set<std::string>
+collect_trailing_replay_tool_names(const std::vector<Message>& messages) {
+  std::unordered_set<std::string> tool_result_ids;
+  if (messages.size() < 2) {
+    return {};
+  }
+
+  const auto& last_msg = messages.back();
+  if (last_msg.role != "user") {
+    return {};
+  }
+
+  for (const auto& block : last_msg.content) {
+    if (block.type == "tool_result" && !block.tool_use_id.empty()) {
+      tool_result_ids.insert(block.tool_use_id);
+    }
+  }
+  if (tool_result_ids.empty()) {
+    return {};
+  }
+
+  for (auto it = messages.rbegin() + 1; it != messages.rend(); ++it) {
+    if (it->role != "assistant") {
+      continue;
+    }
+
+    std::unordered_set<std::string> matched_tool_names;
+    for (const auto& block : it->content) {
+      if (block.type == "tool_use" && !block.id.empty() &&
+          tool_result_ids.count(block.id) > 0 && !block.name.empty()) {
+        matched_tool_names.insert(block.name);
+      }
+    }
+    if (!matched_tool_names.empty()) {
+      return matched_tool_names;
+    }
+  }
+
+  return {};
+}
+
+static void maybe_add_web_search_replay_instruction(
+    ChatCompletionRequest& request,
+    const std::unordered_set<std::string>& matched_tool_names) {
+  if (matched_tool_names.count("web_search") == 0) {
+    return;
+  }
+
+  static const std::string kReplayHint =
+      "[web_search replay hint] Use the existing web_search tool results "
+      "already present in this conversation. Do not run another web search "
+      "or output a raw search-results dump. Synthesize the provided results "
+      "into a concise answer that focuses on the most relevant matches for "
+      "the user's request.";
+
+  for (const auto& msg : request.messages) {
+    if (msg.role == "system" &&
+        msg.text().find(kReplayHint) != std::string::npos) {
+      return;
+    }
+  }
+
+  size_t insert_pos = 0;
+  while (insert_pos < request.messages.size() &&
+         request.messages[insert_pos].role == "system") {
+    ++insert_pos;
+  }
+  request.messages.insert(request.messages.begin() + insert_pos,
+                          Message{"system", kReplayHint});
+}
+
+static void narrow_anthropic_tools_for_replay(
+    ChatCompletionRequest& request,
+    const std::unordered_set<std::string>& matched_tool_names) {
+  if (matched_tool_names.empty()) {
+    return;
+  }
+
+  std::vector<nlohmann::json> filtered_tools;
+  filtered_tools.reserve(request.tools.size());
+  for (const auto& tool : request.tools) {
+    const auto tool_name = extract_tool_schema_name(tool);
+    if (!tool_name.empty() && matched_tool_names.count(tool_name) > 0) {
+      filtered_tools.push_back(tool);
+    }
+  }
+
+  if (!filtered_tools.empty()) {
+    request.tools = std::move(filtered_tools);
+  }
+}
+
+static void sanitize_request_messages_for_provider(
+    const std::shared_ptr<LLMProvider>& provider,
+    ChatCompletionRequest& request,
+    const std::shared_ptr<TurnValidator>& turn_validator,
+    const std::shared_ptr<spdlog::logger>& logger) {
+  size_t before_count = request.messages.size();
+
+  // Anthropic-specific sanitization
+  if (is_anthropic_provider(provider)) {
+    request.messages = repair_anthropic_tool_pairing(request.messages);
+    request.messages =
+        collapse_completed_anthropic_tool_turns(request.messages);
+    request.messages = merge_consecutive_user_messages(request.messages);
+    // Apply context trimming for tool replay scenarios
+    request.messages = trim_anthropic_replay_to_current_turn(request.messages);
+    const auto matched_tool_names =
+        collect_trailing_replay_tool_names(request.messages);
+    maybe_add_web_search_replay_instruction(request, matched_tool_names);
+    narrow_anthropic_tools_for_replay(request, matched_tool_names);
+  }
+
+  // Apply turn validation if validator is available
+  if (turn_validator && provider) {
+    request.messages = turn_validator->ValidateAndFix(
+        request.messages, provider->GetProviderName());
+  }
+
+  size_t after_count = request.messages.size();
+
+  // Debug logging - always log for debugging purposes
+  if (logger) {
+    if (before_count != after_count) {
+      logger->info("Context trimmed: {} -> {} messages (provider: {})",
+                   before_count, after_count,
+                   provider ? provider->GetProviderName() : "unknown");
+    }
+    // Log the actual messages being sent
+    logger->debug("Sending {} messages to LLM:", request.messages.size());
+    for (size_t i = 0; i < request.messages.size(); ++i) {
+      const auto& msg = request.messages[i];
+      std::string content_preview;
+      if (!msg.content.empty()) {
+        if (msg.content[0].type == "text") {
+          content_preview = msg.content[0].text.substr(0, 100);
+        } else if (msg.content[0].type == "tool_result") {
+          content_preview = "[tool_result]";
+        } else if (msg.content[0].type == "tool_use") {
+          content_preview = "[tool_use: " + msg.content[0].name + "]";
+        }
+      }
+      logger->debug("  Message[{}] role={} content={}", i, msg.role,
+                    content_preview);
+    }
+  }
 }
 
 // Truncate a tool result if it exceeds the limit (head + tail with ellipsis)
 static std::string truncate_tool_result(const std::string& result,
-                                         int max_chars, int keep_lines) {
-    if (static_cast<int>(result.size()) <= max_chars) return result;
+                                        int max_chars, int keep_lines) {
+  if (static_cast<int>(result.size()) <= max_chars)
+    return result;
 
-    // Split into lines
-    std::vector<std::string> lines;
-    std::istringstream stream(result);
-    std::string line;
-    while (std::getline(stream, line)) lines.push_back(line);
+  // Split into lines
+  std::vector<std::string> lines;
+  std::istringstream stream(result);
+  std::string line;
+  while (std::getline(stream, line))
+    lines.push_back(line);
 
-    if (static_cast<int>(lines.size()) <= keep_lines * 2) return result;
+  if (static_cast<int>(lines.size()) <= keep_lines * 2)
+    return result;
 
-    std::string truncated;
-    for (int i = 0; i < keep_lines; ++i) {
-        truncated += lines[i] + "\n";
-    }
-    int omitted = static_cast<int>(lines.size()) - keep_lines * 2;
-    truncated += "\n... [" + std::to_string(omitted) + " lines omitted] ...\n\n";
-    for (int i = static_cast<int>(lines.size()) - keep_lines;
-         i < static_cast<int>(lines.size()); ++i) {
-        truncated += lines[i] + "\n";
-    }
-    return truncated;
+  std::string truncated;
+  for (int i = 0; i < keep_lines; ++i) {
+    truncated += lines[i] + "\n";
+  }
+  int omitted = static_cast<int>(lines.size()) - keep_lines * 2;
+  truncated += "\n... [" + std::to_string(omitted) + " lines omitted] ...\n\n";
+  for (int i = static_cast<int>(lines.size()) - keep_lines;
+       i < static_cast<int>(lines.size()); ++i) {
+    truncated += lines[i] + "\n";
+  }
+  return truncated;
 }
 
 // Get context window size for a model name
 static int get_context_window(const std::string& model) {
-    // Anthropic models
-    if (model.find("claude") != std::string::npos) return kContextWindow200K;
-    // OpenAI models
-    if (model.find("gpt-4o") != std::string::npos) return kContextWindow128K;
-    if (model.find("gpt-4-turbo") != std::string::npos) return kContextWindow128K;
-    if (model.find("gpt-4") != std::string::npos) return kContextWindow8K;
-    if (model.find("gpt-3.5") != std::string::npos) return kContextWindow16K;
-    // Qwen
-    if (model.find("qwen") != std::string::npos) return kContextWindow128K;
-    // DeepSeek
-    if (model.find("deepseek") != std::string::npos) return kContextWindow128K;
-    return kDefaultContextWindow;
+  // Anthropic models
+  if (model.find("claude") != std::string::npos)
+    return kContextWindow200K;
+  // OpenAI models
+  if (model.find("gpt-4o") != std::string::npos)
+    return kContextWindow128K;
+  if (model.find("gpt-4-turbo") != std::string::npos)
+    return kContextWindow128K;
+  if (model.find("gpt-4") != std::string::npos)
+    return kContextWindow8K;
+  if (model.find("gpt-3.5") != std::string::npos)
+    return kContextWindow16K;
+  // Qwen
+  if (model.find("qwen") != std::string::npos)
+    return kContextWindow128K;
+  // DeepSeek
+  if (model.find("deepseek") != std::string::npos)
+    return kContextWindow128K;
+  return kDefaultContextWindow;
 }
 
 AgentLoop::AgentLoop(std::shared_ptr<MemoryManager> memory_manager,
@@ -85,649 +921,755 @@ AgentLoop::AgentLoop(std::shared_ptr<MemoryManager> memory_manager,
                      std::shared_ptr<LLMProvider> llm_provider,
                      const AgentConfig& agent_config,
                      std::shared_ptr<spdlog::logger> logger)
-    : memory_manager_(memory_manager)
-    , skill_loader_(skill_loader)
-    , tool_registry_(tool_registry)
-    , llm_provider_(llm_provider)
-    , logger_(logger)
-    , agent_config_(agent_config) {
-    // Use dynamic max iterations based on context window
-    max_iterations_ = agent_config_.DynamicMaxIterations();
-    logger_->info("AgentLoop initialized with model: {}, max_iterations: {}",
-                  agent_config_.model, max_iterations_);
+    : memory_manager_(memory_manager),
+      skill_loader_(skill_loader),
+      tool_registry_(tool_registry),
+      llm_provider_(llm_provider),
+      logger_(logger),
+      agent_config_(agent_config),
+      resolved_model_name_(agent_config.model) {
+  // Use dynamic max iterations based on context window
+  max_iterations_ = agent_config_.DynamicMaxIterations();
+  logger_->info("AgentLoop initialized with model: {}, max_iterations: {}",
+                agent_config_.model, max_iterations_);
 }
 
 std::shared_ptr<LLMProvider> AgentLoop::resolve_provider() {
-    // If failover resolver is available, use it for profile rotation + fallback
-    if (failover_resolver_) {
-        auto resolved = failover_resolver_->Resolve(
-            agent_config_.model, session_key_);
-        if (resolved) {
-            last_provider_id_ = resolved->provider_id;
-            last_profile_id_ = resolved->profile_id;
-            // Update model to the resolved model name (may differ if fallback)
-            agent_config_.model = resolved->model;
-            if (resolved->is_fallback) {
-                logger_->info("Using fallback model: {}/{}", resolved->provider_id, resolved->model);
-            }
-            return resolved->provider;
-        }
-        logger_->error("FailoverResolver exhausted all models/profiles for '{}'",
-                       agent_config_.model);
-        // Fall through to registry / injected provider
-    }
+  resolved_model_name_ = agent_config_.model;
 
-    if (!provider_registry_) {
-        return llm_provider_;
+  // If failover resolver is available, use it for profile rotation + fallback
+  if (failover_resolver_) {
+    auto resolved =
+        failover_resolver_->Resolve(agent_config_.model, session_key_);
+    if (resolved) {
+      last_provider_id_ = resolved->provider_id;
+      last_profile_id_ = resolved->profile_id;
+      resolved_model_name_ = resolved->model;
+      if (resolved->is_fallback) {
+        logger_->info("Using fallback model: {}/{}", resolved->provider_id,
+                      resolved->model);
+      }
+      return resolved->provider;
     }
+    logger_->error("FailoverResolver exhausted all models/profiles for '{}'",
+                   agent_config_.model);
+    // Fall through to registry / injected provider
+  }
 
-    auto ref = provider_registry_->ResolveModel(agent_config_.model);
-    auto provider = provider_registry_->GetProviderForModel(ref);
-    if (provider) {
-        last_provider_id_ = ref.provider;
-        last_profile_id_ = "";
-        // Update model to stripped name (without provider prefix)
-        agent_config_.model = ref.model;
-        return provider;
-    }
-
-    logger_->warn("Failed to resolve provider for model '{}', falling back to injected provider",
-                  agent_config_.model);
+  if (!provider_registry_) {
+    last_provider_id_.clear();
+    last_profile_id_.clear();
     return llm_provider_;
+  }
+
+  auto ref = provider_registry_->ResolveModel(agent_config_.model);
+  auto provider = provider_registry_->GetProviderForModel(ref);
+  if (provider) {
+    last_provider_id_ = ref.provider;
+    last_profile_id_.clear();
+    resolved_model_name_ = ref.model;
+    return provider;
+  }
+
+  logger_->warn(
+      "Failed to resolve provider for model '{}', falling back to injected "
+      "provider",
+      agent_config_.model);
+  last_provider_id_.clear();
+  last_profile_id_.clear();
+  return llm_provider_;
+}
+
+std::string AgentLoop::resolved_request_model() const {
+  return resolved_model_name_.empty() ? agent_config_.model
+                                      : resolved_model_name_;
 }
 
 void AgentLoop::SetModel(const std::string& model_ref) {
-    agent_config_.model = model_ref;
-    logger_->info("Model set to: {}", model_ref);
+  agent_config_.model = model_ref;
+  resolved_model_name_ = model_ref;
+  logger_->info("Model set to: {}", model_ref);
 }
 
-std::vector<Message> AgentLoop::ProcessMessage(const std::string& message,
-                                                 const std::vector<Message>& history,
-                                                 const std::string& system_prompt,
-                                                 const std::string& usage_session_key) {
-    const std::string& effective_session_key =
-        usage_session_key.empty() ? session_key_ : usage_session_key;
-    logger_->info("Processing message (non-streaming)");
-    stop_requested_ = false;
+std::vector<Message> AgentLoop::ProcessMessage(
+    const std::string& message, const std::vector<Message>& history,
+    const std::string& system_prompt, const std::string& usage_session_key) {
+  const std::string& effective_session_key =
+      usage_session_key.empty() ? session_key_ : usage_session_key;
+  logger_->info("Processing message (non-streaming)");
+  stop_requested_ = false;
 
-    auto provider = resolve_provider();
+  auto provider = resolve_provider();
 
-    std::vector<Message> new_messages;
+  std::vector<Message> new_messages;
 
-    // --- Auto-compaction: truncate history if too large ---
-    std::vector<Message> effective_history = history;
-    if (agent_config_.auto_compact &&
-        static_cast<int>(effective_history.size()) > agent_config_.compact_max_messages) {
-        int keep = agent_config_.compact_keep_recent;
-        int total = static_cast<int>(effective_history.size());
-        if (total > keep) {
-            int removed = total - keep;
-            effective_history.assign(
-                history.end() - keep, history.end());
-            // Prepend truncation notice with context refresh instruction
-            effective_history.insert(effective_history.begin(),
-                Message{"system", "[Context compaction: " + std::to_string(removed) +
-                                  " earlier messages were removed. "
-                                  "Your system instructions remain active. "
-                                  "Refer to the system prompt for your identity and capabilities.]"});
-            logger_->info("Auto-compacted history: {} -> {} messages", total,
-                          static_cast<int>(effective_history.size()));
+  // --- Auto-compaction: truncate history if too large ---
+  std::vector<Message> effective_history = history;
+  if (agent_config_.auto_compact && static_cast<int>(effective_history.size()) >
+                                        agent_config_.compact_max_messages) {
+    int keep = agent_config_.compact_keep_recent;
+    int total = static_cast<int>(effective_history.size());
+    if (total > keep) {
+      int removed = total - keep;
+      effective_history.assign(history.end() - keep, history.end());
+      // Prepend truncation notice with context refresh instruction
+      effective_history.insert(
+          effective_history.begin(),
+          Message{"system", "[Context compaction: " + std::to_string(removed) +
+                                " earlier messages were removed. "
+                                "Your system instructions remain active. "
+                                "Refer to the system prompt for your identity "
+                                "and capabilities.]"});
+      logger_->info("Auto-compacted history: {} -> {} messages", total,
+                    static_cast<int>(effective_history.size()));
+    }
+  }
+
+  // --- Tool result pruning ---
+  ContextPruner::Options prune_opts;
+  effective_history = ContextPruner::Prune(effective_history, prune_opts);
+  effective_history =
+      focus_history_on_latest_turn(effective_history, message, logger_);
+
+  // Build context: system + history + new user message
+  std::vector<Message> context;
+
+  // System message (always first, re-injected after compaction)
+  if (!system_prompt.empty()) {
+    context.push_back(Message{"system", system_prompt});
+  }
+
+  // History
+  for (const auto& msg : effective_history) {
+    context.push_back(msg);
+  }
+
+  // New user message
+  context.push_back(Message{"user", message});
+
+  // --- Context window guard: check estimated tokens vs limit ---
+  int ctx_window = agent_config_.context_window > 0
+                       ? agent_config_.context_window
+                       : get_context_window(resolved_request_model());
+  int estimated = estimate_tokens(context);
+  if (estimated + agent_config_.max_tokens >
+      ctx_window - kContextWindowMinTokens) {
+    logger_->warn(
+        "Context window guard: estimated {} tokens + {} max_tokens exceeds "
+        "window {} (min reserve {}). Forcing compaction.",
+        estimated, agent_config_.max_tokens, ctx_window,
+        kContextWindowMinTokens);
+    // Force aggressive compaction: keep only last few messages
+    int keep = std::min(agent_config_.compact_keep_recent,
+                        static_cast<int>(context.size()));
+    if (keep < static_cast<int>(context.size())) {
+      std::vector<Message> compacted;
+      if (!system_prompt.empty()) {
+        compacted.push_back(Message{"system", system_prompt});
+      }
+      compacted.push_back(
+          Message{"system",
+                  "[Context compaction forced: context window nearly full. "
+                  "Earlier messages removed.]"});
+      for (auto it = context.end() - keep; it != context.end(); ++it) {
+        compacted.push_back(*it);
+      }
+      context = std::move(compacted);
+    }
+  }
+
+  // Create LLM request
+  ChatCompletionRequest request;
+  request.messages = context;
+  request.model = resolved_request_model();
+  request.temperature = agent_config_.temperature;
+  request.max_tokens = agent_config_.max_tokens;
+  request.thinking = agent_config_.thinking;
+
+  // Add tool schemas
+  nlohmann::json tools_json = nlohmann::json::array();
+  for (const auto& schema : tool_registry_->GetToolSchemas()) {
+    nlohmann::json tool;
+    tool["type"] = "function";
+    tool["function"]["name"] = schema.name;
+    tool["function"]["description"] = schema.description;
+    tool["function"]["parameters"] = schema.parameters;
+    tools_json.push_back(tool);
+  }
+  request.tools = tools_json.get<std::vector<nlohmann::json>>();
+  request.tool_choice_auto = true;
+
+  // Save original model for failover re-resolution
+  std::string original_model = agent_config_.model;
+  int iterations = 0;
+  int overflow_retries = 0;
+  bool forced_lookup_retry = false;
+  bool forced_web_search_synthesis_retry = false;
+
+  while (iterations < max_iterations_ && !stop_requested_) {
+    try {
+      sanitize_request_messages_for_provider(provider, request, turn_validator_,
+                                             logger_);
+      auto response = provider->ChatCompletion(request);
+
+      // --- Usage tracking ---
+      if (usage_accumulator_ && !effective_session_key.empty()) {
+        usage_accumulator_->Record(effective_session_key,
+                                   response.usage.prompt_tokens,
+                                   response.usage.completion_tokens);
+      }
+      logger_->debug("Token usage: prompt={} completion={}",
+                     response.usage.prompt_tokens,
+                     response.usage.completion_tokens);
+
+      // Record success for failover tracking
+      if (failover_resolver_ && !last_provider_id_.empty()) {
+        failover_resolver_->RecordSuccess(last_provider_id_, last_profile_id_,
+                                          session_key_);
+      }
+
+      if (!response.tool_calls.empty()) {
+        logger_->info("LLM requested {} tool calls",
+                      response.tool_calls.size());
+
+        std::vector<nlohmann::json> tool_calls_json;
+        for (const auto& tc : response.tool_calls) {
+          nlohmann::json tc_json;
+          tc_json["id"] = tc.id;
+          tc_json["function"]["name"] = tc.name;
+          tc_json["function"]["arguments"] = tc.arguments.dump();
+          tool_calls_json.push_back(tc_json);
         }
-    }
+        auto tool_results = handle_tool_calls(tool_calls_json);
 
-    // --- Tool result pruning ---
-    ContextPruner::Options prune_opts;
-    effective_history = ContextPruner::Prune(effective_history, prune_opts);
-
-    // Build context: system + history + new user message
-    std::vector<Message> context;
-
-    // System message (always first, re-injected after compaction)
-    if (!system_prompt.empty()) {
-        context.push_back(Message{"system", system_prompt});
-    }
-
-    // History
-    for (const auto& msg : effective_history) {
-        context.push_back(msg);
-    }
-
-    // New user message
-    context.push_back(Message{"user", message});
-
-    // --- Context window guard: check estimated tokens vs limit ---
-    int ctx_window = agent_config_.context_window > 0
-                         ? agent_config_.context_window
-                         : get_context_window(agent_config_.model);
-    int estimated = estimate_tokens(context);
-    if (estimated + agent_config_.max_tokens > ctx_window - kContextWindowMinTokens) {
-        logger_->warn("Context window guard: estimated {} tokens + {} max_tokens exceeds "
-                      "window {} (min reserve {}). Forcing compaction.",
-                      estimated, agent_config_.max_tokens, ctx_window, kContextWindowMinTokens);
-        // Force aggressive compaction: keep only last few messages
-        int keep = std::min(agent_config_.compact_keep_recent, static_cast<int>(context.size()));
-        if (keep < static_cast<int>(context.size())) {
-            std::vector<Message> compacted;
-            if (!system_prompt.empty()) {
-                compacted.push_back(Message{"system", system_prompt});
-            }
-            compacted.push_back(Message{"system",
-                "[Context compaction forced: context window nearly full. "
-                "Earlier messages removed.]"});
-            for (auto it = context.end() - keep; it != context.end(); ++it) {
-                compacted.push_back(*it);
-            }
-            context = std::move(compacted);
+        // --- Tool result truncation fallback ---
+        for (auto& result : tool_results) {
+          result = truncate_tool_result(result, kToolResultMaxChars,
+                                        kToolResultKeepLines);
         }
-    }
 
-    // Create LLM request
-    ChatCompletionRequest request;
-    request.messages = context;
-    request.model = agent_config_.model;
-    request.temperature = agent_config_.temperature;
-    request.max_tokens = agent_config_.max_tokens;
-    request.thinking = agent_config_.thinking;
+        // Assistant message: text + tool_use blocks
+        Message assistant_msg;
+        assistant_msg.role = "assistant";
+        if (!response.content.empty())
+          assistant_msg.content.push_back(
+              ContentBlock::MakeText(response.content));
+        for (const auto& tc : response.tool_calls)
+          assistant_msg.content.push_back(
+              ContentBlock::MakeToolUse(tc.id, tc.name, tc.arguments));
+        request.messages.push_back(assistant_msg);
+        new_messages.push_back(assistant_msg);
 
-    // Add tool schemas
-    nlohmann::json tools_json = nlohmann::json::array();
-    for (const auto& schema : tool_registry_->GetToolSchemas()) {
-        nlohmann::json tool;
-        tool["type"] = "function";
-        tool["function"]["name"] = schema.name;
-        tool["function"]["description"] = schema.description;
-        tool["function"]["parameters"] = schema.parameters;
-        tools_json.push_back(tool);
-    }
-    request.tools = tools_json.get<std::vector<nlohmann::json>>();
-    request.tool_choice_auto = true;
+        // Tool results: single user message with tool_result blocks
+        Message results_msg;
+        results_msg.role = "user";
+        for (size_t i = 0; i < response.tool_calls.size(); i++)
+          results_msg.content.push_back(ContentBlock::MakeToolResult(
+              response.tool_calls[i].id, tool_results[i]));
+        request.messages.push_back(results_msg);
+        new_messages.push_back(results_msg);
 
-    // Save original model for failover re-resolution
-    std::string original_model = agent_config_.model;
-    int iterations = 0;
-    int overflow_retries = 0;
+        iterations++;
+        continue;
+      }
 
-    while (iterations < max_iterations_ && !stop_requested_) {
-        try {
-            auto response = provider->ChatCompletion(request);
+      if (!response.content.empty()) {
+        const auto replay_tool_names =
+            collect_trailing_replay_tool_names(request.messages);
 
-            // --- Usage tracking ---
-            if (usage_accumulator_ && !effective_session_key.empty()) {
-                usage_accumulator_->Record(effective_session_key,
-                    response.usage.prompt_tokens,
-                    response.usage.completion_tokens);
-            }
-            logger_->debug("Token usage: prompt={} completion={}",
-                response.usage.prompt_tokens,
-                response.usage.completion_tokens);
+        if (!forced_lookup_retry && has_lookup_intent(message) &&
+            response_looks_like_unfulfilled_lookup_preamble(response.content)) {
+          logger_->warn(
+              "Lookup guard: provider returned a deferred search preamble "
+              "without tool calls; forcing one retry with explicit tool-use "
+              "instruction");
 
-            // Record success for failover tracking
-            if (failover_resolver_ && !last_provider_id_.empty()) {
-                failover_resolver_->RecordSuccess(
-                    last_provider_id_, last_profile_id_, session_key_);
-            }
+          Message assistant_msg;
+          assistant_msg.role = "assistant";
+          assistant_msg.content.push_back(
+              ContentBlock::MakeText(response.content));
+          request.messages.push_back(std::move(assistant_msg));
 
-            if (!response.tool_calls.empty()) {
-                logger_->info("LLM requested {} tool calls", response.tool_calls.size());
+          Message correction_msg;
+          correction_msg.role = "user";
+          correction_msg.content.push_back(ContentBlock::MakeText(
+              "Do not stop after saying that you will search. Execute the "
+              "relevant search or browsing tool now. If no such tool is "
+              "available, say that clearly instead of implying that results "
+              "already exist."));
+          request.messages.push_back(std::move(correction_msg));
 
-                std::vector<nlohmann::json> tool_calls_json;
-                for (const auto& tc : response.tool_calls) {
-                    nlohmann::json tc_json;
-                    tc_json["id"] = tc.id;
-                    tc_json["function"]["name"] = tc.name;
-                    tc_json["function"]["arguments"] = tc.arguments.dump();
-                    tool_calls_json.push_back(tc_json);
-                }
-                auto tool_results = handle_tool_calls(tool_calls_json);
-
-                // --- Tool result truncation fallback ---
-                for (auto& result : tool_results) {
-                    result = truncate_tool_result(result,
-                        kToolResultMaxChars, kToolResultKeepLines);
-                }
-
-                // Assistant message: text + tool_use blocks
-                Message assistant_msg;
-                assistant_msg.role = "assistant";
-                if (!response.content.empty())
-                    assistant_msg.content.push_back(ContentBlock::MakeText(response.content));
-                for (const auto& tc : response.tool_calls)
-                    assistant_msg.content.push_back(ContentBlock::MakeToolUse(tc.id, tc.name, tc.arguments));
-                request.messages.push_back(assistant_msg);
-                new_messages.push_back(assistant_msg);
-
-                // Tool results: single user message with tool_result blocks
-                Message results_msg;
-                results_msg.role = "user";
-                for (size_t i = 0; i < response.tool_calls.size(); i++)
-                    results_msg.content.push_back(
-                        ContentBlock::MakeToolResult(response.tool_calls[i].id, tool_results[i]));
-                request.messages.push_back(results_msg);
-                new_messages.push_back(results_msg);
-
-                iterations++;
-                continue;
-            }
-
-            if (!response.content.empty()) {
-                logger_->info("LLM provided final response");
-                Message final_msg;
-                final_msg.role = "assistant";
-                final_msg.content.push_back(ContentBlock::MakeText(response.content));
-                new_messages.push_back(final_msg);
-                return new_messages;
-            }
-
-            logger_->error("Unexpected LLM response format");
-            break;
-
-        } catch (const ProviderError& pe) {
-            // --- Overflow compaction retry ---
-            if (pe.Kind() == ProviderErrorKind::kContextOverflow &&
-                overflow_retries < kOverflowCompactionMaxRetries) {
-                overflow_retries++;
-                logger_->warn("Context overflow (attempt {}/{}), compacting and retrying",
-                              overflow_retries, kOverflowCompactionMaxRetries);
-                // Aggressively compact: keep only recent messages
-                int keep = std::max(2, static_cast<int>(request.messages.size()) / 2);
-                std::vector<Message> compacted;
-                if (!system_prompt.empty()) {
-                    compacted.push_back(Message{"system", system_prompt});
-                }
-                compacted.push_back(Message{"system",
-                    "[Context overflow recovery: older messages removed.]"});
-                for (auto it = request.messages.end() - keep;
-                     it != request.messages.end(); ++it) {
-                    compacted.push_back(*it);
-                }
-                request.messages = std::move(compacted);
-                continue;
-            }
-
-            // Context overflow with retries exhausted — no point retrying
-            if (pe.Kind() == ProviderErrorKind::kContextOverflow) {
-                logger_->error("Context overflow: all {} compaction retries exhausted",
-                               kOverflowCompactionMaxRetries);
-                throw;
-            }
-
-            // Record failure for failover tracking (with Retry-After if provided)
-            if (failover_resolver_ && !last_provider_id_.empty()) {
-                failover_resolver_->RecordFailure(
-                    last_provider_id_, last_profile_id_, pe.Kind(),
-                    pe.RetryAfterSeconds());
-
-                // Try to re-resolve with a different profile or fallback model
-                logger_->warn("Provider error ({}), attempting failover: {}",
-                              ProviderErrorKindToString(pe.Kind()), pe.what());
-
-                // Restore original model for re-resolution
-                agent_config_.model = original_model;
-                auto new_provider = resolve_provider();
-                if (new_provider && new_provider != provider) {
-                    provider = new_provider;
-                    // Update the request model to the newly resolved model
-                    request.model = agent_config_.model;
-                    iterations++;
-                    continue;
-                }
-            }
-
-            // No failover available or failover also failed
-            logger_->error("Provider error with no failover available: {}", pe.what());
-            if (iterations < max_iterations_ - 1) {
-                std::this_thread::sleep_for(std::chrono::seconds(1 << std::min(iterations, 4)));
-                iterations++;
-                continue;
-            }
-            throw;
-
-        } catch (const std::exception& e) {
-            logger_->error("Error in LLM processing: {}", e.what());
-            if (iterations < max_iterations_ - 1) {
-                std::this_thread::sleep_for(std::chrono::seconds(1 << std::min(iterations, 4)));
-                iterations++;
-                continue;
-            }
-            throw;
+          forced_lookup_retry = true;
+          iterations++;
+          continue;
         }
-    }
 
-    if (stop_requested_) {
-        Message stop_msg;
-        stop_msg.role = "assistant";
-        stop_msg.content.push_back(ContentBlock::MakeText("[Agent turn stopped by user]"));
-        new_messages.push_back(stop_msg);
+        if (!forced_web_search_synthesis_retry &&
+            replay_tool_names.count("web_search") > 0 &&
+            response_looks_like_raw_search_results_dump(response.content)) {
+          logger_->warn(
+              "Web search replay guard: provider echoed raw search results "
+              "after tool replay; forcing one synthesis retry");
+
+          Message assistant_msg;
+          assistant_msg.role = "assistant";
+          assistant_msg.content.push_back(
+              ContentBlock::MakeText(response.content));
+          request.messages.push_back(std::move(assistant_msg));
+
+          Message correction_msg;
+          correction_msg.role = "user";
+          correction_msg.content.push_back(ContentBlock::MakeText(
+              "Do not perform another web search and do not return a raw "
+              "\"search results\" list. Use only the existing web_search "
+              "tool results already in this conversation. Synthesize the "
+              "most relevant matches, explain why they fit the user's "
+              "request, and keep the answer concise."));
+          request.messages.push_back(std::move(correction_msg));
+
+          forced_web_search_synthesis_retry = true;
+          iterations++;
+          continue;
+        }
+
+        logger_->info("LLM provided final response");
+        Message final_msg;
+        final_msg.role = "assistant";
+        final_msg.content.push_back(ContentBlock::MakeText(response.content));
+        new_messages.push_back(final_msg);
         return new_messages;
-    }
+      }
 
-    throw std::runtime_error("Failed to get valid response after " +
-                             std::to_string(max_iterations_) + " iterations");
-}
+      logger_->error("Unexpected LLM response format");
+      break;
 
-std::vector<Message> AgentLoop::ProcessMessageStream(const std::string& message,
-                                                        const std::vector<Message>& history,
-                                                        const std::string& system_prompt,
-                                                        AgentEventCallback callback,
-                                                        const std::string& usage_session_key) {
-    const std::string& effective_session_key =
-        usage_session_key.empty() ? session_key_ : usage_session_key;
-    logger_->info("Processing message (streaming)");
-    stop_requested_ = false;
-
-    auto provider = resolve_provider();
-
-    std::vector<Message> new_messages;
-
-    // --- Auto-compaction: truncate history if too large ---
-    std::vector<Message> effective_history = history;
-    if (agent_config_.auto_compact &&
-        static_cast<int>(effective_history.size()) > agent_config_.compact_max_messages) {
-        int keep = agent_config_.compact_keep_recent;
-        int total = static_cast<int>(effective_history.size());
-        if (total > keep) {
-            int removed = total - keep;
-            effective_history.assign(
-                history.end() - keep, history.end());
-            effective_history.insert(effective_history.begin(),
-                Message{"system", "[Context compaction: " + std::to_string(removed) +
-                                  " earlier messages were removed. "
-                                  "Your system instructions remain active. "
-                                  "Refer to the system prompt for your identity and capabilities.]"});
-            logger_->info("Auto-compacted streaming history: {} -> {} messages",
-                          total, static_cast<int>(effective_history.size()));
+    } catch (const ProviderError& pe) {
+      // --- Overflow compaction retry ---
+      if (pe.Kind() == ProviderErrorKind::kContextOverflow &&
+          overflow_retries < kOverflowCompactionMaxRetries) {
+        overflow_retries++;
+        logger_->warn(
+            "Context overflow (attempt {}/{}), compacting and retrying",
+            overflow_retries, kOverflowCompactionMaxRetries);
+        // Aggressively compact: keep only recent messages
+        int keep = std::max(2, static_cast<int>(request.messages.size()) / 2);
+        std::vector<Message> compacted;
+        if (!system_prompt.empty()) {
+          compacted.push_back(Message{"system", system_prompt});
         }
-    }
-
-    // --- Tool result pruning ---
-    ContextPruner::Options prune_opts;
-    effective_history = ContextPruner::Prune(effective_history, prune_opts);
-
-    // Build context (system prompt always re-injected first)
-    std::vector<Message> context;
-    if (!system_prompt.empty()) {
-        context.push_back(Message{"system", system_prompt});
-    }
-    for (const auto& msg : effective_history) {
-        context.push_back(msg);
-    }
-    context.push_back(Message{"user", message});
-
-    // --- Context window guard ---
-    int ctx_window = agent_config_.context_window > 0
-                         ? agent_config_.context_window
-                         : get_context_window(agent_config_.model);
-    int estimated = estimate_tokens(context);
-    if (estimated + agent_config_.max_tokens > ctx_window - kContextWindowMinTokens) {
-        logger_->warn("Streaming context window guard triggered: {} + {} > {} - {}",
-                      estimated, agent_config_.max_tokens, ctx_window, kContextWindowMinTokens);
-        int keep = std::min(agent_config_.compact_keep_recent, static_cast<int>(context.size()));
-        if (keep < static_cast<int>(context.size())) {
-            std::vector<Message> compacted;
-            if (!system_prompt.empty()) {
-                compacted.push_back(Message{"system", system_prompt});
-            }
-            compacted.push_back(Message{"system",
-                "[Context compaction forced: context window nearly full.]"});
-            for (auto it = context.end() - keep; it != context.end(); ++it) {
-                compacted.push_back(*it);
-            }
-            context = std::move(compacted);
+        compacted.push_back(Message{
+            "system", "[Context overflow recovery: older messages removed.]"});
+        for (auto it = request.messages.end() - keep;
+             it != request.messages.end(); ++it) {
+          compacted.push_back(*it);
         }
-    }
+        request.messages = std::move(compacted);
+        continue;
+      }
 
-    ChatCompletionRequest request;
-    request.messages = context;
-    request.model = agent_config_.model;
-    request.temperature = agent_config_.temperature;
-    request.max_tokens = agent_config_.max_tokens;
-    request.stream = true;
-    request.thinking = agent_config_.thinking;
+      // Context overflow with retries exhausted — no point retrying
+      if (pe.Kind() == ProviderErrorKind::kContextOverflow) {
+        logger_->error("Context overflow: all {} compaction retries exhausted",
+                       kOverflowCompactionMaxRetries);
+        throw;
+      }
 
-    nlohmann::json tools_json = nlohmann::json::array();
-    for (const auto& schema : tool_registry_->GetToolSchemas()) {
-        nlohmann::json tool;
-        tool["type"] = "function";
-        tool["function"]["name"] = schema.name;
-        tool["function"]["description"] = schema.description;
-        tool["function"]["parameters"] = schema.parameters;
-        tools_json.push_back(tool);
-    }
-    request.tools = tools_json.get<std::vector<nlohmann::json>>();
-    request.tool_choice_auto = true;
+      // Record failure for failover tracking (with Retry-After if provided)
+      if (failover_resolver_ && !last_provider_id_.empty()) {
+        failover_resolver_->RecordFailure(last_provider_id_, last_profile_id_,
+                                          pe.Kind(), pe.RetryAfterSeconds());
 
-    std::string original_model_stream = agent_config_.model;
-    int iterations = 0;
-    int overflow_retries_stream = 0;
+        // Try to re-resolve with a different profile or fallback model
+        logger_->warn("Provider error ({}), attempting failover: {}",
+                      ProviderErrorKindToString(pe.Kind()), pe.what());
 
-    while (iterations < max_iterations_ && !stop_requested_) {
-        try {
-            std::string full_response;
-            TokenUsage stream_usage;
-
-            provider->ChatCompletionStream(request, [&](const ChatCompletionResponse& chunk) {
-                if (!chunk.content.empty()) {
-                    full_response += chunk.content;
-                    if (callback) {
-                        callback({events::kTextDelta, {{"text", chunk.content}}});
-                    }
-                }
-
-                // Accumulate usage from stream chunks
-                stream_usage.prompt_tokens += chunk.usage.prompt_tokens;
-                stream_usage.completion_tokens += chunk.usage.completion_tokens;
-
-                if (!chunk.tool_calls.empty()) {
-                    for (const auto& tc : chunk.tool_calls) {
-                        if (callback) {
-                            callback({events::kToolUse, {
-                                {"id", tc.id},
-                                {"name", tc.name},
-                                {"input", tc.arguments}
-                            }});
-                        }
-
-                        // Construct assistant message with text + tool_use blocks
-                        Message assistant_msg;
-                        assistant_msg.role = "assistant";
-                        if (!full_response.empty())
-                            assistant_msg.content.push_back(ContentBlock::MakeText(full_response));
-                        assistant_msg.content.push_back(ContentBlock::MakeToolUse(tc.id, tc.name, tc.arguments));
-                        request.messages.push_back(assistant_msg);
-                        new_messages.push_back(assistant_msg);
-                        full_response.clear();
-
-                        // Execute tool
-                        try {
-                            auto result = tool_registry_->ExecuteTool(tc.name, tc.arguments);
-                            // --- Tool result truncation ---
-                            result = truncate_tool_result(result,
-                                kToolResultMaxChars, kToolResultKeepLines);
-                            if (callback) {
-                                callback({events::kToolResult, {
-                                    {"tool_use_id", tc.id},
-                                    {"content", result}
-                                }});
-                            }
-
-                            Message results_msg;
-                            results_msg.role = "user";
-                            results_msg.content.push_back(
-                                ContentBlock::MakeToolResult(tc.id, result));
-                            request.messages.push_back(results_msg);
-                            new_messages.push_back(results_msg);
-                        } catch (const std::exception& e) {
-                            std::string error_content = "Error: " + std::string(e.what());
-                            if (callback) {
-                                callback({events::kToolResult, {
-                                    {"tool_use_id", tc.id},
-                                    {"content", error_content},
-                                    {"is_error", true}
-                                }});
-                            }
-
-                            Message results_msg;
-                            results_msg.role = "user";
-                            results_msg.content.push_back(
-                                ContentBlock::MakeToolResult(tc.id, error_content));
-                            request.messages.push_back(results_msg);
-                            new_messages.push_back(results_msg);
-                        }
-                    }
-                    iterations++;
-                    return; // Continue loop for tool results
-                }
-
-                if (chunk.is_stream_end) {
-                    if (callback) {
-                        callback({events::kMessageEnd, {
-                            {"content", full_response}
-                        }});
-                    }
-                }
-            });
-
-            // --- Usage tracking ---
-            if (usage_accumulator_ && !effective_session_key.empty()) {
-                usage_accumulator_->Record(effective_session_key,
-                    stream_usage.prompt_tokens,
-                    stream_usage.completion_tokens);
-            }
-            logger_->debug("Token usage (stream): prompt={} completion={}",
-                stream_usage.prompt_tokens,
-                stream_usage.completion_tokens);
-
-            // Record success for failover tracking
-            if (failover_resolver_ && !last_provider_id_.empty()) {
-                failover_resolver_->RecordSuccess(
-                    last_provider_id_, last_profile_id_, session_key_);
-            }
-
-            // If we got a final response without tool calls, we're done
-            if (!full_response.empty()) {
-                Message final_msg;
-                final_msg.role = "assistant";
-                final_msg.content.push_back(ContentBlock::MakeText(full_response));
-                new_messages.push_back(final_msg);
-                return new_messages;
-            }
-
-            iterations++;
-
-        } catch (const ProviderError& pe) {
-            // --- Overflow compaction retry ---
-            if (pe.Kind() == ProviderErrorKind::kContextOverflow &&
-                overflow_retries_stream < kOverflowCompactionMaxRetries) {
-                overflow_retries_stream++;
-                logger_->warn("Streaming context overflow (attempt {}/{}), compacting",
-                              overflow_retries_stream, kOverflowCompactionMaxRetries);
-                int keep = std::max(2, static_cast<int>(request.messages.size()) / 2);
-                std::vector<Message> compacted;
-                if (!system_prompt.empty()) {
-                    compacted.push_back(Message{"system", system_prompt});
-                }
-                compacted.push_back(Message{"system",
-                    "[Context overflow recovery: older messages removed.]"});
-                for (auto it = request.messages.end() - keep;
-                     it != request.messages.end(); ++it) {
-                    compacted.push_back(*it);
-                }
-                request.messages = std::move(compacted);
-                continue;
-            }
-
-            // Context overflow with retries exhausted — throw immediately
-            if (pe.Kind() == ProviderErrorKind::kContextOverflow) {
-                logger_->error("Streaming context overflow: retries exhausted");
-                if (callback) {
-                    callback({events::kMessageEnd, {{"error", pe.what()}}});
-                }
-                return new_messages;
-            }
-
-            // Record failure and attempt failover (with Retry-After if provided)
-            if (failover_resolver_ && !last_provider_id_.empty()) {
-                failover_resolver_->RecordFailure(
-                    last_provider_id_, last_profile_id_, pe.Kind(),
-                    pe.RetryAfterSeconds());
-
-                logger_->warn("Streaming provider error ({}), attempting failover: {}",
-                              ProviderErrorKindToString(pe.Kind()), pe.what());
-
-                agent_config_.model = original_model_stream;
-                auto new_provider = resolve_provider();
-                if (new_provider && new_provider != provider) {
-                    provider = new_provider;
-                    request.model = agent_config_.model;
-                    iterations++;
-                    continue;
-                }
-            }
-
-            logger_->error("Error in streaming: {}", pe.what());
-            if (callback) {
-                callback({events::kMessageEnd, {{"error", pe.what()}}});
-            }
-            return new_messages;
-
-        } catch (const std::exception& e) {
-            logger_->error("Error in streaming: {}", e.what());
-            if (callback) {
-                callback({events::kMessageEnd, {{"error", e.what()}}});
-            }
-            return new_messages;
+        // Restore original model for re-resolution
+        agent_config_.model = original_model;
+        auto new_provider = resolve_provider();
+        if (new_provider && new_provider != provider) {
+          provider = new_provider;
+          request.model = resolved_request_model();
+          iterations++;
+          continue;
         }
-    }
+      }
 
-    std::string stop_text = stop_requested_ ? "[Stopped]" : "[Max iterations reached]";
-    if (callback) {
-        callback({events::kMessageEnd, {{"content", stop_text}}});
+      // No failover available or failover also failed
+      logger_->error("Provider error with no failover available: {}",
+                     pe.what());
+      if (!should_retry_provider_error(pe)) {
+        logger_->error(
+            "Non-retryable provider error; aborting turn immediately");
+        throw;
+      }
+      if (iterations < max_iterations_ - 1) {
+        std::this_thread::sleep_for(
+            std::chrono::seconds(1 << std::min(iterations, 4)));
+        iterations++;
+        continue;
+      }
+      throw;
+
+    } catch (const std::exception& e) {
+      logger_->error("Error in LLM processing: {}", e.what());
+      if (iterations < max_iterations_ - 1) {
+        std::this_thread::sleep_for(
+            std::chrono::seconds(1 << std::min(iterations, 4)));
+        iterations++;
+        continue;
+      }
+      throw;
     }
+  }
+
+  if (stop_requested_) {
     Message stop_msg;
     stop_msg.role = "assistant";
-    stop_msg.content.push_back(ContentBlock::MakeText(stop_text));
+    stop_msg.content.push_back(
+        ContentBlock::MakeText("[Agent turn stopped by user]"));
     new_messages.push_back(stop_msg);
     return new_messages;
+  }
+
+  throw std::runtime_error("Failed to get valid response after " +
+                           std::to_string(max_iterations_) + " iterations");
+}
+
+std::vector<Message> AgentLoop::ProcessMessageStream(
+    const std::string& message, const std::vector<Message>& history,
+    const std::string& system_prompt, AgentEventCallback callback,
+    const std::string& usage_session_key) {
+  const std::string& effective_session_key =
+      usage_session_key.empty() ? session_key_ : usage_session_key;
+  logger_->info("Processing message (streaming)");
+  stop_requested_ = false;
+
+  auto provider = resolve_provider();
+
+  std::vector<Message> new_messages;
+
+  // --- Auto-compaction: truncate history if too large ---
+  std::vector<Message> effective_history = history;
+  if (agent_config_.auto_compact && static_cast<int>(effective_history.size()) >
+                                        agent_config_.compact_max_messages) {
+    int keep = agent_config_.compact_keep_recent;
+    int total = static_cast<int>(effective_history.size());
+    if (total > keep) {
+      int removed = total - keep;
+      effective_history.assign(history.end() - keep, history.end());
+      effective_history.insert(
+          effective_history.begin(),
+          Message{"system", "[Context compaction: " + std::to_string(removed) +
+                                " earlier messages were removed. "
+                                "Your system instructions remain active. "
+                                "Refer to the system prompt for your identity "
+                                "and capabilities.]"});
+      logger_->info("Auto-compacted streaming history: {} -> {} messages",
+                    total, static_cast<int>(effective_history.size()));
+    }
+  }
+
+  // --- Tool result pruning ---
+  ContextPruner::Options prune_opts;
+  effective_history = ContextPruner::Prune(effective_history, prune_opts);
+  effective_history =
+      focus_history_on_latest_turn(effective_history, message, logger_);
+
+  // Build context (system prompt always re-injected first)
+  std::vector<Message> context;
+  if (!system_prompt.empty()) {
+    context.push_back(Message{"system", system_prompt});
+  }
+  for (const auto& msg : effective_history) {
+    context.push_back(msg);
+  }
+  context.push_back(Message{"user", message});
+
+  // --- Context window guard ---
+  int ctx_window = agent_config_.context_window > 0
+                       ? agent_config_.context_window
+                       : get_context_window(resolved_request_model());
+  int estimated = estimate_tokens(context);
+  if (estimated + agent_config_.max_tokens >
+      ctx_window - kContextWindowMinTokens) {
+    logger_->warn("Streaming context window guard triggered: {} + {} > {} - {}",
+                  estimated, agent_config_.max_tokens, ctx_window,
+                  kContextWindowMinTokens);
+    int keep = std::min(agent_config_.compact_keep_recent,
+                        static_cast<int>(context.size()));
+    if (keep < static_cast<int>(context.size())) {
+      std::vector<Message> compacted;
+      if (!system_prompt.empty()) {
+        compacted.push_back(Message{"system", system_prompt});
+      }
+      compacted.push_back(
+          Message{"system",
+                  "[Context compaction forced: context window nearly full.]"});
+      for (auto it = context.end() - keep; it != context.end(); ++it) {
+        compacted.push_back(*it);
+      }
+      context = std::move(compacted);
+    }
+  }
+
+  ChatCompletionRequest request;
+  request.messages = context;
+  request.model = resolved_request_model();
+  request.temperature = agent_config_.temperature;
+  request.max_tokens = agent_config_.max_tokens;
+  request.stream = true;
+  request.thinking = agent_config_.thinking;
+
+  nlohmann::json tools_json = nlohmann::json::array();
+  for (const auto& schema : tool_registry_->GetToolSchemas()) {
+    nlohmann::json tool;
+    tool["type"] = "function";
+    tool["function"]["name"] = schema.name;
+    tool["function"]["description"] = schema.description;
+    tool["function"]["parameters"] = schema.parameters;
+    tools_json.push_back(tool);
+  }
+  request.tools = tools_json.get<std::vector<nlohmann::json>>();
+  request.tool_choice_auto = true;
+
+  std::string original_model_stream = agent_config_.model;
+  int iterations = 0;
+  int overflow_retries_stream = 0;
+
+  while (iterations < max_iterations_ && !stop_requested_) {
+    try {
+      sanitize_request_messages_for_provider(provider, request, turn_validator_,
+                                             logger_);
+      std::string full_response;
+      TokenUsage stream_usage;
+
+      provider->ChatCompletionStream(
+          request, [&](const ChatCompletionResponse& chunk) {
+            if (!chunk.content.empty()) {
+              full_response += chunk.content;
+              if (callback) {
+                callback({events::kTextDelta, {{"text", chunk.content}}});
+              }
+            }
+
+            // Accumulate usage from stream chunks
+            stream_usage.prompt_tokens += chunk.usage.prompt_tokens;
+            stream_usage.completion_tokens += chunk.usage.completion_tokens;
+
+            if (!chunk.tool_calls.empty()) {
+              for (const auto& tc : chunk.tool_calls) {
+                if (callback) {
+                  callback({events::kToolUse,
+                            {{"id", tc.id},
+                             {"name", tc.name},
+                             {"input", tc.arguments}}});
+                }
+
+                // Construct assistant message with text + tool_use blocks
+                Message assistant_msg;
+                assistant_msg.role = "assistant";
+                if (!full_response.empty())
+                  assistant_msg.content.push_back(
+                      ContentBlock::MakeText(full_response));
+                assistant_msg.content.push_back(
+                    ContentBlock::MakeToolUse(tc.id, tc.name, tc.arguments));
+                request.messages.push_back(assistant_msg);
+                new_messages.push_back(assistant_msg);
+                full_response.clear();
+
+                // Execute tool
+                try {
+                  auto result =
+                      tool_registry_->ExecuteTool(tc.name, tc.arguments);
+                  // --- Tool result truncation ---
+                  result = truncate_tool_result(result, kToolResultMaxChars,
+                                                kToolResultKeepLines);
+                  if (callback) {
+                    callback({events::kToolResult,
+                              {{"tool_use_id", tc.id}, {"content", result}}});
+                  }
+
+                  Message results_msg;
+                  results_msg.role = "user";
+                  results_msg.content.push_back(
+                      ContentBlock::MakeToolResult(tc.id, result));
+                  request.messages.push_back(results_msg);
+                  new_messages.push_back(results_msg);
+                } catch (const std::exception& e) {
+                  std::string error_content = "Error: " + std::string(e.what());
+                  if (callback) {
+                    callback({events::kToolResult,
+                              {{"tool_use_id", tc.id},
+                               {"content", error_content},
+                               {"is_error", true}}});
+                  }
+
+                  Message results_msg;
+                  results_msg.role = "user";
+                  results_msg.content.push_back(
+                      ContentBlock::MakeToolResult(tc.id, error_content));
+                  request.messages.push_back(results_msg);
+                  new_messages.push_back(results_msg);
+                }
+              }
+              iterations++;
+              return;  // Continue loop for tool results
+            }
+
+            if (chunk.is_stream_end) {
+              if (callback) {
+                callback({events::kMessageEnd, {{"content", full_response}}});
+              }
+            }
+          });
+
+      // --- Usage tracking ---
+      if (usage_accumulator_ && !effective_session_key.empty()) {
+        usage_accumulator_->Record(effective_session_key,
+                                   stream_usage.prompt_tokens,
+                                   stream_usage.completion_tokens);
+      }
+      logger_->debug("Token usage (stream): prompt={} completion={}",
+                     stream_usage.prompt_tokens,
+                     stream_usage.completion_tokens);
+
+      // Record success for failover tracking
+      if (failover_resolver_ && !last_provider_id_.empty()) {
+        failover_resolver_->RecordSuccess(last_provider_id_, last_profile_id_,
+                                          session_key_);
+      }
+
+      // If we got a final response without tool calls, we're done
+      if (!full_response.empty()) {
+        Message final_msg;
+        final_msg.role = "assistant";
+        final_msg.content.push_back(ContentBlock::MakeText(full_response));
+        new_messages.push_back(final_msg);
+        return new_messages;
+      }
+
+      iterations++;
+
+    } catch (const ProviderError& pe) {
+      // --- Overflow compaction retry ---
+      if (pe.Kind() == ProviderErrorKind::kContextOverflow &&
+          overflow_retries_stream < kOverflowCompactionMaxRetries) {
+        overflow_retries_stream++;
+        logger_->warn("Streaming context overflow (attempt {}/{}), compacting",
+                      overflow_retries_stream, kOverflowCompactionMaxRetries);
+        int keep = std::max(2, static_cast<int>(request.messages.size()) / 2);
+        std::vector<Message> compacted;
+        if (!system_prompt.empty()) {
+          compacted.push_back(Message{"system", system_prompt});
+        }
+        compacted.push_back(Message{
+            "system", "[Context overflow recovery: older messages removed.]"});
+        for (auto it = request.messages.end() - keep;
+             it != request.messages.end(); ++it) {
+          compacted.push_back(*it);
+        }
+        request.messages = std::move(compacted);
+        continue;
+      }
+
+      // Context overflow with retries exhausted — throw immediately
+      if (pe.Kind() == ProviderErrorKind::kContextOverflow) {
+        logger_->error("Streaming context overflow: retries exhausted");
+        if (callback) {
+          callback({events::kMessageEnd, {{"error", pe.what()}}});
+        }
+        return new_messages;
+      }
+
+      // Record failure and attempt failover (with Retry-After if provided)
+      if (failover_resolver_ && !last_provider_id_.empty()) {
+        failover_resolver_->RecordFailure(last_provider_id_, last_profile_id_,
+                                          pe.Kind(), pe.RetryAfterSeconds());
+
+        logger_->warn("Streaming provider error ({}), attempting failover: {}",
+                      ProviderErrorKindToString(pe.Kind()), pe.what());
+
+        agent_config_.model = original_model_stream;
+        auto new_provider = resolve_provider();
+        if (new_provider && new_provider != provider) {
+          provider = new_provider;
+          request.model = resolved_request_model();
+          iterations++;
+          continue;
+        }
+      }
+
+      logger_->error("Error in streaming: {}", pe.what());
+      if (callback) {
+        callback({events::kMessageEnd, {{"error", pe.what()}}});
+      }
+      return new_messages;
+
+    } catch (const std::exception& e) {
+      logger_->error("Error in streaming: {}", e.what());
+      if (callback) {
+        callback({events::kMessageEnd, {{"error", e.what()}}});
+      }
+      return new_messages;
+    }
+  }
+
+  std::string stop_text =
+      stop_requested_ ? "[Stopped]" : "[Max iterations reached]";
+  if (callback) {
+    callback({events::kMessageEnd, {{"content", stop_text}}});
+  }
+  Message stop_msg;
+  stop_msg.role = "assistant";
+  stop_msg.content.push_back(ContentBlock::MakeText(stop_text));
+  new_messages.push_back(stop_msg);
+  return new_messages;
 }
 
 void AgentLoop::Stop() {
-    stop_requested_ = true;
-    logger_->info("Agent stop requested");
+  stop_requested_ = true;
+  logger_->info("Agent stop requested");
 }
 
 void AgentLoop::SetConfig(const AgentConfig& config) {
-    agent_config_ = config;
-    max_iterations_ = config.DynamicMaxIterations();
-    logger_->info("AgentLoop config updated: model={}, temp={}, max_tokens={}, max_iterations={}, thinking={}",
-                  config.model, config.temperature, config.max_tokens, max_iterations_, config.thinking);
+  agent_config_ = config;
+  resolved_model_name_ = config.model;
+  max_iterations_ = config.DynamicMaxIterations();
+  logger_->info(
+      "AgentLoop config updated: model={}, temp={}, max_tokens={}, "
+      "max_iterations={}, thinking={}",
+      config.model, config.temperature, config.max_tokens, max_iterations_,
+      config.thinking);
 }
 
-std::vector<std::string> AgentLoop::handle_tool_calls(const std::vector<nlohmann::json>& tool_calls) {
-    std::vector<std::string> results;
+std::vector<std::string>
+AgentLoop::handle_tool_calls(const std::vector<nlohmann::json>& tool_calls) {
+  std::vector<std::string> results;
 
-    for (const auto& tool_call : tool_calls) {
-        try {
-            std::string tool_name = tool_call["function"]["name"];
-            nlohmann::json arguments;
-            const auto& args_val = tool_call["function"]["arguments"];
-            if (args_val.is_string()) {
-                arguments = nlohmann::json::parse(args_val.get<std::string>());
-            } else {
-                arguments = args_val;
-            }
+  for (const auto& tool_call : tool_calls) {
+    try {
+      std::string tool_name = tool_call["function"]["name"];
+      nlohmann::json arguments;
+      const auto& args_val = tool_call["function"]["arguments"];
+      if (args_val.is_string()) {
+        arguments = nlohmann::json::parse(args_val.get<std::string>());
+      } else {
+        arguments = args_val;
+      }
 
-            logger_->info("Executing tool: {} with arguments: {}", tool_name, arguments.dump());
-            std::string result = tool_registry_->ExecuteTool(tool_name, arguments);
-            results.push_back(result);
-            logger_->info("Tool execution successful");
+      logger_->info("Executing tool: {} with arguments: {}", tool_name,
+                    arguments.dump());
+      std::string result = tool_registry_->ExecuteTool(tool_name, arguments);
+      results.push_back(result);
+      logger_->info("Tool execution successful");
 
-        } catch (const std::exception& e) {
-            logger_->error("Tool execution failed: {}", e.what());
-            results.push_back("Error executing tool: " + std::string(e.what()));
-        }
+    } catch (const std::exception& e) {
+      logger_->error("Tool execution failed: {}", e.what());
+      results.push_back("Error executing tool: " + std::string(e.what()));
     }
+  }
 
-    return results;
+  return results;
 }
 
-} // namespace quantclaw
+}  // namespace quantclaw
