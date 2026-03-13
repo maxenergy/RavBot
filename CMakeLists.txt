@@ -305,6 +305,7 @@ if(BUILD_TESTS)
         tests/test_external_content.cpp
         tests/test_trust_model.cpp
         tests/test_audit_logger.cpp
+        tests/performance/test_load.cpp
     )
 
     add_executable(quantclaw_tests ${TEST_SOURCES})
