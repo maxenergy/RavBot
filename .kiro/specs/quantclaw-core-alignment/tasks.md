@@ -253,10 +253,11 @@
       - _Requirements: 5.2_
       - ✅ 已完成 (commit: 即将提交)
     
-    - [~] 2.1.4 添加 ResetCooldowns() 方法
+    - [x] 2.1.4 添加 ResetCooldowns() 方法
       - 用于测试和管理员操作
       - 清除所有冷却状态
       - _Requirements: 2.1, 2.2, 2.3_
+      - ✅ 已完成 (commit: 即将提交)
     
     - [ ]* 2.1.5 更新 Failover Resolver 单元测试
       - 测试配置轮换逻辑
@@ -278,16 +279,22 @@
       - _Requirements: 2.6_
       - ✅ 已完成 (commit: b9d168b)
     
-    - [~] 2.2.2 实现 GetAllStates() 方法
+    - [x] 2.2.2 实现 GetAllStates() 方法
       - 返回所有配置的冷却状态
       - 包含剩余冷却时间
       - _Requirements: 2.1, 2.2, 2.3_
-    
-    - [~] 2.2.3 实现 GetStats() 方法
+      - ✅ 已完成 (commit: b9d168b)
+
+    - [x] 2.2.3 实现 GetStats() 方法
       - 返回冷却统计信息
       - _Requirements: 2.6_
-    
-    - [~] 2.2.4 增强速率限制错误处理
+      - ✅ 已完成 (commit: b9d168b)
+
+    - [x] 2.2.4 增强速率限制错误处理
+      - 检测速率限制错误
+      - 自动延长冷却时长
+      - _Requirements: 2.8_
+      - ✅ 已实现（已存在于代码库中）
       - 检测速率限制错误
       - 自动延长冷却时长
       - _Requirements: 2.8_
