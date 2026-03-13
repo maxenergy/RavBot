@@ -640,4 +640,203 @@ int AgentConfig::DynamicMaxIterations() const {
            static_cast<int>(ratio * (kMaxMaxIterations - kMinMaxIterations));
 }
 
+// ---------------------------------------------------------------------------
+// Requirements: 21.2, 21.5 - 配置验证
+// ---------------------------------------------------------------------------
+
+std::vector<std::string> QuantClawConfig::Validate(const nlohmann::json& json) {
+    std::vector<std::string> errors;
+
+    // 验证根对象类型
+    if (!json.is_object()) {
+        errors.push_back("Root configuration must be a JSON object");
+        return errors;
+    }
+
+    // 验证 agent 配置
+    if (json.contains("agent")) {
+        const auto& agent = json["agent"];
+        if (!agent.is_object()) {
+            errors.push_back("agent: must be an object");
+        } else {
+            // 验证 model 字段
+            if (agent.contains("model") && !agent["model"].is_string() && !agent["model"].is_object()) {
+                errors.push_back("agent.model: must be a string or object");
+            }
+            // 验证数值字段
+            if (agent.contains("maxIterations") && !agent["maxIterations"].is_number_integer()) {
+                errors.push_back("agent.maxIterations: must be an integer");
+            }
+            if (agent.contains("max_iterations") && !agent["max_iterations"].is_number_integer()) {
+                errors.push_back("agent.max_iterations: must be an integer");
+            }
+            if (agent.contains("temperature") && !agent["temperature"].is_number()) {
+                errors.push_back("agent.temperature: must be a number");
+            }
+            if (agent.contains("maxTokens") && !agent["maxTokens"].is_number_integer()) {
+                errors.push_back("agent.maxTokens: must be an integer");
+            }
+            if (agent.contains("max_tokens") && !agent["max_tokens"].is_number_integer()) {
+                errors.push_back("agent.max_tokens: must be an integer");
+            }
+            if (agent.contains("contextWindow") && !agent["contextWindow"].is_number_integer()) {
+                errors.push_back("agent.contextWindow: must be an integer");
+            }
+            if (agent.contains("context_window") && !agent["context_window"].is_number_integer()) {
+                errors.push_back("agent.context_window: must be an integer");
+            }
+            // 验证 thinking 字段
+            if (agent.contains("thinking") && agent["thinking"].is_string()) {
+                std::string thinking = agent["thinking"].get<std::string>();
+                if (thinking != "off" && thinking != "low" && thinking != "medium" && thinking != "high") {
+                    errors.push_back("agent.thinking: must be one of 'off', 'low', 'medium', 'high'");
+                }
+            }
+            // 验证 fallbacks 字段
+            if (agent.contains("fallbacks") && !agent["fallbacks"].is_array()) {
+                errors.push_back("agent.fallbacks: must be an array");
+            }
+        }
+    }
+
+    // 验证 providers 配置
+    if (json.contains("providers")) {
+        const auto& providers = json["providers"];
+        if (!providers.is_object()) {
+            errors.push_back("providers: must be an object");
+        } else {
+            for (const auto& [key, value] : providers.items()) {
+                if (!value.is_object()) {
+                    errors.push_back("providers." + key + ": must be an object");
+                    continue;
+                }
+                // 验证 apiKey 字段
+                if (value.contains("apiKey") && !value["apiKey"].is_string()) {
+                    errors.push_back("providers." + key + ".apiKey: must be a string");
+                }
+                if (value.contains("api_key") && !value["api_key"].is_string()) {
+                    errors.push_back("providers." + key + ".api_key: must be a string");
+                }
+                // 验证 baseUrl 字段
+                if (value.contains("baseUrl") && !value["baseUrl"].is_string()) {
+                    errors.push_back("providers." + key + ".baseUrl: must be a string");
+                }
+                if (value.contains("base_url") && !value["base_url"].is_string()) {
+                    errors.push_back("providers." + key + ".base_url: must be a string");
+                }
+                // 验证 timeout 字段
+                if (value.contains("timeout") && !value["timeout"].is_number_integer()) {
+                    errors.push_back("providers." + key + ".timeout: must be an integer");
+                }
+            }
+        }
+    }
+
+    // 验证 gateway 配置
+    if (json.contains("gateway")) {
+        const auto& gateway = json["gateway"];
+        if (!gateway.is_object()) {
+            errors.push_back("gateway: must be an object");
+        } else {
+            // 验证 port 字段
+            if (gateway.contains("port") && !gateway["port"].is_number_integer()) {
+                errors.push_back("gateway.port: must be an integer");
+            }
+            // 验证 bind 字段
+            if (gateway.contains("bind") && !gateway["bind"].is_string()) {
+                errors.push_back("gateway.bind: must be a string");
+            }
+        }
+    }
+
+    // 验证 channels 配置
+    if (json.contains("channels")) {
+        const auto& channels = json["channels"];
+        if (!channels.is_object()) {
+            errors.push_back("channels: must be an object");
+        } else {
+            for (const auto& [key, value] : channels.items()) {
+                if (!value.is_object()) {
+                    errors.push_back("channels." + key + ": must be an object");
+                    continue;
+                }
+                // 验证 enabled 字段
+                if (value.contains("enabled") && !value["enabled"].is_boolean()) {
+                    errors.push_back("channels." + key + ".enabled: must be a boolean");
+                }
+                // 验证 token 字段
+                if (value.contains("token") && !value["token"].is_string()) {
+                    errors.push_back("channels." + key + ".token: must be a string");
+                }
+                if (value.contains("botToken") && !value["botToken"].is_string()) {
+                    errors.push_back("channels." + key + ".botToken: must be a string");
+                }
+            }
+        }
+    }
+
+    // 验证 system 配置
+    if (json.contains("system")) {
+        const auto& system = json["system"];
+        if (!system.is_object()) {
+            errors.push_back("system: must be an object");
+        } else {
+            // 验证 logLevel 字段
+            if (system.contains("logLevel") && system["logLevel"].is_string()) {
+                std::string level = system["logLevel"].get<std::string>();
+                if (level != "trace" && level != "debug" && level != "info" &&
+                    level != "warn" && level != "error" && level != "critical" && level != "off") {
+                    errors.push_back("system.logLevel: must be one of 'trace', 'debug', 'info', 'warn', 'error', 'critical', 'off'");
+                }
+            }
+            // 验证 port 字段
+            if (system.contains("port") && !system["port"].is_number_integer()) {
+                errors.push_back("system.port: must be an integer");
+            }
+        }
+    }
+
+    // 验证 security 配置
+    if (json.contains("security")) {
+        const auto& security = json["security"];
+        if (!security.is_object()) {
+            errors.push_back("security: must be an object");
+        } else {
+            // 验证 permissionLevel 字段
+            if (security.contains("permissionLevel") && security["permissionLevel"].is_string()) {
+                std::string level = security["permissionLevel"].get<std::string>();
+                if (level != "auto" && level != "strict" && level != "permissive") {
+                    errors.push_back("security.permissionLevel: must be one of 'auto', 'strict', 'permissive'");
+                }
+            }
+            // 验证 allowLocalExecute 字段
+            if (security.contains("allowLocalExecute") && !security["allowLocalExecute"].is_boolean()) {
+                errors.push_back("security.allowLocalExecute: must be a boolean");
+            }
+        }
+    }
+
+    return errors;
+}
+
+// ---------------------------------------------------------------------------
+// Requirements: 21.6 - 配置合并
+// ---------------------------------------------------------------------------
+
+nlohmann::json QuantClawConfig::Merge(const nlohmann::json& base, const nlohmann::json& override) {
+    // 使用 nlohmann::json 的 merge_patch 方法
+    // 这实现了 RFC 7396 JSON Merge Patch 语义
+    nlohmann::json result = base;
+    result.merge_patch(override);
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// Requirements: 21.7 - 美化输出
+// ---------------------------------------------------------------------------
+
+std::string QuantClawConfig::PrettyPrint(const nlohmann::json& json, int indent) {
+    return json.dump(indent);
+}
+
 } // namespace quantclaw

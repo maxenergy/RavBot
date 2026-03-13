@@ -997,3 +997,336 @@ TEST_F(ConfigTest, EnvVarNoSubstitutionWithoutDollarBrace) {
     auto config = quantclaw::QuantClawConfig::FromJson(json_config);
     EXPECT_EQ(config.providers.at("openai").api_key, "literal-string-no-vars");
 }
+
+// --- Requirements: 21.2, 21.5 - 配置验证测试 ---
+
+TEST_F(ConfigTest, Validate_ValidConfig) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"model", "gpt-4"},
+            {"maxIterations", 10},
+            {"temperature", 0.7}
+        }},
+        {"providers", {
+            {"openai", {
+                {"apiKey", "sk-test"},
+                {"baseUrl", "https://api.openai.com/v1"}
+            }}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    EXPECT_TRUE(errors.empty());
+}
+
+TEST_F(ConfigTest, Validate_InvalidRootType) {
+    nlohmann::json json_config = nlohmann::json::array();
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "Root configuration must be a JSON object");
+}
+
+TEST_F(ConfigTest, Validate_InvalidAgentType) {
+    nlohmann::json json_config = {
+        {"agent", "not-an-object"}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "agent: must be an object");
+}
+
+TEST_F(ConfigTest, Validate_InvalidModelType) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"model", 123}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "agent.model: must be a string or object");
+}
+
+TEST_F(ConfigTest, Validate_InvalidMaxIterationsType) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"maxIterations", "not-a-number"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "agent.maxIterations: must be an integer");
+}
+
+TEST_F(ConfigTest, Validate_InvalidTemperatureType) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"temperature", "not-a-number"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "agent.temperature: must be a number");
+}
+
+TEST_F(ConfigTest, Validate_InvalidThinkingValue) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"thinking", "invalid"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "agent.thinking: must be one of 'off', 'low', 'medium', 'high'");
+}
+
+TEST_F(ConfigTest, Validate_InvalidFallbacksType) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"fallbacks", "not-an-array"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "agent.fallbacks: must be an array");
+}
+
+TEST_F(ConfigTest, Validate_InvalidProvidersType) {
+    nlohmann::json json_config = {
+        {"providers", "not-an-object"}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "providers: must be an object");
+}
+
+TEST_F(ConfigTest, Validate_InvalidProviderEntryType) {
+    nlohmann::json json_config = {
+        {"providers", {
+            {"openai", "not-an-object"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "providers.openai: must be an object");
+}
+
+TEST_F(ConfigTest, Validate_InvalidApiKeyType) {
+    nlohmann::json json_config = {
+        {"providers", {
+            {"openai", {
+                {"apiKey", 123}
+            }}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "providers.openai.apiKey: must be a string");
+}
+
+TEST_F(ConfigTest, Validate_InvalidGatewayPortType) {
+    nlohmann::json json_config = {
+        {"gateway", {
+            {"port", "not-a-number"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "gateway.port: must be an integer");
+}
+
+TEST_F(ConfigTest, Validate_InvalidChannelEnabledType) {
+    nlohmann::json json_config = {
+        {"channels", {
+            {"telegram", {
+                {"enabled", "not-a-boolean"}
+            }}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "channels.telegram.enabled: must be a boolean");
+}
+
+TEST_F(ConfigTest, Validate_InvalidLogLevel) {
+    nlohmann::json json_config = {
+        {"system", {
+            {"logLevel", "invalid-level"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "system.logLevel: must be one of 'trace', 'debug', 'info', 'warn', 'error', 'critical', 'off'");
+}
+
+TEST_F(ConfigTest, Validate_InvalidPermissionLevel) {
+    nlohmann::json json_config = {
+        {"security", {
+            {"permissionLevel", "invalid"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0], "security.permissionLevel: must be one of 'auto', 'strict', 'permissive'");
+}
+
+TEST_F(ConfigTest, Validate_MultipleErrors) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"maxIterations", "not-a-number"},
+            {"temperature", "not-a-number"},
+            {"thinking", "invalid"}
+        }},
+        {"gateway", {
+            {"port", "not-a-number"}
+        }}
+    };
+
+    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    EXPECT_EQ(errors.size(), 4u);
+}
+
+// --- Requirements: 21.6 - 配置合并测试 ---
+
+TEST_F(ConfigTest, Merge_SimpleOverride) {
+    nlohmann::json base = {
+        {"agent", {
+            {"model", "gpt-3.5"},
+            {"temperature", 0.5}
+        }}
+    };
+
+    nlohmann::json override = {
+        {"agent", {
+            {"model", "gpt-4"}
+        }}
+    };
+
+    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    EXPECT_EQ(merged["agent"]["model"], "gpt-4");
+    EXPECT_DOUBLE_EQ(merged["agent"]["temperature"].get<double>(), 0.5);
+}
+
+TEST_F(ConfigTest, Merge_NestedOverride) {
+    nlohmann::json base = {
+        {"gateway", {
+            {"port", 18800},
+            {"auth", {
+                {"mode", "token"},
+                {"token", "old-token"}
+            }}
+        }}
+    };
+
+    nlohmann::json override = {
+        {"gateway", {
+            {"auth", {
+                {"token", "new-token"}
+            }}
+        }}
+    };
+
+    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    EXPECT_EQ(merged["gateway"]["port"], 18800);
+    EXPECT_EQ(merged["gateway"]["auth"]["mode"], "token");
+    EXPECT_EQ(merged["gateway"]["auth"]["token"], "new-token");
+}
+
+TEST_F(ConfigTest, Merge_AddNewKeys) {
+    nlohmann::json base = {
+        {"agent", {
+            {"model", "gpt-4"}
+        }}
+    };
+
+    nlohmann::json override = {
+        {"agent", {
+            {"temperature", 0.9}
+        }},
+        {"gateway", {
+            {"port", 9999}
+        }}
+    };
+
+    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    EXPECT_EQ(merged["agent"]["model"], "gpt-4");
+    EXPECT_DOUBLE_EQ(merged["agent"]["temperature"].get<double>(), 0.9);
+    EXPECT_EQ(merged["gateway"]["port"], 9999);
+}
+
+TEST_F(ConfigTest, Merge_EmptyBase) {
+    nlohmann::json base = nlohmann::json::object();
+    nlohmann::json override = {
+        {"agent", {
+            {"model", "gpt-4"}
+        }}
+    };
+
+    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    EXPECT_EQ(merged["agent"]["model"], "gpt-4");
+}
+
+TEST_F(ConfigTest, Merge_EmptyOverride) {
+    nlohmann::json base = {
+        {"agent", {
+            {"model", "gpt-4"}
+        }}
+    };
+    nlohmann::json override = nlohmann::json::object();
+
+    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    EXPECT_EQ(merged["agent"]["model"], "gpt-4");
+}
+
+// --- Requirements: 21.7 - 美化输出测试 ---
+
+TEST_F(ConfigTest, PrettyPrint_DefaultIndent) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"model", "gpt-4"},
+            {"temperature", 0.7}
+        }}
+    };
+
+    std::string pretty = quantclaw::QuantClawConfig::PrettyPrint(json_config);
+
+    // 验证包含换行和缩进
+    EXPECT_TRUE(pretty.find('\n') != std::string::npos);
+    EXPECT_TRUE(pretty.find("  ") != std::string::npos);
+    EXPECT_TRUE(pretty.find("\"agent\"") != std::string::npos);
+    EXPECT_TRUE(pretty.find("\"model\"") != std::string::npos);
+}
+
+TEST_F(ConfigTest, PrettyPrint_CustomIndent) {
+    nlohmann::json json_config = {
+        {"agent", {
+            {"model", "gpt-4"}
+        }}
+    };
+
+    std::string pretty = quantclaw::QuantClawConfig::PrettyPrint(json_config, 4);
+
+    // 验证使用 4 空格缩进
+    EXPECT_TRUE(pretty.find("    ") != std::string::npos);
+}
+
+TEST_F(ConfigTest, PrettyPrint_EmptyObject) {
+    nlohmann::json json_config = nlohmann::json::object();
+
+    std::string pretty = quantclaw::QuantClawConfig::PrettyPrint(json_config);
+    EXPECT_EQ(pretty, "{}");
+}
+

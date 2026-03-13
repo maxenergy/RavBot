@@ -276,6 +276,18 @@ public:
 
     static std::string ExpandHome(const std::string& path);
     static std::string DefaultConfigPath();
+
+    // Requirements: 21.2, 21.5 - 配置验证
+    // 验证配置 JSON 的有效性,返回错误信息列表
+    static std::vector<std::string> Validate(const nlohmann::json& json);
+
+    // Requirements: 21.6 - 配置合并
+    // 合并两个配置对象,后者覆盖前者
+    static nlohmann::json Merge(const nlohmann::json& base, const nlohmann::json& override);
+
+    // Requirements: 21.7 - 美化输出
+    // 格式化配置为可读的 JSON 字符串
+    static std::string PrettyPrint(const nlohmann::json& json, int indent = 2);
 };
 
 } // namespace quantclaw
