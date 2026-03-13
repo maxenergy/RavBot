@@ -951,41 +951,45 @@
     - 询问用户是否有问题
 
 - [ ] 6. Phase 6: Configuration and Serialization (Week 13)
-  - [ ] 6.1 Config Parser 增强
-    - [ ] 6.1.1 实现配置验证
+  - [x] 6.1 Config Parser 增强
+    - [x] 6.1.1 实现配置验证
       - 在 `src/config.cpp` 中增强解析逻辑
       - 验证必填字段
       - 验证字段类型
       - 返回描述性错误信息
       - _Requirements: 21.2, 21.5_
-    
-    - [ ] 6.1.2 实现配置合并
+      - ✅ 已完成: commit 9252cf4
+
+    - [x] 6.1.2 实现配置合并
       - 实现配置合并功能
       - 后加载的配置覆盖先加载的配置
       - 支持部分配置更新
       - _Requirements: 21.6_
-    
-    - [ ] 6.1.3 实现美化输出
+      - ✅ 已完成: commit 9252cf4
+
+    - [x] 6.1.3 实现美化输出
       - 支持格式化 JSON 输出
       - 添加缩进和换行
       - _Requirements: 21.7_
-    
-    - [ ]* 6.1.4 更新 Config Parser 单元测试
+      - ✅ 已完成: commit 9252cf4
+
+    - [x] 6.1.4 更新 Config Parser 单元测试
       - 测试配置验证
       - 测试配置合并
       - 测试美化输出
       - _Requirements: 21.1-21.8_
-    
+      - ✅ 已完成: 24 个新测试,所有 74 个 ConfigTest 测试通过
+
     - [ ]* 6.1.5 为 Config Parser 编写 property test
       - **Property 21: Config Round-Trip Preservation**
       - **Validates: Requirements 21.4**
       - 验证配置序列化和反序列化的一致性
-    
+
     - [ ]* 6.1.6 为 Config Parser 编写 property test
       - **Property 22: Config Validation Error Messages**
       - **Validates: Requirements 21.2**
       - 验证无效配置返回描述性错误
-    
+
     - [ ]* 6.1.7 为 Config Parser 编写 property test
       - **Property 23: Config Merge Correctness**
       - **Validates: Requirements 21.6**
