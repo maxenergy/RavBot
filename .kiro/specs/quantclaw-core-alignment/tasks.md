@@ -603,40 +603,46 @@
     - 询问用户是否有问题
 
 - [ ] 4. Phase 4: Security Layer (Weeks 9-10)
-  - [ ] 4.1 External Content Wrapper 实现
-    - [ ] 4.1.1 创建 ExternalContentWrapper 类
+  - [x] 4.1 External Content Wrapper 实现
+    - [x] 4.1.1 创建 ExternalContentWrapper 类
       - 创建 `include/quantclaw/security/external_content.hpp`
       - 创建 `src/security/external_content.cpp`
       - 定义 ContentSource 结构体
       - 定义边界标记常量（使用特殊 Unicode 字符）
       - _Requirements: 12.1, 12.2, 12.3, 12.4_
-    
-    - [ ] 4.1.2 实现 Wrap() 方法
+      - ✅ 已完成 (commit: 8d56b08)
+
+    - [x] 4.1.2 实现 Wrap() 方法
       - 用边界标记包装外部内容
       - 包含来源信息（工具名称、URL、时间戳）
       - _Requirements: 12.2, 12.3_
-    
-    - [ ] 4.1.3 实现 ValidateMarkers() 方法
+      - ✅ 已完成 (commit: 8d56b08)
+
+    - [x] 4.1.3 实现 ValidateMarkers() 方法
       - 验证边界标记的完整性
       - 检测标记是否被篡改
       - _Requirements: 12.5_
-    
-    - [ ] 4.1.4 实现 GetMarkerExplanation() 方法
+      - ✅ 已完成 (commit: 8d56b08)
+
+    - [x] 4.1.4 实现 GetMarkerExplanation() 方法
       - 生成系统提示词中的边界标记说明
       - 指导 LLM 对外部内容保持警惕
       - _Requirements: 12.6, 12.7_
-    
-    - [ ] 4.1.5 实现 Unwrap() 方法
+      - ✅ 已完成 (commit: 8d56b08)
+
+    - [x] 4.1.5 实现 Unwrap() 方法
       - 用于测试和调试
       - 提取原始内容
       - _Requirements: 12.2_
-    
-    - [ ]* 4.1.6 为 External Content Wrapper 编写单元测试
+      - ✅ 已完成 (commit: 8d56b08)
+
+    - [x]* 4.1.6 为 External Content Wrapper 编写单元测试
       - 测试内容包装
       - 测试标记验证
       - 测试 unwrap 功能
       - _Requirements: 12.1-12.8_
-    
+      - ✅ 已完成 (commit: 8d56b08) - 11 个测试用例全部通过
+
     - [ ]* 4.1.7 为 External Content Wrapper 编写 property test
       - **Property 27: Boundary Marker Wrapping**
       - **Validates: Requirements 12.2, 12.3**
