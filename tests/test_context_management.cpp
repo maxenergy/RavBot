@@ -679,4 +679,128 @@ TEST_F(ContextPrunerTest, NoAssistantMessagesNoProtection) {
   }
 }
 
+// ================================================================
+// CompressionStrategy Tests (Task 1.2.1)
+// ================================================================
+
+TEST_F(ContextPrunerTest, CompressWithinBudget) {
+  // If already within budget, should return unchanged
+  auto history = make_history(2);
+  int current_tokens = ContextPruner::EstimateTokens(history);
+  
+  CompressionStrategy strategy;
+  auto result = ContextPruner::Compress(history, current_tokens + 1000, strategy);
+  
+  EXPECT_EQ(result.size(), history.size());
+}
+
+TEST_F(ContextPrunerTest, CompressOverBudget) {
+  // Create large history that exceeds budget
+  auto history = make_history(10);
+  int current_tokens = ContextPruner::EstimateTokens(history);
+  
+  // Set target to 50% of current
+  int target_tokens = current_tokens / 2;
+  
+  CompressionStrategy strategy;
+  strategy.preserve_recent = true;
+  strategy.preserve_tool_calls = true;
+  
+  auto result = ContextPruner::Compress(history, target_tokens, strategy);
+  int result_tokens = ContextPruner::EstimateTokens(result);
+  
+  // Should be reduced
+  EXPECT_LT(result_tokens, current_tokens);
+  // Should respect min_messages
+  EXPECT_GE(static_cast<int>(result.size()), strategy.min_messages);
+}
+
+TEST_F(ContextPrunerTest, CompressPreservesSystemMessages) {
+  std::vector<Message> history;
+  history.push_back(Message{"system", "You are a helpful assistant"});
+  history.push_back(Message{"user", "Hello"});
+  history.push_back(Message{"assistant", "Hi there!"});
+  
+  for (int i = 0; i < 10; ++i) {
+    history.push_back(Message{"user", "Question " + std::to_string(i)});
+    history.push_back(Message{"assistant", "Answer " + std::to_string(i)});
+  }
+  
+  int current_tokens = ContextPruner::EstimateTokens(history);
+  int target_tokens = current_tokens / 3;
+  
+  CompressionStrategy strategy;
+  strategy.preserve_system = true;
+  strategy.min_messages = 3;
+  
+  auto result = ContextPruner::Compress(history, target_tokens, strategy);
+  
+  // System message should be preserved
+  bool has_system = false;
+  for (const auto& msg : result) {
+    if (msg.role == "system") {
+      has_system = true;
+      EXPECT_EQ(msg.text(), "You are a helpful assistant");
+      break;
+    }
+  }
+  EXPECT_TRUE(has_system);
+}
+
+TEST_F(ContextPrunerTest, CompressRespectsMinMessages) {
+  auto history = make_history(10);
+  
+  CompressionStrategy strategy;
+  strategy.min_messages = 8;
+  
+  // Set very aggressive target
+  int target_tokens = 100;
+  
+  auto result = ContextPruner::Compress(history, target_tokens, strategy);
+  
+  // Should not go below min_messages
+  EXPECT_GE(static_cast<int>(result.size()), strategy.min_messages);
+}
+
+TEST_F(ContextPrunerTest, TruncateToolResultShortContent) {
+  std::string short_result = "This is a short result";
+  
+  std::string truncated = ContextPruner::TruncateToolResult(short_result, 1000);
+  
+  // Should be unchanged
+  EXPECT_EQ(truncated, short_result);
+}
+
+TEST_F(ContextPrunerTest, TruncateToolResultLongContent) {
+  std::string long_result;
+  for (int i = 0; i < 100; ++i) {
+    long_result += "Line " + std::to_string(i) + " with some content\n";
+  }
+  
+  std::string truncated = ContextPruner::TruncateToolResult(long_result, 500);
+  
+  // Should be shorter
+  EXPECT_LT(truncated.size(), long_result.size());
+  // Should contain ellipsis marker
+  EXPECT_NE(truncated.find("..."), std::string::npos);
+  // Should contain "omitted"
+  EXPECT_NE(truncated.find("omitted"), std::string::npos);
+}
+
+TEST_F(ContextPrunerTest, TruncateToolResultPreservesHeadAndTail) {
+  std::string content;
+  for (int i = 0; i < 50; ++i) {
+    content += "Line " + std::to_string(i) + "\n";
+  }
+  
+  std::string truncated = ContextPruner::TruncateToolResult(content, 300);
+  
+  // Should contain first line
+  EXPECT_NE(truncated.find("Line 0"), std::string::npos);
+  // Should contain last line
+  EXPECT_NE(truncated.find("Line 49"), std::string::npos);
+  // Should have omission marker
+  EXPECT_NE(truncated.find("omitted"), std::string::npos);
+}
+
 }  // namespace quantclaw

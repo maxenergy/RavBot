@@ -327,6 +327,7 @@ namespace methods {
 
     // Models
     constexpr const char* kModelsSet        = "models.set";
+    constexpr const char* kModelsCatalog    = "models.catalog";
 
     // Plugin methods
     constexpr const char* kPluginsList       = "plugins.list";
@@ -352,7 +353,45 @@ namespace methods {
     constexpr const char* kOcStatus           = "status";
     constexpr const char* kOcModelsList       = "models.list";
     constexpr const char* kOcToolsCatalog     = "tools.catalog";
+    constexpr const char* kOcSkillsStatus     = "skills.status";
+    constexpr const char* kOcSkillsBins       = "skills.bins";
+    constexpr const char* kOcSecretsResolve   = "secrets.resolve";
+    constexpr const char* kOcLogsTail         = "logs.tail";
     constexpr const char* kOcSessionsPreview  = "sessions.preview";
+
+    // Device pairing methods
+    constexpr const char* kDevicePairList     = "device.pair.list";
+    constexpr const char* kDevicePairApprove  = "device.pair.approve";
+    constexpr const char* kDevicePairReject   = "device.pair.reject";
+    constexpr const char* kDevicePairRemove   = "device.pair.remove";
+    constexpr const char* kDeviceTokenRotate  = "device.token.rotate";
+    constexpr const char* kDeviceTokenRevoke  = "device.token.revoke";
+
+    // Exec approval methods
+    constexpr const char* kExecApprovalsGet   = "exec.approvals.get";
+    constexpr const char* kExecApprovalsSet   = "exec.approvals.set";
+    constexpr const char* kExecApprovalRequest = "exec.approval.request";
+    constexpr const char* kExecApprovalResolve = "exec.approval.resolve";
+    constexpr const char* kExecApprovalsNodeGet = "exec.approvals.node.get";
+    constexpr const char* kExecApprovalsNodeSet = "exec.approvals.node.set";
+
+    // Node operation methods
+    constexpr const char* kNodeList           = "node.list";
+    constexpr const char* kNodeDescribe       = "node.describe";
+    constexpr const char* kNodeRename         = "node.rename";
+    constexpr const char* kNodePairList       = "node.pair.list";
+    constexpr const char* kNodePairRequest    = "node.pair.request";
+    constexpr const char* kNodePairApprove    = "node.pair.approve";
+    constexpr const char* kNodePairReject     = "node.pair.reject";
+    constexpr const char* kNodeInvoke         = "node.invoke";
+    constexpr const char* kNodeEvent          = "node.event";
+
+    // Vector and embedding methods
+    constexpr const char* kEmbeddingsGenerate = "embeddings.generate";
+    constexpr const char* kEmbeddingsSearch   = "embeddings.search";
+    constexpr const char* kVectorIndex        = "vector.index";
+    constexpr const char* kVectorSearch       = "vector.search";
+    constexpr const char* kVectorDelete       = "vector.delete";
 } // namespace methods
 
 // --- Event Names ---

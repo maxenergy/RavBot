@@ -10,6 +10,22 @@
 
 namespace quantclaw {
 
+// Compression strategy for message history pruning.
+// Defines which message types to preserve during compression.
+struct CompressionStrategy {
+  bool preserve_recent = true;       // Keep recent messages
+  bool preserve_tool_calls = true;   // Keep tool calls and results
+  bool preserve_system = true;       // Keep system messages
+  int min_messages = 5;              // Minimum messages to keep
+};
+
+// Statistics recorded during a compression operation.
+// Satisfies Requirement 3.7: record messages removed and tokens saved.
+struct CompressionStats {
+  int messages_removed = 0;  // Number of messages dropped from history
+  int tokens_saved = 0;      // Estimated tokens freed by compression
+};
+
 // Prunes old tool results from conversation history to reduce context size.
 //
 // Strategy:
@@ -43,6 +59,26 @@ class ContextPruner {
   // Estimate token count for a message (rough: 4 chars ≈ 1 token)
   static int EstimateTokens(const Message& msg);
   static int EstimateTokens(const std::vector<Message>& msgs);
+
+  // Compress messages to fit target token count using CompressionStrategy.
+  // This is a higher-level interface that uses the Options-based Prune method.
+  static std::vector<Message> Compress(
+      const std::vector<Message>& messages,
+      int target_tokens,
+      const CompressionStrategy& strategy = {});
+
+  // Compress messages and populate stats with messages_removed and
+  // tokens_saved. Satisfies Requirement 3.7.
+  static std::vector<Message> CompressWithStats(
+      const std::vector<Message>& messages,
+      int target_tokens,
+      CompressionStats& stats,
+      const CompressionStrategy& strategy = {});
+
+  // Truncate long tool results to a maximum character count.
+  static std::string TruncateToolResult(
+      const std::string& result,
+      int max_chars = 10000);
 
  private:
   // Soft-prune a tool result: keep first/last N lines with ellipsis

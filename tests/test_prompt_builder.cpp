@@ -1628,3 +1628,295 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesAllApprovalSteps) {
   EXPECT_NE(prompt.find("4. **Execute Safely**"), std::string::npos);
   EXPECT_NE(prompt.find("5. **Verify and Report**"), std::string::npos);
 }
+
+// --- BuildWithComponents tests for tool summary (Task 1.1.9) ---
+
+TEST_F(PromptBuilderTest, BuildWithComponentsUsesToolSummaryWhenOver100Tools) {
+  // Create a mock registry with > 100 tools
+  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  
+  // Add 110 mock tools
+  for (int i = 0; i < 110; i++) {
+    std::string tool_name = "tool_" + std::to_string(i);
+    std::string description = "Description for tool " + std::to_string(i);
+    large_registry->RegisterExternalTool(tool_name, description, nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  auto large_builder = quantclaw::PromptBuilder(
+      memory_manager_, skill_loader_, large_registry);
+  
+  quantclaw::PromptComponents components;
+  components.use_tool_summary = false;  // Auto-detect based on count
+  quantclaw::PromptContext context;
+  context.tool_count = 110;
+  
+  auto prompt = large_builder.BuildWithComponents(components, context);
+  
+  // Verify tool summary mode is used
+  EXPECT_NE(prompt.find("## Available Tools (Summary)"), std::string::npos);
+  EXPECT_NE(prompt.find("### Tool Summary Mode"), std::string::npos);
+  EXPECT_NE(prompt.find("**Total available tools**: 110"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryIncludesCategorization) {
+  // Create a registry with tools from different categories
+  auto categorized_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  
+  // Add tools from different categories (> 100 to trigger summary mode)
+  for (int i = 0; i < 30; i++) {
+    categorized_registry->RegisterExternalTool("read_file_" + std::to_string(i), 
+                                       "Read file " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  for (int i = 0; i < 30; i++) {
+    categorized_registry->RegisterExternalTool("exec_command_" + std::to_string(i), 
+                                       "Execute command " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  for (int i = 0; i < 30; i++) {
+    categorized_registry->RegisterExternalTool("web_search_" + std::to_string(i), 
+                                       "Search web " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  for (int i = 0; i < 25; i++) {
+    categorized_registry->RegisterExternalTool("memory_recall_" + std::to_string(i), 
+                                       "Recall memory " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  auto categorized_builder = quantclaw::PromptBuilder(
+      memory_manager_, skill_loader_, categorized_registry);
+  
+  quantclaw::PromptComponents components;
+  quantclaw::PromptContext context;
+  context.tool_count = 115;
+  
+  auto prompt = categorized_builder.BuildWithComponents(components, context);
+  
+  // Verify categories are present
+  EXPECT_NE(prompt.find("**File Operations**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Command Execution & Process Management**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Web & Network**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Memory & Context**"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryIncludesUsageGuidelines) {
+  // Create a registry with > 100 tools
+  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  for (int i = 0; i < 105; i++) {
+    large_registry->RegisterExternalTool("tool_" + std::to_string(i), 
+                                 "Tool description " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  auto large_builder = quantclaw::PromptBuilder(
+      memory_manager_, skill_loader_, large_registry);
+  
+  quantclaw::PromptComponents components;
+  quantclaw::PromptContext context;
+  context.tool_count = 105;
+  
+  auto prompt = large_builder.BuildWithComponents(components, context);
+  
+  // Verify usage guidelines are included
+  EXPECT_NE(prompt.find("### Tool Usage Guidelines"), std::string::npos);
+  EXPECT_NE(prompt.find("**How to use tools:**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Tool Selection**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Parameter Discovery**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Error Handling**"), std::string::npos);
+  EXPECT_NE(prompt.find("**Chaining**"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryIncludesImportantNotes) {
+  // Create a registry with > 100 tools
+  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  for (int i = 0; i < 105; i++) {
+    large_registry->RegisterExternalTool("tool_" + std::to_string(i), 
+                                 "Tool description " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  auto large_builder = quantclaw::PromptBuilder(
+      memory_manager_, skill_loader_, large_registry);
+  
+  quantclaw::PromptComponents components;
+  quantclaw::PromptContext context;
+  context.tool_count = 105;
+  
+  auto prompt = large_builder.BuildWithComponents(components, context);
+  
+  // Verify important notes are included
+  EXPECT_NE(prompt.find("**Important Notes:**"), std::string::npos);
+  EXPECT_NE(prompt.find("Full tool schemas with parameter details are available"), std::string::npos);
+  EXPECT_NE(prompt.find("ensure you provide all required parameters"), std::string::npos);
+  EXPECT_NE(prompt.find("Tool descriptions above provide high-level guidance"), std::string::npos);
+  EXPECT_NE(prompt.find("Some tools may require specific permissions"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryIncludesPerformanceTip) {
+  // Create a registry with > 100 tools
+  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  for (int i = 0; i < 105; i++) {
+    large_registry->RegisterExternalTool("tool_" + std::to_string(i), 
+                                 "Tool description " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  auto large_builder = quantclaw::PromptBuilder(
+      memory_manager_, skill_loader_, large_registry);
+  
+  quantclaw::PromptComponents components;
+  quantclaw::PromptContext context;
+  context.tool_count = 105;
+  
+  auto prompt = large_builder.BuildWithComponents(components, context);
+  
+  // Verify performance tip is included
+  EXPECT_NE(prompt.find("**Performance Tip:**"), std::string::npos);
+  EXPECT_NE(prompt.find("summary mode is activated when tool count exceeds 100"), std::string::npos);
+  EXPECT_NE(prompt.find("reduce prompt size"), std::string::npos);
+  EXPECT_NE(prompt.find("improve context window efficiency"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryNotUsedWhenToolCountUnder100) {
+  // Default registry has < 100 tools
+  quantclaw::PromptComponents components;
+  components.use_tool_summary = false;  // Auto-detect
+  quantclaw::PromptContext context;
+  context.tool_count = 50;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify full tool list is used, not summary
+  EXPECT_EQ(prompt.find("## Available Tools (Summary)"), std::string::npos);
+  EXPECT_EQ(prompt.find("### Tool Summary Mode"), std::string::npos);
+  EXPECT_NE(prompt.find("## Available Tools"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryCanBeForcedWithFlag) {
+  // Force tool summary even with < 100 tools
+  quantclaw::PromptComponents components;
+  components.use_tool_summary = true;  // Force summary mode
+  quantclaw::PromptContext context;
+  context.tool_count = 50;
+  
+  auto prompt = builder_->BuildWithComponents(components, context);
+  
+  // Verify tool summary is used even though count < 100
+  EXPECT_NE(prompt.find("## Available Tools (Summary)"), std::string::npos);
+  EXPECT_NE(prompt.find("### Tool Summary Mode"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryListsToolsWithDescriptions) {
+  // Create a registry with > 100 tools
+  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  large_registry->RegisterExternalTool("read_file", "Read a file from disk", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  large_registry->RegisterExternalTool("write_file", "Write content to a file", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  large_registry->RegisterExternalTool("exec_command", "Execute a shell command", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  
+  // Add more tools to exceed 100
+  for (int i = 0; i < 100; i++) {
+    large_registry->RegisterExternalTool("tool_" + std::to_string(i), 
+                                 "Description " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  auto large_builder = quantclaw::PromptBuilder(
+      memory_manager_, skill_loader_, large_registry);
+  
+  quantclaw::PromptComponents components;
+  quantclaw::PromptContext context;
+  context.tool_count = 103;
+  
+  auto prompt = large_builder.BuildWithComponents(components, context);
+  
+  // Verify specific tools are listed with descriptions
+  EXPECT_NE(prompt.find("`read_file`: Read a file from disk"), std::string::npos);
+  EXPECT_NE(prompt.find("`write_file`: Write content to a file"), std::string::npos);
+  EXPECT_NE(prompt.find("`exec_command`: Execute a shell command"), std::string::npos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryGroupsToolsByCategory) {
+  // Create a registry with tools from specific categories
+  auto categorized_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  
+  // File operations
+  categorized_registry->RegisterExternalTool("read_config", "Read configuration", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  categorized_registry->RegisterExternalTool("write_log", "Write log entry", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  categorized_registry->RegisterExternalTool("edit_source", "Edit source file", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  
+  // Execution
+  categorized_registry->RegisterExternalTool("exec_test", "Execute test", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  categorized_registry->RegisterExternalTool("bash_script", "Run bash script", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  categorized_registry->RegisterExternalTool("process_monitor", "Monitor process", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  
+  // Web
+  categorized_registry->RegisterExternalTool("web_fetch", "Fetch web content", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  categorized_registry->RegisterExternalTool("search_docs", "Search documentation", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  
+  // Add more tools to exceed 100
+  for (int i = 0; i < 95; i++) {
+    categorized_registry->RegisterExternalTool("filler_" + std::to_string(i), 
+                                       "Filler tool " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  auto categorized_builder = quantclaw::PromptBuilder(
+      memory_manager_, skill_loader_, categorized_registry);
+  
+  quantclaw::PromptComponents components;
+  quantclaw::PromptContext context;
+  context.tool_count = 103;
+  
+  auto prompt = categorized_builder.BuildWithComponents(components, context);
+  
+  // Verify tools are grouped by category
+  auto file_pos = prompt.find("**File Operations**");
+  auto exec_pos = prompt.find("**Command Execution & Process Management**");
+  auto web_pos = prompt.find("**Web & Network**");
+  
+  ASSERT_NE(file_pos, std::string::npos);
+  ASSERT_NE(exec_pos, std::string::npos);
+  ASSERT_NE(web_pos, std::string::npos);
+  
+  // Verify tools appear under their respective categories
+  auto read_config_pos = prompt.find("`read_config`");
+  auto exec_test_pos = prompt.find("`exec_test`");
+  auto web_fetch_pos = prompt.find("`web_fetch`");
+  
+  ASSERT_NE(read_config_pos, std::string::npos);
+  ASSERT_NE(exec_test_pos, std::string::npos);
+  ASSERT_NE(web_fetch_pos, std::string::npos);
+  
+  // Verify tools appear after their category headers
+  EXPECT_LT(file_pos, read_config_pos);
+  EXPECT_LT(exec_pos, exec_test_pos);
+  EXPECT_LT(web_pos, web_fetch_pos);
+}
+
+TEST_F(PromptBuilderTest, ToolSummaryShowsToolCountPerCategory) {
+  // Create a registry with categorized tools
+  auto categorized_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  
+  // Add 10 file tools
+  for (int i = 0; i < 10; i++) {
+    categorized_registry->RegisterExternalTool("read_" + std::to_string(i), 
+                                       "Read operation " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  // Add 15 exec tools
+  for (int i = 0; i < 15; i++) {
+    categorized_registry->RegisterExternalTool("exec_" + std::to_string(i), 
+                                       "Execute operation " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  // Add more to exceed 100
+  for (int i = 0; i < 80; i++) {
+    categorized_registry->RegisterExternalTool("other_" + std::to_string(i), 
+                                       "Other tool " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
+  }
+  
+  auto categorized_builder = quantclaw::PromptBuilder(
+      memory_manager_, skill_loader_, categorized_registry);
+  
+  quantclaw::PromptComponents components;
+  quantclaw::PromptContext context;
+  context.tool_count = 105;
+  
+  auto prompt = categorized_builder.BuildWithComponents(components, context);
+  
+  // Verify category counts are shown
+  EXPECT_NE(prompt.find("**File Operations** (10 tools)"), std::string::npos);
+  EXPECT_NE(prompt.find("**Command Execution & Process Management** (15 tools)"), std::string::npos);
+}

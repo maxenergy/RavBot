@@ -48,6 +48,7 @@ find_package(spdlog REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 # IXWebSocket via FetchContent
 include(FetchContent)
@@ -80,13 +81,17 @@ set(QUANTCLAW_CORE_SOURCES
     src/core/cron_scheduler.cpp
     src/core/memory_search.cpp
     src/core/context_pruner.cpp
+    src/core/turn_validator.cpp
     src/core/usage_accumulator.cpp
     src/core/message_commands.cpp
     src/core/subagent.cpp
+    src/core/vector_database.cpp
     # Providers
     src/providers/curl_raii.cpp
     src/providers/openai_provider.cpp
     src/providers/anthropic_provider.cpp
+    src/providers/google_provider.cpp
+    src/providers/qwen_provider.cpp
     src/providers/provider_registry.cpp
     src/providers/provider_error.cpp
     src/providers/cooldown_tracker.cpp
@@ -102,6 +107,7 @@ set(QUANTCLAW_CORE_SOURCES
     src/gateway/gateway_server.cpp
     src/gateway/gateway_client.cpp
     src/gateway/rpc_handlers.cpp
+    src/gateway/device_pairing.cpp
     src/gateway/daemon_manager.cpp
     src/gateway/command_queue.cpp
     # Session
@@ -118,6 +124,13 @@ set(QUANTCLAW_CORE_SOURCES
     # Channels
     src/channels/adapter_manager.cpp
     src/channels/channel_policy.cpp
+    src/channels/signal_channel.cpp
+    src/channels/slack_channel.cpp
+    src/channels/telegram_channel.cpp
+    src/channels/imessage_channel.cpp
+    src/channels/whatsapp_channel.cpp
+    src/channels/line_channel.cpp
+    src/channels/extension_channel.cpp
     # Plugins
     src/plugins/plugin_manifest.cpp
     src/plugins/plugin_registry.cpp
@@ -193,6 +206,7 @@ target_link_libraries(quantclaw_core
         CURL::libcurl
         OpenSSL::SSL
         OpenSSL::Crypto
+        SQLite::SQLite3
 )
 
 # WinSock2 required by ipc_tcp.cpp on Windows
@@ -266,6 +280,7 @@ if(BUILD_TESTS)
         tests/test_provider_registry.cpp
         tests/test_session_maintenance.cpp
         tests/test_subagent.cpp
+        tests/test_telegram_channel.cpp
         tests/test_browser_tool.cpp
         tests/test_platform.cpp
         tests/test_rbac.cpp
@@ -276,6 +291,8 @@ if(BUILD_TESTS)
         tests/test_session_compaction.cpp
         tests/test_message_commands.cpp
         tests/test_builtin_skills.cpp
+        tests/test_comprehensive_context.cpp
+        tests/test_context_pollution.cpp
     )
 
     add_executable(quantclaw_tests ${TEST_SOURCES})

@@ -3,6 +3,8 @@
 
 #include "quantclaw/providers/provider_error.hpp"
 
+#include <string_view>
+
 namespace quantclaw {
 
 std::string ProviderErrorKindToString(ProviderErrorKind kind) {
@@ -32,6 +34,17 @@ ProviderError::ProviderError(ProviderErrorKind kind,
 
 ProviderErrorKind ClassifyHttpError(int http_status,
                                     const std::string& response_body) {
+  // Some Anthropic-compatible proxies surface nested 400 payloads as outer 502.
+  // These are request-formation problems and should not be treated as transient.
+  if (!response_body.empty()) {
+    constexpr std::string_view kImproperRequest = "Improperly formed request";
+    constexpr std::string_view kBadRequest = "400 (Bad Request";
+    if (response_body.find(kImproperRequest) != std::string::npos ||
+        response_body.find(kBadRequest) != std::string::npos) {
+      return ProviderErrorKind::kUnknown;
+    }
+  }
+
   switch (http_status) {
     case 429:
       return ProviderErrorKind::kRateLimit;

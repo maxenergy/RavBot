@@ -4,6 +4,8 @@
 #include "quantclaw/providers/provider_registry.hpp"
 #include "quantclaw/providers/openai_provider.hpp"
 #include "quantclaw/providers/anthropic_provider.hpp"
+#include "quantclaw/providers/google_provider.hpp"
+#include "quantclaw/providers/qwen_provider.hpp"
 
 #include <cstdlib>
 #include <algorithm>
@@ -67,18 +69,28 @@ void ProviderRegistry::RegisterBuiltinFactories() {
         entry.api_key, url, entry.timeout, logger);
   });
 
-  // Gemini / Google (uses OpenAI-compatible API via base_url override)
+  // Gemini / Google (native Google AI API)
   RegisterFactory("gemini", [](const ProviderEntry& entry,
                                  std::shared_ptr<spdlog::logger> logger) {
     std::string url = entry.base_url.empty()
-                          ? "https://generativelanguage.googleapis.com/v1beta/openai"
+                          ? "https://generativelanguage.googleapis.com/v1beta"
                           : entry.base_url;
-    return std::make_shared<OpenAIProvider>(
+    return std::make_shared<GoogleProvider>(
         entry.api_key, url, entry.timeout, logger);
   });
 
   // Google alias
   RegisterFactory("google", factories_["gemini"]);
+
+  // Qwen (通义千问)
+  RegisterFactory("qwen", [](const ProviderEntry& entry,
+                              std::shared_ptr<spdlog::logger> logger) {
+    std::string url = entry.base_url.empty()
+                          ? "https://dashscope.aliyuncs.com/compatible-mode/v1"
+                          : entry.base_url;
+    return std::make_shared<QwenProvider>(
+        entry.api_key, url, entry.timeout, logger);
+  });
 
   // Bedrock (uses OpenAI-compatible gateway)
   RegisterFactory("bedrock", [](const ProviderEntry& entry,
@@ -105,6 +117,26 @@ void ProviderRegistry::RegisterBuiltinFactories() {
                                    std::shared_ptr<spdlog::logger> logger) {
     std::string url = entry.base_url.empty()
                           ? "https://api.together.xyz/v1"
+                          : entry.base_url;
+    return std::make_shared<OpenAIProvider>(
+        entry.api_key, url, entry.timeout, logger);
+  });
+
+  // GitHub Copilot (OpenAI-compatible)
+  RegisterFactory("github-copilot", [](const ProviderEntry& entry,
+                                        std::shared_ptr<spdlog::logger> logger) {
+    std::string url = entry.base_url.empty()
+                          ? "https://api.githubcopilot.com/v1"
+                          : entry.base_url;
+    return std::make_shared<OpenAIProvider>(
+        entry.api_key, url, entry.timeout, logger);
+  });
+
+  // Kilocode (OpenAI-compatible)
+  RegisterFactory("kilocode", [](const ProviderEntry& entry,
+                                  std::shared_ptr<spdlog::logger> logger) {
+    std::string url = entry.base_url.empty()
+                          ? "https://api.kilocode.ai/v1"
                           : entry.base_url;
     return std::make_shared<OpenAIProvider>(
         entry.api_key, url, entry.timeout, logger);

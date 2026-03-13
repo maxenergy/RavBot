@@ -48,6 +48,19 @@ public:
     quantclaw::ChatCompletionRequest last_request;
 };
 
+class TransportStubAnthropicProvider : public quantclaw::AnthropicProvider {
+public:
+    TransportStubAnthropicProvider(std::shared_ptr<spdlog::logger> logger)
+        : AnthropicProvider("test-key", "http://stub", 30, logger) {}
+
+    std::string api_response;
+
+protected:
+    std::string MakeApiRequest(const std::string& /*json_payload*/) const override {
+        return api_response;
+    }
+};
+
 class AnthropicProviderTest : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -192,4 +205,56 @@ TEST_F(AnthropicProviderTest, ConstructionWithCustomBaseUrl) {
     EXPECT_NO_THROW({
         quantclaw::AnthropicProvider provider("key", "https://custom.anthropic.com", 30, logger_);
     });
+}
+
+TEST_F(AnthropicProviderTest, ChatCompletionParsesSseTextFallback) {
+    TransportStubAnthropicProvider provider(logger_);
+    provider.api_response =
+        "event: message_start\n"
+        "data: {\"type\":\"message_start\"}\n\n"
+        "event: content_block_start\n"
+        "data: {\"content_block\":{\"type\":\"text\",\"text\":\"Hello\"},\"index\":0,\"type\":\"content_block_start\"}\n\n"
+        "event: content_block_delta\n"
+        "data: {\"delta\":{\"type\":\"text_delta\",\"text\":\" world\"},\"index\":0,\"type\":\"content_block_delta\"}\n\n"
+        "event: message_delta\n"
+        "data: {\"delta\":{\"stop_reason\":\"end_turn\"},\"type\":\"message_delta\"}\n\n"
+        "event: message_stop\n"
+        "data: {\"type\":\"message_stop\"}\n\n";
+
+    quantclaw::ChatCompletionRequest request;
+    request.messages.push_back({"user", "Hello"});
+    request.model = "claude-sonnet-4-5";
+
+    auto response = provider.ChatCompletion(request);
+
+    EXPECT_EQ(response.content, "Hello world");
+    EXPECT_EQ(response.finish_reason, "stop");
+    EXPECT_TRUE(response.tool_calls.empty());
+}
+
+TEST_F(AnthropicProviderTest, ChatCompletionParsesSseToolUseFallback) {
+    TransportStubAnthropicProvider provider(logger_);
+    provider.api_response =
+        "event: message_start\n"
+        "data: {\"type\":\"message_start\"}\n\n"
+        "event: content_block_start\n"
+        "data: {\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_123\",\"name\":\"exec\",\"input\":{}},\"index\":0,\"type\":\"content_block_start\"}\n\n"
+        "event: content_block_delta\n"
+        "data: {\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"command\\\":\\\"ls\\\"}\"},\"index\":0,\"type\":\"content_block_delta\"}\n\n"
+        "event: message_delta\n"
+        "data: {\"delta\":{\"stop_reason\":\"tool_use\"},\"type\":\"message_delta\"}\n\n"
+        "event: message_stop\n"
+        "data: {\"type\":\"message_stop\"}\n\n";
+
+    quantclaw::ChatCompletionRequest request;
+    request.messages.push_back({"user", "List files"});
+    request.model = "claude-sonnet-4-5";
+
+    auto response = provider.ChatCompletion(request);
+
+    ASSERT_EQ(response.tool_calls.size(), 1u);
+    EXPECT_EQ(response.finish_reason, "tool_calls");
+    EXPECT_EQ(response.tool_calls[0].id, "toolu_123");
+    EXPECT_EQ(response.tool_calls[0].name, "exec");
+    EXPECT_EQ(response.tool_calls[0].arguments["command"], "ls");
 }

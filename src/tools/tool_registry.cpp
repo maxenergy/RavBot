@@ -889,12 +889,25 @@ std::string ToolRegistry::process_tool(const nlohmann::json& params) {
 }
 
 // ---------------------------------------------------------------------------
-// web_search_tool — Cascade: Brave → Tavily → Perplexity → DuckDuckGo → Grok
+// web_search_tool — Cascade: Brave → Tavily → Perplexity → SerpAPI → DuckDuckGo → Grok
 // ---------------------------------------------------------------------------
 
 std::string ToolRegistry::web_search_tool(const nlohmann::json& params) {
     std::string query     = params.value("query", "");
-    int count             = std::clamp(params.value("count", 5), 1, 10);
+    // Handle count as either integer or string
+    int count = 5;
+    if (params.contains("count")) {
+        if (params["count"].is_number()) {
+            count = params["count"].get<int>();
+        } else if (params["count"].is_string()) {
+            try {
+                count = std::stoi(params["count"].get<std::string>());
+            } catch (...) {
+                count = 5;
+            }
+        }
+    }
+    count = std::clamp(count, 1, 10);
     std::string freshness = params.value("freshness", "");
     if (query.empty()) throw std::runtime_error("query is required");
 
@@ -1024,6 +1037,44 @@ std::string ToolRegistry::web_search_tool(const nlohmann::json& params) {
                                    {"results", results}}.dump();
         } catch (const std::exception& e) {
             last_error = std::string("Perplexity: ") + e.what();
+        }
+    }
+
+    // --- SerpAPI (Google Search) ---
+    const char* serpapi_key = std::getenv("SERPAPI_API_KEY");
+    if (serpapi_key && *serpapi_key) {
+        try {
+            std::string path = "/search?engine=google&q=" + url_encode(query) +
+                               "&api_key=" + std::string(serpapi_key) +
+                               "&num=" + std::to_string(count);
+
+            httplib::SSLClient cli("serpapi.com");
+            cli.set_default_headers({
+                {"Accept", "application/json"}
+            });
+            cli.set_connection_timeout(10);
+            cli.set_read_timeout(15);
+
+            auto res = cli.Get(path);
+            if (!res) throw std::runtime_error("SerpAPI: connection failed");
+            if (res->status != 200)
+                throw std::runtime_error("SerpAPI HTTP " + std::to_string(res->status));
+
+            auto j = nlohmann::json::parse(res->body);
+            nlohmann::json results = nlohmann::json::array();
+            if (j.contains("organic_results")) {
+                for (const auto& r : j["organic_results"]) {
+                    nlohmann::json item;
+                    item["title"]       = r.value("title", "");
+                    item["url"]         = r.value("link", "");
+                    item["description"] = r.value("snippet", "");
+                    results.push_back(item);
+                }
+            }
+            return nlohmann::json{{"provider", "serpapi"}, {"query", query},
+                                   {"results", results}}.dump();
+        } catch (const std::exception& e) {
+            last_error = std::string("SerpAPI: ") + e.what();
         }
     }
 

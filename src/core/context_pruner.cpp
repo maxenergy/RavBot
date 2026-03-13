@@ -148,6 +148,117 @@ std::vector<Message> ContextPruner::Prune(
   return result;
 }
 
+std::vector<Message> ContextPruner::Compress(
+    const std::vector<Message>& messages,
+    int target_tokens,
+    const CompressionStrategy& strategy) {
+  if (messages.empty()) return messages;
+
+  // Convert CompressionStrategy to Options for the Prune method
+  Options opts;
+  
+  // Calculate how aggressively we need to prune based on target
+  int current_tokens = EstimateTokens(messages);
+  if (current_tokens <= target_tokens) {
+    return messages;  // Already within budget
+  }
+
+  // Adjust pruning parameters based on how much we need to reduce
+  double reduction_ratio = static_cast<double>(target_tokens) / current_tokens;
+  
+  if (strategy.preserve_recent) {
+    // Keep more recent messages intact
+    opts.protect_recent = std::max(3, static_cast<int>(5 * reduction_ratio));
+  } else {
+    opts.protect_recent = 1;
+  }
+
+  if (strategy.preserve_tool_calls) {
+    // Be more conservative with tool result pruning
+    opts.max_tool_result_chars = std::max(500, static_cast<int>(2000 * reduction_ratio));
+    opts.soft_prune_lines = 5;
+  } else {
+    // Aggressively prune tool results
+    opts.max_tool_result_chars = 200;
+    opts.soft_prune_lines = 2;
+  }
+
+  opts.hard_prune_after = std::max(5, static_cast<int>(10 * reduction_ratio));
+
+  // Apply budget-based pruning
+  opts.context_window = target_tokens * 4;  // Convert tokens to approximate chars
+  opts.max_tokens = 0;  // No output budget in this context
+  opts.prune_target_ratio = 1.0;  // Use full target
+
+  auto result = Prune(messages, opts);
+
+  // If still over budget and min_messages allows, remove older messages
+  int result_tokens = EstimateTokens(result);
+  if (result_tokens > target_tokens && 
+      static_cast<int>(result.size()) > strategy.min_messages) {
+    // Keep only the most recent messages
+    int keep = std::max(strategy.min_messages, 
+                       static_cast<int>(result.size() * reduction_ratio));
+    
+    std::vector<Message> compacted;
+    
+    // Preserve system messages if requested
+    if (strategy.preserve_system) {
+      for (const auto& msg : result) {
+        if (msg.role == "system") {
+          compacted.push_back(msg);
+        }
+      }
+    }
+    
+    // Add recent messages
+    int start_idx = std::max(0, static_cast<int>(result.size()) - keep);
+    for (int i = start_idx; i < static_cast<int>(result.size()); ++i) {
+      if (!strategy.preserve_system || result[i].role != "system") {
+        compacted.push_back(result[i]);
+      }
+    }
+    
+    return compacted;
+  }
+
+  return result;
+}
+
+std::vector<Message> ContextPruner::CompressWithStats(
+    const std::vector<Message>& messages,
+    int target_tokens,
+    CompressionStats& stats,
+    const CompressionStrategy& strategy) {
+  int tokens_before = EstimateTokens(messages);
+  int count_before = static_cast<int>(messages.size());
+
+  std::vector<Message> result = Compress(messages, target_tokens, strategy);
+
+  int tokens_after = EstimateTokens(result);
+  int count_after = static_cast<int>(result.size());
+
+  stats.messages_removed = count_before - count_after;
+  stats.tokens_saved = tokens_before - tokens_after;
+
+  return result;
+}
+
+std::string ContextPruner::TruncateToolResult(
+    const std::string& result,
+    int max_chars) {
+  if (static_cast<int>(result.size()) <= max_chars) {
+    return result;
+  }
+
+  // Use soft_prune to create a truncated version
+  // Calculate how many lines to keep based on max_chars
+  int estimated_lines = max_chars / 80;  // Assume ~80 chars per line
+  int keep_lines = std::max(3, estimated_lines / 2);  // Keep lines at start and end
+
+  return soft_prune(result, keep_lines);
+}
+
 std::string ContextPruner::soft_prune(const std::string& content,
                                       int keep_lines) {
   // Split into lines

@@ -200,7 +200,12 @@ ProviderConfig ProviderConfig::FromJson(const nlohmann::json& json) {
 ChannelConfig ChannelConfig::FromJson(const nlohmann::json& json) {
     ChannelConfig config;
     config.enabled = json.value("enabled", false);
-    config.token = json.value("token", "");
+    // Support both "token" and "botToken" fields
+    if (json.contains("botToken")) {
+        config.token = json["botToken"].get<std::string>();
+    } else {
+        config.token = json.value("token", "");
+    }
     config.allowed_ids = json.value("allowed_ids", std::vector<std::string>{});
     // Store the full raw JSON so platform-specific fields are preserved
     config.raw = json;

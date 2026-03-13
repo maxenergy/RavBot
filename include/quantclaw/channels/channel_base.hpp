@@ -10,7 +10,7 @@
 
 namespace quantclaw {
 
-struct Message {
+struct ChannelMessage {
     std::string id;
     std::string sender_id;
     std::string content;
@@ -20,10 +20,10 @@ struct Message {
 
 class Channel {
 public:
-    using MessageHandler = std::function<void(const Message&)>;
-    
+    using MessageHandler = std::function<void(const ChannelMessage&)>;
+
     virtual ~Channel() = default;
-    
+
     virtual void Start() = 0;
     virtual void Stop() = 0;
     virtual void SendMessage(const std::string& channel_id, const std::string& message) = 0;
@@ -33,7 +33,7 @@ public:
     void SetMessageHandler(MessageHandler handler) {
         message_handler_ = std::move(handler);
     }
-    
+
 protected:
     MessageHandler message_handler_;
 };

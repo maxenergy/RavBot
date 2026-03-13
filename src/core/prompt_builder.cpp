@@ -1085,15 +1085,110 @@ std::string PromptBuilder::build_operation_guards() const {
 }
 
 std::string PromptBuilder::build_tool_summary() const {
-  // TODO: Implement in Task 1.1.9
-  // When tool count > 100, use summary mode instead of full schemas
+  // Requirement 1.8: When tool count > 100, use summary mode instead of full schemas
   auto tool_schemas = tool_registry_->GetToolSchemas();
   std::ostringstream summary;
-  summary << "Available tools (" << tool_schemas.size() << " total):\n";
+  
+  // Group tools by category for better organization
+  std::map<std::string, std::vector<ToolRegistry::ToolSchema>> categorized_tools;
+  
   for (const auto& schema : tool_schemas) {
-    summary << "- " << schema.name << ": " << schema.description << "\n";
+    // Categorize based on tool name prefix or common patterns
+    std::string category = "general";
+    
+    if (schema.name.find("read") == 0 || schema.name.find("write") == 0 || 
+        schema.name.find("edit") == 0 || schema.name.find("file") == 0 ||
+        schema.name.find("fs") == 0 || schema.name.find("delete") == 0) {
+      category = "file";
+    } else if (schema.name.find("exec") == 0 || schema.name.find("bash") == 0 || 
+               schema.name.find("process") == 0 || schema.name.find("control") == 0) {
+      category = "execution";
+    } else if (schema.name.find("web") == 0 || schema.name.find("search") == 0 || 
+               schema.name.find("fetch") == 0 || schema.name.find("browser") == 0) {
+      category = "web";
+    } else if (schema.name.find("memory") == 0 || schema.name.find("recall") == 0 ||
+               schema.name.find("search_memory") == 0) {
+      category = "memory";
+    } else if (schema.name.find("mcp") == 0 || schema.name.find("power") == 0) {
+      category = "mcp";
+    } else if (schema.name.find("subagent") == 0 || schema.name.find("agent") == 0 ||
+               schema.name.find("session") == 0 || schema.name.find("invoke") == 0) {
+      category = "agent";
+    } else if (schema.name.find("git") == 0 || schema.name.find("semantic") == 0 ||
+               schema.name.find("diagnostic") == 0 || schema.name.find("code") == 0) {
+      category = "development";
+    } else if (schema.name.find("task") == 0 || schema.name.find("spec") == 0 ||
+               schema.name.find("prework") == 0) {
+      category = "spec";
+    }
+    
+    categorized_tools[category].push_back(schema);
   }
-  summary << "\nNote: Full tool schemas are available upon request.\n";
+  
+  // Build summary header
+  summary << "### Tool Summary Mode\n\n";
+  summary << "**Total available tools**: " << tool_schemas.size() << "\n\n";
+  summary << "Due to the large number of tools, full schemas are not included in this prompt. "
+          << "Below is a categorized summary of available tools with their descriptions.\n\n";
+  
+  // Output tools by category
+  const std::map<std::string, std::string> category_names = {
+    {"file", "File Operations"},
+    {"execution", "Command Execution & Process Management"},
+    {"web", "Web & Network"},
+    {"memory", "Memory & Context"},
+    {"mcp", "MCP & External Integrations"},
+    {"agent", "Agent & Session Management"},
+    {"development", "Development Tools"},
+    {"spec", "Specification & Task Management"},
+    {"general", "General Tools"}
+  };
+  
+  // Define category order for better organization
+  const std::vector<std::string> category_order = {
+    "file", "execution", "web", "memory", "agent", "development", "spec", "mcp", "general"
+  };
+  
+  for (const auto& category : category_order) {
+    auto it = categorized_tools.find(category);
+    if (it == categorized_tools.end() || it->second.empty()) {
+      continue;
+    }
+    
+    auto name_it = category_names.find(category);
+    std::string category_display = name_it != category_names.end() 
+                                    ? name_it->second 
+                                    : category;
+    
+    summary << "**" << category_display << "** (" << it->second.size() << " tools):\n\n";
+    
+    for (const auto& schema : it->second) {
+      summary << "- `" << schema.name << "`: " << schema.description << "\n";
+    }
+    
+    summary << "\n";
+  }
+  
+  // Add usage guidance
+  summary << "### Tool Usage Guidelines\n\n";
+  summary << "**How to use tools:**\n\n";
+  summary << "1. **Tool Selection**: Choose the most appropriate tool based on the task requirements\n";
+  summary << "2. **Parameter Discovery**: Tool parameters are defined in their schemas (not shown here)\n";
+  summary << "3. **Error Handling**: Handle tool errors gracefully and try alternatives when needed\n";
+  summary << "4. **Chaining**: Combine multiple tools to accomplish complex tasks\n\n";
+  
+  summary << "**Important Notes:**\n\n";
+  summary << "- Full tool schemas with parameter details are available in the tool registry\n";
+  summary << "- When calling a tool, ensure you provide all required parameters\n";
+  summary << "- Tool descriptions above provide high-level guidance on what each tool does\n";
+  summary << "- For detailed parameter information, refer to the tool's schema definition\n";
+  summary << "- Some tools may require specific permissions or approval for dangerous operations\n\n";
+  
+  summary << "**Performance Tip:**\n\n";
+  summary << "This summary mode is activated when tool count exceeds 100 to reduce prompt size "
+          << "and improve context window efficiency. The system will provide detailed schemas "
+          << "for specific tools when needed during execution.\n";
+  
   return summary.str();
 }
 

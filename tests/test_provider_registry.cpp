@@ -1,10 +1,14 @@
 // Copyright 2025 QuantClaw Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include <gtest/gtest.h>
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
+#include <spdlog/spdlog.h>
+
+#include "quantclaw/providers/google_provider.hpp"
 #include "quantclaw/providers/provider_registry.hpp"
+#include "quantclaw/providers/qwen_provider.hpp"
+
+#include <gtest/gtest.h>
 
 namespace quantclaw {
 
@@ -75,9 +79,7 @@ TEST(ProviderRegistryTest, LoadFromConfig) {
        {{"apiKey", "sk-test"},
         {"baseUrl", "https://api.openai.com/v1"},
         {"timeout", 60}}},
-      {"anthropic",
-       {{"apiKey", "ak-test"},
-        {"timeout", 45}}},
+      {"anthropic", {{"apiKey", "ak-test"}, {"timeout", 45}}},
   };
   reg->LoadFromConfig(config);
 
@@ -175,6 +177,108 @@ TEST(ProviderRegistryTest, ProviderEntryInspection) {
   ASSERT_NE(e, nullptr);
   EXPECT_EQ(e->display_name, "Local Ollama");
   EXPECT_EQ(e->base_url, "http://localhost:11434/v1");
+}
+
+class TransportStubGoogleProvider : public quantclaw::GoogleProvider {
+ public:
+  explicit TransportStubGoogleProvider(std::shared_ptr<spdlog::logger> logger)
+      : GoogleProvider("test-key", "http://stub", 30, logger) {}
+
+  mutable std::string api_response;
+  mutable std::string requested_model;
+  mutable std::string requested_payload;
+  mutable bool requested_stream = false;
+
+ protected:
+  std::string MakeApiRequest(const std::string& model,
+                             const std::string& json_payload,
+                             bool stream) const override {
+    requested_model = model;
+    requested_payload = json_payload;
+    requested_stream = stream;
+    return api_response;
+  }
+};
+
+class TransportStubQwenProvider : public quantclaw::QwenProvider {
+ public:
+  explicit TransportStubQwenProvider(std::shared_ptr<spdlog::logger> logger)
+      : QwenProvider("test-key", "http://stub", 30, logger) {}
+
+  mutable std::string api_response;
+  mutable bool requested_stream = false;
+
+ protected:
+  std::string MakeApiRequest(const std::string& json_payload,
+                             bool stream) const override {
+    (void)json_payload;
+    requested_stream = stream;
+    return api_response;
+  }
+};
+
+TEST(GoogleProviderStreamTest, EmitsTerminalChunk) {
+  TransportStubGoogleProvider provider(make_logger("google-stream"));
+  provider.api_response =
+      R"({"candidates":[{"content":{"parts":[{"text":"hello"}]}}]})";
+
+  quantclaw::ChatCompletionRequest request;
+  request.model = "gemini-1.5-pro";
+  request.messages.push_back({"user", "Hi"});
+
+  std::string accumulated;
+  bool saw_end = false;
+  provider.ChatCompletionStream(
+      request, [&](const quantclaw::ChatCompletionResponse& chunk) {
+        accumulated += chunk.content;
+        if (chunk.is_stream_end) {
+          saw_end = true;
+        }
+      });
+
+  EXPECT_EQ(provider.requested_model, "gemini-1.5-pro");
+  EXPECT_FALSE(provider.requested_stream);
+  EXPECT_EQ(accumulated, "hello");
+  EXPECT_TRUE(saw_end);
+}
+
+TEST(QwenProviderStreamTest, ParsesBufferedSseResponse) {
+  TransportStubQwenProvider provider(make_logger("qwen-stream"));
+  provider.api_response =
+      "data: "
+      "{\"choices\":[{\"delta\":{\"content\":\"Hel\"},\"finish_reason\":null}]}"
+      "\n\n"
+      "data: "
+      "{\"choices\":[{\"delta\":{\"content\":\"lo\"},\"finish_reason\":null}]}"
+      "\n\n"
+      "data: "
+      "{\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{"
+      "\"prompt_tokens\":1,\"completion_tokens\":2,\"total_tokens\":3}}\n\n"
+      "data: [DONE]\n\n";
+
+  quantclaw::ChatCompletionRequest request;
+  request.model = "qwen-max";
+  request.messages.push_back({"user", "Hi"});
+  request.stream = true;
+
+  std::string accumulated;
+  quantclaw::TokenUsage final_usage;
+  bool saw_end = false;
+  provider.ChatCompletionStream(
+      request, [&](const quantclaw::ChatCompletionResponse& chunk) {
+        accumulated += chunk.content;
+        if (chunk.is_stream_end) {
+          final_usage = chunk.usage;
+          saw_end = true;
+        }
+      });
+
+  EXPECT_TRUE(provider.requested_stream);
+  EXPECT_EQ(accumulated, "Hello");
+  EXPECT_TRUE(saw_end);
+  EXPECT_EQ(final_usage.prompt_tokens, 1);
+  EXPECT_EQ(final_usage.completion_tokens, 2);
+  EXPECT_EQ(final_usage.total_tokens, 3);
 }
 
 }  // namespace quantclaw

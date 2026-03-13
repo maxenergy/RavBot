@@ -473,6 +473,14 @@ TEST(ProviderErrorTest, HttpErrorClassification_ServerError502) {
     EXPECT_EQ(ClassifyHttpError(502), ProviderErrorKind::kTransient);
 }
 
+TEST(ProviderErrorTest, HttpErrorClassification_BadGatewayWrappingBadRequest) {
+    EXPECT_EQ(
+        ClassifyHttpError(
+            502,
+            R"QC({"error":"Response status code does not indicate success: 400 (Bad Request: {\"message\":\"Improperly formed request.\"})","code":"BadGateway"})QC"),
+        ProviderErrorKind::kUnknown);
+}
+
 TEST(ProviderErrorTest, HttpErrorClassification_ServerError503) {
     EXPECT_EQ(ClassifyHttpError(503), ProviderErrorKind::kTransient);
 }

@@ -1,0 +1,43 @@
+// Copyright 2025 QuantClaw Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include <memory>
+#include <string>
+
+#include <spdlog/spdlog.h>
+
+#include "quantclaw/providers/curl_raii.hpp"
+
+#include "llm_provider.hpp"
+
+namespace quantclaw {
+
+class QwenProvider : public LLMProvider {
+ public:
+  QwenProvider(const std::string& api_key, const std::string& base_url,
+               int timeout, std::shared_ptr<spdlog::logger> logger);
+
+  ChatCompletionResponse
+  ChatCompletion(const ChatCompletionRequest& request) override;
+  void ChatCompletionStream(
+      const ChatCompletionRequest& request,
+      std::function<void(const ChatCompletionResponse&)> callback) override;
+  std::string GetProviderName() const override;
+  std::vector<std::string> GetSupportedModels() const override;
+
+ protected:
+  virtual std::string MakeApiRequest(const std::string& json_payload,
+                                     bool stream) const;
+
+ private:
+  CurlSlist CreateHeaders() const;
+
+  std::string api_key_;
+  std::string base_url_;
+  int timeout_;
+  std::shared_ptr<spdlog::logger> logger_;
+};
+
+}  // namespace quantclaw

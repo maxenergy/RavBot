@@ -9,10 +9,18 @@
 #include "quantclaw/cli/agent_commands.hpp"
 #include "quantclaw/cli/session_commands.hpp"
 #include "quantclaw/cli/gateway_commands.hpp"
+#include "quantclaw/providers/llm_provider.hpp"
+#include "quantclaw/session/session_manager.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
 using namespace quantclaw::cli;
+
+namespace quantclaw::cli {
+std::string ExtractLastAssistantText(const std::vector<quantclaw::Message>& messages);
+std::vector<quantclaw::Message> BuildLlmHistoryFromSessionHistory(
+    const std::vector<quantclaw::SessionMessage>& history_msgs);
+}
 
 // Helper: convert vector<string> to argc/argv suitable for CLIManager::run
 struct ArgHelper {
@@ -270,6 +278,88 @@ protected:
 
 TEST_F(GatewayCommandsTest, Construction) {
     EXPECT_NO_THROW({ GatewayCommands gw(logger_); });
+}
+
+TEST_F(GatewayCommandsTest, ExtractLastAssistantTextReturnsFinalAssistantMessage) {
+    std::vector<quantclaw::Message> messages;
+    messages.emplace_back("assistant", "让我用更具体的英文关键词重新搜索：");
+    messages.emplace_back("user", "tool result payload");
+    messages.emplace_back("assistant", "这是最终答案");
+
+    EXPECT_EQ(quantclaw::cli::ExtractLastAssistantText(messages), "这是最终答案");
+}
+
+TEST_F(GatewayCommandsTest, ExtractLastAssistantTextSkipsEmptyAssistantMessages) {
+    std::vector<quantclaw::Message> messages;
+    messages.emplace_back("assistant", "");
+    messages.emplace_back("assistant", "最终回复");
+
+    EXPECT_EQ(quantclaw::cli::ExtractLastAssistantText(messages), "最终回复");
+}
+
+TEST_F(GatewayCommandsTest, BuildLlmHistoryDropsTrailingCurrentUserMessage) {
+    std::vector<quantclaw::SessionMessage> history;
+
+    quantclaw::SessionMessage first_user;
+    first_user.role = "user";
+    first_user.content.push_back(quantclaw::ContentBlock::MakeText("old question"));
+    history.push_back(first_user);
+
+    quantclaw::SessionMessage assistant;
+    assistant.role = "assistant";
+    assistant.content.push_back(quantclaw::ContentBlock::MakeText("old answer"));
+    history.push_back(assistant);
+
+    quantclaw::SessionMessage current_user;
+    current_user.role = "user";
+    current_user.content.push_back(quantclaw::ContentBlock::MakeText("new question"));
+    history.push_back(current_user);
+
+    auto llm_history = quantclaw::cli::BuildLlmHistoryFromSessionHistory(history);
+
+    ASSERT_EQ(llm_history.size(), 2u);
+    EXPECT_EQ(llm_history[0].role, "user");
+    EXPECT_EQ(llm_history[1].role, "assistant");
+    EXPECT_EQ(llm_history[1].text(), "old answer");
+}
+
+TEST_F(GatewayCommandsTest, BuildLlmHistoryKeepsPriorToolResultTurnStructure) {
+    std::vector<quantclaw::SessionMessage> history;
+
+    quantclaw::SessionMessage old_user;
+    old_user.role = "user";
+    old_user.content.push_back(quantclaw::ContentBlock::MakeText("old question"));
+    history.push_back(old_user);
+
+    quantclaw::SessionMessage tool_use;
+    tool_use.role = "assistant";
+    tool_use.content.push_back(quantclaw::ContentBlock::MakeToolUse("tool-1", "web_search", nlohmann::json::object()));
+    history.push_back(tool_use);
+
+    quantclaw::SessionMessage tool_result;
+    tool_result.role = "user";
+    tool_result.content.push_back(quantclaw::ContentBlock::MakeToolResult("tool-1", "result"));
+    history.push_back(tool_result);
+
+    quantclaw::SessionMessage final_assistant;
+    final_assistant.role = "assistant";
+    final_assistant.content.push_back(quantclaw::ContentBlock::MakeText("final answer"));
+    history.push_back(final_assistant);
+
+    quantclaw::SessionMessage current_user;
+    current_user.role = "user";
+    current_user.content.push_back(quantclaw::ContentBlock::MakeText("new question"));
+    history.push_back(current_user);
+
+    auto llm_history = quantclaw::cli::BuildLlmHistoryFromSessionHistory(history);
+
+    ASSERT_EQ(llm_history.size(), 4u);
+    EXPECT_EQ(llm_history[0].role, "user");
+    EXPECT_EQ(llm_history[1].role, "assistant");
+    EXPECT_EQ(llm_history[2].role, "user");
+    EXPECT_EQ(llm_history[3].role, "assistant");
+    ASSERT_EQ(llm_history[2].content.size(), 1u);
+    EXPECT_EQ(llm_history[2].content[0].type, "tool_result");
 }
 
 // Note: status_command, start_command etc. involve gateway connections

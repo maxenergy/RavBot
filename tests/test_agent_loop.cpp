@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <thread>
 
 #include <spdlog/sinks/null_sink.h>
 #include <spdlog/spdlog.h>
@@ -15,6 +16,7 @@
 #include "quantclaw/core/usage_accumulator.hpp"
 #include "quantclaw/providers/llm_provider.hpp"
 #include "quantclaw/providers/provider_error.hpp"
+#include "quantclaw/providers/failover_resolver.hpp"
 #include "quantclaw/providers/provider_registry.hpp"
 #include "quantclaw/tools/tool_registry.hpp"
 
@@ -87,6 +89,48 @@ class ErroringMockLLMProvider : public quantclaw::LLMProvider {
   std::vector<std::string> GetSupportedModels() const override {
     return {"mock-model"};
   }
+};
+
+class RetryThenSuccessMockLLMProvider : public quantclaw::LLMProvider {
+ public:
+  int failures_before_success = 0;
+  int call_count = 0;
+  quantclaw::ProviderError error{quantclaw::ProviderErrorKind::kTimeout, 504,
+                                 "temporary timeout"};
+
+  quantclaw::ChatCompletionResponse
+  ChatCompletion(const quantclaw::ChatCompletionRequest& request) override {
+    last_request = request;
+    call_count++;
+    if (call_count <= failures_before_success) {
+      throw error;
+    }
+
+    quantclaw::ChatCompletionResponse resp;
+    resp.content = "recovered";
+    resp.finish_reason = "stop";
+    return resp;
+  }
+
+  void ChatCompletionStream(
+      const quantclaw::ChatCompletionRequest& request,
+      std::function<void(const quantclaw::ChatCompletionResponse&)>) override {
+    last_request = request;
+    call_count++;
+    if (call_count <= failures_before_success) {
+      throw error;
+    }
+  }
+
+  std::string GetProviderName() const override {
+    return provider_name;
+  }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"mock-model"};
+  }
+
+  std::string provider_name = "retry-mock";
+  quantclaw::ChatCompletionRequest last_request;
 };
 
 class ToolReplayFilteringMockProvider : public quantclaw::LLMProvider {
@@ -395,6 +439,117 @@ TEST_F(AgentLoopTest, NonRetryableProviderErrorThrowsImmediately) {
   EXPECT_THROW(loop.ProcessMessage("Hello", {}, "System"),
                quantclaw::ProviderError);
   EXPECT_EQ(error_provider->call_count, 1);
+}
+
+TEST_F(AgentLoopTest, RetryableProviderErrorRetriesUntilSuccess) {
+  auto retry_provider = std::make_shared<RetryThenSuccessMockLLMProvider>();
+  retry_provider->failures_before_success = 2;
+
+  quantclaw::AgentConfig agent_config;
+  agent_config.model = "test-model";
+  agent_config.temperature = 0.5;
+  agent_config.max_tokens = 2048;
+  agent_config.max_iterations = 5;
+
+  quantclaw::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
+                            retry_provider, agent_config, logger_);
+
+  auto new_msgs = loop.ProcessMessage("Hello", {}, "System");
+
+  ASSERT_FALSE(new_msgs.empty());
+  EXPECT_EQ(new_msgs.back().text(), "recovered");
+  EXPECT_EQ(retry_provider->call_count, 3);
+}
+
+TEST_F(AgentLoopTest, FailoverResolverSwitchesToFallbackProvider) {
+  auto registry = std::make_unique<quantclaw::ProviderRegistry>(logger_);
+
+  registry->RegisterFactory(
+      "primary",
+      [](const quantclaw::ProviderEntry&,
+         std::shared_ptr<spdlog::logger>) -> std::shared_ptr<quantclaw::LLMProvider> {
+        auto provider = std::make_shared<ErroringMockLLMProvider>();
+        provider->error = quantclaw::ProviderError(
+            quantclaw::ProviderErrorKind::kAuthError, 401, "bad primary key");
+        return provider;
+      });
+  registry->RegisterFactory(
+      "backup",
+      [](const quantclaw::ProviderEntry&,
+         std::shared_ptr<spdlog::logger>) -> std::shared_ptr<quantclaw::LLMProvider> {
+        auto provider = std::make_shared<MockLLMProvider>();
+        provider->provider_name = "backup";
+        provider->response_text = "fallback response";
+        return provider;
+      });
+
+  quantclaw::ProviderEntry primary_entry;
+  primary_entry.id = "primary";
+  primary_entry.api_key = "primary-key";
+  registry->AddProvider(primary_entry);
+
+  quantclaw::ProviderEntry backup_entry;
+  backup_entry.id = "backup";
+  backup_entry.api_key = "backup-key";
+  registry->AddProvider(backup_entry);
+
+  auto failover_resolver =
+      std::make_unique<quantclaw::FailoverResolver>(registry.get(), logger_);
+  failover_resolver->SetFallbackChain({"backup/mock-model"});
+
+  quantclaw::AgentConfig agent_config;
+  agent_config.model = "primary/mock-model";
+  agent_config.temperature = 0.5;
+  agent_config.max_tokens = 2048;
+  agent_config.max_iterations = 5;
+
+  auto primary_provider = registry->GetProvider("primary");
+  ASSERT_NE(primary_provider, nullptr);
+
+  quantclaw::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
+                            primary_provider, agent_config, logger_);
+  loop.SetProviderRegistry(registry.get());
+  loop.SetFailoverResolver(failover_resolver.get());
+
+  auto new_msgs = loop.ProcessMessage("Hello", {}, "System");
+
+  ASSERT_FALSE(new_msgs.empty());
+  EXPECT_EQ(new_msgs.back().text(), "fallback response");
+}
+
+TEST_F(AgentLoopTest, StopInterruptsRetryBackoff) {
+  auto retry_provider = std::make_shared<RetryThenSuccessMockLLMProvider>();
+  retry_provider->failures_before_success = 10;
+
+  quantclaw::AgentConfig agent_config;
+  agent_config.model = "test-model";
+  agent_config.temperature = 0.5;
+  agent_config.max_tokens = 2048;
+  agent_config.max_iterations = 5;
+
+  quantclaw::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
+                            retry_provider, agent_config, logger_);
+
+  std::exception_ptr worker_error;
+  std::thread worker([&]() {
+    try {
+      loop.ProcessMessage("Hello", {}, "System");
+    } catch (...) {
+      worker_error = std::current_exception();
+    }
+  });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  loop.Stop();
+  worker.join();
+
+  ASSERT_NE(worker_error, nullptr);
+  EXPECT_TRUE(loop.IsAborted());
+  try {
+    std::rethrow_exception(worker_error);
+  } catch (const std::runtime_error& e) {
+    EXPECT_NE(std::string(e.what()).find("stopped by user"), std::string::npos);
+  }
 }
 
 // --- AgentConfig injection tests ---

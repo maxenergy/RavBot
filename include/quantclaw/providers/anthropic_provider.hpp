@@ -29,8 +29,10 @@ class AnthropicProvider : public LLMProvider {
   std::string GetProviderName() const override;
   std::vector<std::string> GetSupportedModels() const override;
 
+ protected:
+  virtual std::string MakeApiRequest(const std::string& json_payload) const;
+
  private:
-  std::string MakeApiRequest(const std::string& json_payload) const;
   CurlSlist CreateHeaders() const;
 
   std::string api_key_;

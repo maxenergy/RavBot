@@ -105,6 +105,22 @@ inline constexpr int kToolResultKeepLines = 20;
 inline constexpr int kOverflowCompactionMaxRetries = 3;
 
 // ------------------------------------------------------------
+// Retry and failover defaults
+// ------------------------------------------------------------
+
+/// Maximum retries per provider/profile before failover
+inline constexpr int kDefaultMaxRetries = 3;
+
+/// Initial backoff delay in seconds for exponential retry
+inline constexpr int kRetryInitialBackoffSec = 1;
+
+/// Backoff multiplier (delay doubles each retry: 1s, 2s, 4s)
+inline constexpr double kRetryBackoffMultiplier = 2.0;
+
+/// Maximum backoff delay cap in seconds
+inline constexpr int kRetryMaxBackoffSec = 60;
+
+// ------------------------------------------------------------
 // Session compaction defaults
 // ------------------------------------------------------------
 
