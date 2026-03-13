@@ -21,6 +21,15 @@ class ProviderRegistry;
 class LLMProvider;
 struct ModelRef;
 
+// 重试配置：定义重试策略和指数退避参数
+// Requirements: 5.2, 5.3
+struct RetryConfig {
+  int max_retries = 3;              // 最大重试次数（默认 3 次）
+  int initial_backoff_ms = 1000;    // 初始退避时间（默认 1 秒）
+  double backoff_multiplier = 2.0;  // 退避倍数（默认 2.0，即 1s、2s、4s）
+  int max_backoff_ms = 60000;       // 最大退避时间（默认 60 秒）
+};
+
 // Auth profile: one API key for a provider.
 // A provider may have multiple profiles for key rotation.
 struct AuthProfile {
