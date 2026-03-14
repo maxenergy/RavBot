@@ -950,7 +950,7 @@
       - SidecarManagerTest: 3 个测试 ✅
     - 询问用户是否有问题
 
-- [ ] 6. Phase 6: Configuration and Serialization (Week 13)
+- [x] 6. Phase 6: Configuration and Serialization (Week 13)
   - [x] 6.1 Config Parser 增强
     - [x] 6.1.1 实现配置验证
       - 在 `src/config.cpp` 中增强解析逻辑
