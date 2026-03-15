@@ -68,6 +68,12 @@ FetchContent_Declare(
 set(HTTPLIB_COMPILE OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(cpp-httplib)
 
+# HNSWlib (header-only library for fast vector search)
+set(HNSWLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/hnswlib)
+if(NOT EXISTS ${HNSWLIB_INCLUDE_DIR}/hnswlib/hnswlib.h)
+    message(WARNING "HNSWlib not found at ${HNSWLIB_INCLUDE_DIR}. Vector search will use fallback implementation.")
+endif()
+
 # Source files - explicitly listed
 set(QUANTCLAW_CORE_SOURCES
     # Core
@@ -86,6 +92,15 @@ set(QUANTCLAW_CORE_SOURCES
     src/core/message_commands.cpp
     src/core/subagent.cpp
     src/core/vector_database.cpp
+    src/core/hnsw_index.cpp
+    src/core/embedding_provider.cpp
+    src/core/mock_embedding_provider.cpp
+    src/core/local_embedding_provider.cpp
+    src/core/openai_embedding_provider.cpp
+    src/core/anthropic_embedding_provider.cpp
+    src/core/ollama_embedding_provider.cpp
+    src/core/embedding_manager.cpp
+    src/core/embedding_config.cpp
     # Providers
     src/providers/curl_raii.cpp
     src/providers/openai_provider.cpp
@@ -129,6 +144,7 @@ set(QUANTCLAW_CORE_SOURCES
     src/channels/signal_channel.cpp
     src/channels/slack_channel.cpp
     src/channels/telegram_channel.cpp
+    src/channels/telegram_typing_manager.cpp
     src/channels/imessage_channel.cpp
     src/channels/whatsapp_channel.cpp
     src/channels/line_channel.cpp
@@ -190,6 +206,7 @@ add_library(quantclaw_core STATIC ${QUANTCLAW_CORE_SOURCES})
 target_include_directories(quantclaw_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${HNSWLIB_INCLUDE_DIR}>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
@@ -257,6 +274,10 @@ if(BUILD_TESTS)
         tests/test_protocol.cpp
         tests/test_session_manager.cpp
         tests/test_gateway.cpp
+        tests/test_gateway_timeout.cpp
+        tests/test_gateway_health.cpp
+        tests/test_telegram_typing.cpp
+        tests/test_telegram_chunking.cpp
         tests/test_skill_loader.cpp
         tests/test_memory_manager.cpp
         tests/test_agent_loop.cpp
@@ -268,6 +289,17 @@ if(BUILD_TESTS)
         tests/test_mcp_integration.cpp
         tests/test_openai_provider.cpp
         tests/test_anthropic_provider.cpp
+        tests/test_google_provider.cpp
+        tests/test_qwen_provider.cpp
+        tests/test_hnsw_index.cpp
+        tests/test_vector_database_hnsw.cpp
+        tests/test_embedding_provider.cpp
+        tests/test_local_embedding_provider.cpp
+        tests/test_openai_embedding_provider.cpp
+        tests/test_anthropic_embedding_provider.cpp
+        tests/test_ollama_embedding_provider.cpp
+        tests/test_embedding_manager.cpp
+        tests/test_embedding_config.cpp
         tests/test_security_sandbox.cpp
         tests/test_tool_registry.cpp
         tests/test_tool_chain.cpp
@@ -290,7 +322,11 @@ if(BUILD_TESTS)
         tests/test_session_maintenance.cpp
         tests/test_subagent.cpp
         tests/test_telegram_channel.cpp
+        tests/test_telegram_webhook.cpp
+        tests/test_telegram_media.cpp
         tests/test_browser_tool.cpp
+        tests/test_browser_session_manager.cpp
+        tests/test_browser_lifecycle.cpp
         tests/test_platform.cpp
         tests/test_rbac.cpp
         tests/test_rate_limiter.cpp
@@ -305,6 +341,7 @@ if(BUILD_TESTS)
         tests/test_external_content.cpp
         tests/test_trust_model.cpp
         tests/test_audit_logger.cpp
+        tests/test_message_sanitizer.cpp
         tests/performance/test_load.cpp
         tests/performance/test_memory.cpp
     )
@@ -321,4 +358,12 @@ if(BUILD_TESTS)
 
     include(GoogleTest)
     gtest_discover_tests(quantclaw_tests)
+
+    # Debug executable for HNSW testing
+    add_executable(debug_hnsw tests/debug_hnsw_hang.cpp)
+    target_link_libraries(debug_hnsw PRIVATE quantclaw_core)
+    target_include_directories(debug_hnsw PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
 endif()

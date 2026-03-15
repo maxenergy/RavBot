@@ -41,6 +41,8 @@ struct ChatCompletionRequest {
     int max_tokens = 8192;
     std::vector<nlohmann::json> tools;
     bool tool_choice_auto = true;
+    std::string tool_choice_type = "auto";  // "auto" | "any" | "tool"
+    std::string tool_choice_name = "";      // tool name when type="tool"
     bool stream = false;
     std::string thinking = "off";  // "off" | "low" | "medium" | "high"
 };

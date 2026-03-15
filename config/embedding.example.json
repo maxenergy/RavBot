@@ -1,0 +1,71 @@
+{
+  "embedding": {
+    "default_provider": "ollama",
+    "providers": {
+      "mock": {
+        "type": "mock",
+        "dimension": 384,
+        "description": "Mock provider for testing"
+      },
+      "local": {
+        "type": "local",
+        "dimension": 384,
+        "description": "Local TF-IDF + LSA provider",
+        "corpus_file": "${CORPUS_FILE}"
+      },
+      "ollama": {
+        "type": "ollama",
+        "model": "nomic-embed-text",
+        "endpoint": "http://localhost:11434",
+        "timeout": 30,
+        "description": "Ollama local embedding service"
+      },
+      "ollama_mxbai": {
+        "type": "ollama",
+        "model": "mxbai-embed-large",
+        "endpoint": "http://localhost:11434",
+        "description": "Ollama with mxbai-embed-large model"
+      },
+      "openai": {
+        "type": "openai",
+        "api_key": "${OPENAI_API_KEY}",
+        "model": "text-embedding-3-small",
+        "batch_size": 100,
+        "endpoint": "https://api.openai.com/v1/embeddings",
+        "description": "OpenAI embedding provider"
+      },
+      "openai_large": {
+        "type": "openai",
+        "api_key": "${OPENAI_API_KEY}",
+        "model": "text-embedding-3-large",
+        "batch_size": 100,
+        "description": "OpenAI large model (3072 dimensions)"
+      },
+      "anthropic": {
+        "type": "anthropic",
+        "api_key": "${VOYAGE_API_KEY}",
+        "model": "voyage-3",
+        "batch_size": 128,
+        "input_type": "document",
+        "endpoint": "https://api.voyageai.com/v1/embeddings",
+        "description": "Anthropic Voyage AI provider"
+      },
+      "anthropic_lite": {
+        "type": "anthropic",
+        "api_key": "${VOYAGE_API_KEY}",
+        "model": "voyage-3-lite",
+        "batch_size": 128,
+        "input_type": "document",
+        "description": "Anthropic Voyage AI lite model (512 dimensions)"
+      },
+      "anthropic_code": {
+        "type": "voyage",
+        "api_key": "${VOYAGE_API_KEY}",
+        "model": "voyage-code-3",
+        "batch_size": 128,
+        "input_type": "document",
+        "description": "Anthropic Voyage AI code model"
+      }
+    }
+  }
+}

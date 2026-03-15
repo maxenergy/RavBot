@@ -100,9 +100,15 @@ int wait_process(ProcessId pid, int timeout_ms) {
 
 ExecResult exec_capture(const std::string& command, int timeout_seconds) {
   ExecResult result;
+
+  // 添加详细的错误日志
+  errno = 0;
   FILE* pipe = popen(command.c_str(), "r");
   if (!pipe) {
+    int err = errno;
     result.exit_code = -1;
+    result.output = "popen() failed: " + std::string(strerror(err)) +
+                    " (errno=" + std::to_string(err) + ")";
     return result;
   }
 

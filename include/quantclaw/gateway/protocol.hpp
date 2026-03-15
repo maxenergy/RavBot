@@ -268,7 +268,43 @@ struct HelloOkPayload {
     }
 };
 
+// --- Gateway Health Status ---
+
+enum class HealthStatus {
+    kHealthy,      // 完全健康
+    kDegraded,     // 降级状态（部分功能受限）
+    kUnreachable   // 完全不可达
+};
+
+inline std::string HealthStatusToString(HealthStatus status) {
+    switch (status) {
+        case HealthStatus::kHealthy:      return "healthy";
+        case HealthStatus::kDegraded:     return "degraded";
+        case HealthStatus::kUnreachable:  return "unreachable";
+    }
+    return "unknown";
+}
+
+inline HealthStatus HealthStatusFromString(const std::string& str) {
+    if (str == "healthy")     return HealthStatus::kHealthy;
+    if (str == "degraded")    return HealthStatus::kDegraded;
+    if (str == "unreachable") return HealthStatus::kUnreachable;
+    throw std::runtime_error("Unknown health status: " + str);
+}
+
 // --- Client Connection Info ---
+
+// 待处理请求信息
+struct PendingRequest {
+    std::string request_id;
+    std::string method;
+    int64_t created_at;  // 创建时间戳（毫秒）
+    bool expect_final;   // 是否期待最终响应（长时间运行的请求）
+
+    PendingRequest() = default;
+    PendingRequest(const std::string& id, const std::string& m, int64_t ts, bool ef = false)
+        : request_id(id), method(m), created_at(ts), expect_final(ef) {}
+};
 
 struct ClientConnection {
     std::string connection_id;
@@ -280,6 +316,9 @@ struct ClientConnection {
     int64_t connected_at = 0;
     bool authenticated = false;
     std::string client_type = "quantclaw";  // "quantclaw" | "openclaw"
+
+    // 待处理请求（用于超时管理）
+    std::unordered_map<std::string, PendingRequest> pending_requests;
 };
 
 // --- RPC Method Names ---
@@ -392,6 +431,9 @@ namespace methods {
     constexpr const char* kVectorIndex        = "vector.index";
     constexpr const char* kVectorSearch       = "vector.search";
     constexpr const char* kVectorDelete       = "vector.delete";
+
+    // Gateway probe method
+    constexpr const char* kGatewayProbe       = "gateway.probe";
 } // namespace methods
 
 // --- Event Names ---

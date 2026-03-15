@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.20)
+project(debug_hnsw)
+
+set(CMAKE_CXX_STANDARD 17)
+
+find_package(spdlog REQUIRED)
+find_package(SQLite3 REQUIRED)
+find_package(CURL REQUIRED)
+find_package(OpenSSL REQUIRED)
+
+add_executable(debug_hnsw tests/debug_hnsw_hang.cpp)
+target_include_directories(debug_hnsw PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/hnswlib
+)
+target_link_libraries(debug_hnsw PRIVATE
+    quantclaw_core
+    spdlog::spdlog
+    SQLite::SQLite3
+    CURL::libcurl
+    OpenSSL::SSL
+    OpenSSL::Crypto
+)

@@ -276,17 +276,7 @@ void CommandQueue::Stop() {
   if (dispatcher_.joinable()) {
     dispatcher_.join();
   }
-  // Join all worker threads to avoid use-after-free.
-  std::vector<std::thread> workers_to_join;
-  {
-    std::lock_guard<std::mutex> lock(mu_);
-    workers_to_join.swap(workers_);
-  }
-  for (auto& w : workers_to_join) {
-    if (w.joinable()) {
-      w.join();
-    }
-  }
+  // Worker threads are detached, no need to join
   logger_->info("CommandQueue stopped");
 }
 
@@ -525,15 +515,6 @@ void CommandQueue::dispatcher_loop() {
       to_dispatch.push_back(std::move(command));
     }
 
-    // Clean up completed workers to prevent unbounded growth.
-    workers_.erase(
-        std::remove_if(workers_.begin(), workers_.end(),
-                        [](std::thread& t) {
-                          if (!t.joinable()) return true;
-                          return false;
-                        }),
-        workers_.end());
-
     // Clean up idle lanes (no active, no pending, avoid map bloat)
     for (auto it = lanes_.begin(); it != lanes_.end();) {
       if (it->second->IsIdle()) {
@@ -547,10 +528,10 @@ void CommandQueue::dispatcher_loop() {
     lock.unlock();
 
     for (auto& cmd : to_dispatch) {
-      std::lock_guard<std::mutex> wlock(mu_);
-      workers_.emplace_back([this, c = std::move(cmd)]() mutable {
+      // Create detached thread to avoid resource accumulation
+      std::thread([this, c = std::move(cmd)]() mutable {
         execute_command(std::move(c));
-      });
+      }).detach();
     }
   }
 }

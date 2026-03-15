@@ -2,20 +2,48 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "quantclaw/core/vector_database.hpp"
+#include "quantclaw/core/hnsw_index.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <filesystem>
 
 namespace quantclaw {
 
 VectorDatabase::VectorDatabase(const std::string& db_path,
                                std::shared_ptr<spdlog::logger> logger)
-    : db_path_(db_path), logger_(logger) {}
+    : db_path_(db_path), logger_(logger) {
+  // Use default config
+  config_.use_hnsw = true;
+  config_.hnsw_M = 16;
+  config_.hnsw_ef_construction = 200;
+  config_.hnsw_ef_search = 50;
+  config_.max_elements = 100000;
+  config_.metric = "cosine";
+  use_hnsw_ = config_.use_hnsw;
+}
+
+VectorDatabase::VectorDatabase(const std::string& db_path,
+                               std::shared_ptr<spdlog::logger> logger,
+                               const VectorDatabaseConfig& config)
+    : db_path_(db_path), logger_(logger), config_(config) {
+  use_hnsw_ = config_.use_hnsw;
+}
 
 VectorDatabase::~VectorDatabase() {
   std::lock_guard<std::mutex> lock(mutex_);
+
+  // Save HNSW index before closing
+  if (hnsw_index_ && hnsw_initialized_) {
+    try {
+      hnsw_index_->SaveIndex(GetIndexPath());
+    } catch (const std::exception& e) {
+      logger_->warn("Failed to save HNSW index on shutdown: {}", e.what());
+    }
+  }
+
   if (db_) {
     sqlite3_close(db_);
     db_ = nullptr;
@@ -50,7 +78,15 @@ bool VectorDatabase::Initialize() {
     return false;
   }
 
-  logger_->info("Vector database initialized: {}", db_path_);
+  // Initialize HNSW index if enabled
+  if (use_hnsw_) {
+    if (!InitializeHNSW()) {
+      logger_->warn("Failed to initialize HNSW index, falling back to brute-force search");
+      use_hnsw_ = false;
+    }
+  }
+
+  logger_->info("Vector database initialized: {} (HNSW: {})", db_path_, use_hnsw_);
   return true;
 }
 
@@ -151,6 +187,15 @@ bool VectorDatabase::IndexVector(const std::string& id,
 
   if (dimension_ == 0) {
     dimension_ = static_cast<int>(vector.size());
+    logger_->info("Set vector dimension to: {}", dimension_);
+
+    // Initialize HNSW now that we know the dimension
+    if (use_hnsw_ && !hnsw_initialized_) {
+      if (!InitializeHNSW()) {
+        logger_->warn("Failed to initialize HNSW index after setting dimension");
+        use_hnsw_ = false;
+      }
+    }
   } else if (static_cast<int>(vector.size()) != dimension_) {
     logger_->error("Vector dimension mismatch: expected {}, got {}",
                    dimension_, vector.size());
@@ -186,6 +231,14 @@ bool VectorDatabase::IndexVector(const std::string& id,
     return false;
   }
 
+  // Add to HNSW index
+  if (use_hnsw_ && hnsw_index_ && hnsw_initialized_) {
+    if (!hnsw_index_->AddVector(id, vector)) {
+      logger_->warn("Failed to add vector to HNSW index: {}", id);
+      // Continue anyway, SQLite has the data
+    }
+  }
+
   return true;
 }
 
@@ -211,6 +264,65 @@ std::vector<VectorSearchResult> VectorDatabase::SearchVectors(
     return results;
   }
 
+  // Use HNSW if available
+  if (use_hnsw_ && hnsw_index_ && hnsw_initialized_) {
+    try {
+      auto hnsw_results = hnsw_index_->Search(query_vector, limit);
+
+      // Fetch metadata from SQLite for each result
+      for (const auto& [id, distance] : hnsw_results) {
+        // Apply threshold filter
+        float similarity = 1.0f - distance;
+        if (similarity < threshold) {
+          continue;
+        }
+
+        // Fetch metadata from SQLite
+        const char* sql = "SELECT text, metadata FROM vectors WHERE id = ?";
+        sqlite3_stmt* stmt = nullptr;
+
+        int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
+        if (rc != SQLITE_OK) {
+          logger_->warn("Failed to prepare statement for id {}: {}", id, sqlite3_errmsg(db_));
+          continue;
+        }
+
+        sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+          VectorSearchResult result;
+          result.id = id;
+          result.distance = distance;
+
+          const char* text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+          result.text = text ? text : "";
+
+          const char* metadata_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+          if (metadata_str) {
+            try {
+              result.metadata = nlohmann::json::parse(metadata_str);
+            } catch (...) {
+              result.metadata = nlohmann::json::object();
+            }
+          } else {
+            result.metadata = nlohmann::json::object();
+          }
+
+          results.push_back(std::move(result));
+        }
+
+        sqlite3_finalize(stmt);
+      }
+
+      return results;
+
+    } catch (const std::exception& e) {
+      logger_->error("HNSW search failed: {}, falling back to brute-force", e.what());
+      // Fall through to brute-force search
+    }
+  }
+
+  // Brute-force search fallback
   float norm_query = 0.0f;
   for (float value : query_vector) {
     norm_query += value * value;
@@ -326,6 +438,14 @@ bool VectorDatabase::DeleteVector(const std::string& id) {
     return false;
   }
 
+  // Mark deleted in HNSW index
+  if (use_hnsw_ && hnsw_index_ && hnsw_initialized_) {
+    if (!hnsw_index_->MarkDeleted(id)) {
+      logger_->warn("Failed to mark vector as deleted in HNSW index: {}", id);
+      // Continue anyway, SQLite has deleted it
+    }
+  }
+
   const char* count_sql = "SELECT COUNT(*) FROM vectors";
   sqlite3_stmt* count_stmt = nullptr;
   int count_rc = sqlite3_prepare_v2(db_, count_sql, -1, &count_stmt, nullptr);
@@ -360,6 +480,13 @@ bool VectorDatabase::DeleteAll() {
   }
 
   dimension_ = 0;
+
+  // Clear HNSW index
+  if (use_hnsw_ && hnsw_index_ && hnsw_initialized_) {
+    hnsw_index_->Clear();
+    hnsw_initialized_ = false;
+  }
+
   return true;
 }
 
@@ -390,6 +517,250 @@ int64_t VectorDatabase::GetVectorCount() {
 int VectorDatabase::GetDimension() {
   std::lock_guard<std::mutex> lock(mutex_);
   return dimension_;
+}
+
+// HNSW integration methods
+
+std::string VectorDatabase::GetIndexPath() const {
+  return db_path_ + ".hnsw";
+}
+
+bool VectorDatabase::InitializeHNSW() {
+  if (!use_hnsw_) {
+    return false;
+  }
+
+  // If dimension is not set yet, defer initialization until first vector is indexed
+  if (dimension_ == 0) {
+    logger_->info("HNSW initialization deferred until first vector is indexed");
+    return true;  // Return true to indicate HNSW is enabled, just not initialized yet
+  }
+
+  try {
+    // Create HNSW config
+    HNSWConfig hnsw_config;
+    hnsw_config.dimension = dimension_;
+    hnsw_config.max_elements = config_.max_elements;
+    hnsw_config.M = config_.hnsw_M;
+    hnsw_config.ef_construction = config_.hnsw_ef_construction;
+    hnsw_config.ef_search = config_.hnsw_ef_search;
+    hnsw_config.metric = config_.metric;
+
+    // Create HNSW index
+    hnsw_index_ = std::make_unique<HNSWIndex>(hnsw_config, logger_);
+
+    // Try to load existing index
+    std::string index_path = GetIndexPath();
+    if (std::filesystem::exists(index_path)) {
+      if (hnsw_index_->LoadIndex(index_path)) {
+        logger_->info("Loaded existing HNSW index from: {}", index_path);
+        hnsw_initialized_ = true;
+        return true;
+      } else {
+        logger_->warn("Failed to load HNSW index, will rebuild");
+      }
+    }
+
+    // Initialize new index
+    if (!hnsw_index_->Initialize()) {
+      logger_->error("Failed to initialize HNSW index");
+      return false;
+    }
+
+    // Note: Don't call RebuildIndex() here as it would cause deadlock
+    // when called from IndexVector() which already holds the mutex.
+    // The index will be built incrementally as vectors are added.
+
+    hnsw_initialized_ = true;
+    logger_->info("HNSW index initialized successfully");
+    return true;
+
+  } catch (const std::exception& e) {
+    logger_->error("Exception initializing HNSW: {}", e.what());
+    return false;
+  }
+}
+
+bool VectorDatabase::RebuildIndex() {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (!use_hnsw_) {
+    logger_->error("HNSW not enabled");
+    return false;
+  }
+
+  if (!db_) {
+    logger_->error("Database not initialized");
+    return false;
+  }
+
+  // If HNSW index doesn't exist yet, initialize it first
+  if (!hnsw_index_) {
+    if (dimension_ == 0) {
+      logger_->error("Cannot rebuild HNSW index: dimension not set");
+      return false;
+    }
+    if (!InitializeHNSW()) {
+      logger_->error("Failed to initialize HNSW index for rebuild");
+      return false;
+    }
+  }
+
+  try {
+    // Clear existing index
+    hnsw_index_->Clear();
+    if (!hnsw_index_->Initialize()) {
+      logger_->error("Failed to reinitialize HNSW index");
+      return false;
+    }
+
+    // Load all vectors from SQLite
+    const char* sql = "SELECT id, vector FROM vectors";
+    sqlite3_stmt* stmt = nullptr;
+
+    int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+      logger_->error("Failed to prepare rebuild query: {}", sqlite3_errmsg(db_));
+      return false;
+    }
+
+    std::vector<std::pair<std::string, std::vector<float>>> batch;
+    int count = 0;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+      const void* blob = sqlite3_column_blob(stmt, 1);
+      int blob_size = sqlite3_column_bytes(stmt, 1);
+
+      if (!id || !blob || blob_size <= 0) {
+        continue;
+      }
+
+      std::vector<float> vector(blob_size / sizeof(float));
+      std::memcpy(vector.data(), blob, blob_size);
+
+      batch.emplace_back(id, vector);
+      count++;
+
+      // Add in batches of 1000
+      if (batch.size() >= 1000) {
+        if (!hnsw_index_->AddVectorsBatch(batch)) {
+          logger_->warn("Failed to add batch to HNSW index");
+        }
+        batch.clear();
+      }
+    }
+
+    // Add remaining vectors
+    if (!batch.empty()) {
+      if (!hnsw_index_->AddVectorsBatch(batch)) {
+        logger_->warn("Failed to add final batch to HNSW index");
+      }
+    }
+
+    sqlite3_finalize(stmt);
+
+    hnsw_initialized_ = true;
+    logger_->info("Rebuilt HNSW index with {} vectors", count);
+    return true;
+
+  } catch (const std::exception& e) {
+    logger_->error("Exception rebuilding HNSW index: {}", e.what());
+    return false;
+  }
+}
+
+bool VectorDatabase::SaveIndex() {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (!use_hnsw_) {
+    logger_->warn("HNSW not enabled");
+    return false;
+  }
+
+  if (!hnsw_index_ || !hnsw_initialized_) {
+    logger_->warn("HNSW not initialized, nothing to save");
+    return false;
+  }
+
+  try {
+    std::string index_path = GetIndexPath();
+    if (hnsw_index_->SaveIndex(index_path)) {
+      logger_->info("Saved HNSW index to: {}", index_path);
+      return true;
+    } else {
+      logger_->error("Failed to save HNSW index");
+      return false;
+    }
+  } catch (const std::exception& e) {
+    logger_->error("Exception saving HNSW index: {}", e.what());
+    return false;
+  }
+}
+
+bool VectorDatabase::LoadIndex() {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (!use_hnsw_ || !hnsw_index_) {
+    logger_->warn("HNSW not enabled or not initialized");
+    return false;
+  }
+
+  try {
+    std::string index_path = GetIndexPath();
+    if (!std::filesystem::exists(index_path)) {
+      logger_->warn("HNSW index file not found: {}", index_path);
+      return false;
+    }
+
+    if (hnsw_index_->LoadIndex(index_path)) {
+      hnsw_initialized_ = true;
+      logger_->info("Loaded HNSW index from: {}", index_path);
+      return true;
+    } else {
+      logger_->error("Failed to load HNSW index");
+      return false;
+    }
+  } catch (const std::exception& e) {
+    logger_->error("Exception loading HNSW index: {}", e.what());
+    return false;
+  }
+}
+
+nlohmann::json VectorDatabase::GetIndexStats() {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  nlohmann::json stats;
+  stats["use_hnsw"] = use_hnsw_;
+  stats["hnsw_initialized"] = hnsw_initialized_;
+  stats["dimension"] = dimension_;
+
+  // Get vector count directly without calling GetVectorCount() to avoid deadlock
+  int64_t count = 0;
+  if (db_) {
+    const char* sql = "SELECT COUNT(*) FROM vectors";
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
+    if (rc == SQLITE_OK && sqlite3_step(stmt) == SQLITE_ROW) {
+      count = sqlite3_column_int64(stmt, 0);
+    }
+    if (stmt) {
+      sqlite3_finalize(stmt);
+    }
+  }
+  stats["vector_count"] = count;
+
+  if (use_hnsw_ && hnsw_index_ && hnsw_initialized_) {
+    stats["hnsw_size"] = hnsw_index_->GetSize();
+    stats["hnsw_dimension"] = hnsw_index_->GetDimension();
+    stats["hnsw_max_elements"] = hnsw_index_->GetMaxElements();
+    stats["hnsw_M"] = config_.hnsw_M;
+    stats["hnsw_ef_construction"] = config_.hnsw_ef_construction;
+    stats["hnsw_ef_search"] = config_.hnsw_ef_search;
+    stats["metric"] = config_.metric;
+  }
+
+  return stats;
 }
 
 }  // namespace quantclaw

@@ -7,6 +7,8 @@
 #include "quantclaw/channels/deduplication_store.hpp"
 #include "quantclaw/channels/lane_processor.hpp"
 #include "quantclaw/channels/thread_binder.hpp"
+#include "quantclaw/channels/telegram_typing_manager.hpp"
+#include "quantclaw/gateway/message_sanitizer.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <thread>
@@ -27,6 +29,12 @@ struct TelegramConfig {
     int dm_history_limit = 15;
     std::string streaming = "partial";     // none, partial, full
     bool require_mention = false;          // Require @mention in groups
+
+    // Webhook 配置
+    std::string mode = "polling";          // polling, webhook
+    std::string webhook_url;               // Webhook URL (for webhook mode)
+    std::string webhook_secret;            // Secret token for webhook verification
+    std::string webhook_path = "/telegram/webhook";  // Webhook endpoint path
 };
 
 class TelegramChannel : public Channel {
@@ -46,8 +54,19 @@ public:
     void SendDocument(const std::string& chat_id, const std::string& file_path, const std::string& caption = "");
     void EditMessage(const std::string& chat_id, int message_id, const std::string& new_text);
     void DeleteMessage(const std::string& chat_id, int message_id);
+    void SendChatAction(const std::string& chat_id, const std::string& action);
     nlohmann::json GetMe();
     nlohmann::json GetChat(const std::string& chat_id);
+
+    // 媒体处理方法
+    std::string DownloadFile(const std::string& file_id, const std::string& save_path = "");
+    nlohmann::json GetFile(const std::string& file_id);
+
+    // Webhook 方法
+    bool SetWebhook(const std::string& url, const std::string& secret_token = "");
+    bool DeleteWebhook();
+    nlohmann::json GetWebhookInfo();
+    void HandleWebhookUpdate(const nlohmann::json& update, const std::string& secret_token);
 
     // Set deduplication store
     // Requirements: 9.1, 9.2, 9.3
@@ -74,7 +93,17 @@ private:
                         const std::string& message,
                         std::optional<int> reply_to_message_id = std::nullopt);
     std::string GetApiUrl(const std::string& method) const;
+    std::string GetFileUrl(const std::string& file_path) const;
     bool CheckConnection();
+
+    // 媒体处理辅助方法
+    nlohmann::json UploadFile(const std::string& method,
+                              const std::string& chat_id,
+                              const std::string& file_path,
+                              const std::string& file_field,
+                              const std::string& caption = "");
+    std::string ReadFileContent(const std::string& file_path);
+    std::string DownloadFileContent(const std::string& url);
 
     bool IsGroupChat(const nlohmann::json& chat) const;
     bool ShouldProcessMessage(const nlohmann::json& message) const;
@@ -119,6 +148,9 @@ private:
     std::shared_ptr<DeduplicationStore> dedup_store_;
     std::shared_ptr<LaneProcessor> lane_processor_;
     std::shared_ptr<ThreadBinder> thread_binder_;
+
+    // Message sanitizer for cleaning output
+    MessageSanitizer sanitizer_;
 };
 
 } // namespace quantclaw

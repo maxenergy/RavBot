@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <curl/curl.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/daily_file_sink.h>
@@ -115,6 +116,9 @@ static std::shared_ptr<spdlog::logger> create_logger(
 }
 
 int main(int argc, char* argv[]) {
+    // Initialize CURL globally for thread-safe operation
+    curl_global_init(CURL_GLOBAL_ALL);
+
     // Bootstrap with defaults; recreated below once config is loaded.
     auto logger = create_logger();
 
@@ -1574,5 +1578,10 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    return cli.Run(argc, argv);
+    int result = cli.Run(argc, argv);
+
+    // Cleanup CURL global resources
+    curl_global_cleanup();
+
+    return result;
 }

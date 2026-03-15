@@ -3,6 +3,7 @@
 
 #include "quantclaw/security/tool_permissions.hpp"
 #include <algorithm>
+#include <spdlog/spdlog.h>
 
 namespace quantclaw {
 
@@ -10,22 +11,48 @@ namespace quantclaw {
 static const std::unordered_map<std::string, std::vector<std::string>> kGroups = {
     {"fs",      {"read", "write", "edit"}},
     {"runtime", {"exec"}},
-    {"all",     {"read", "write", "edit", "exec", "message"}},
+    {"all",     {"read", "write", "edit", "exec", "message",
+                 "apply_patch", "process",
+                 "web_search", "web_fetch",
+                 "memory_search", "memory_get",
+                 "github_search_repos", "github_search_code", "github_get_repo"}},
 };
 
 ToolPermissionChecker::ToolPermissionChecker(const ToolPermissionConfig& config) {
+    spdlog::info("ToolPermissionChecker: config.allow.size()={}, config.deny.size()={}",
+                 config.allow.size(), config.deny.size());
+
     // Parse allow list
     for (const auto& entry : config.allow) {
+        spdlog::info("ToolPermissionChecker: Processing allow entry: '{}'", entry);
+
+        // Handle wildcard "*" as allow-all
+        if (entry == "*") {
+            allow_all_ = true;
+            mcp_allow_all_ = true;
+            spdlog::info("ToolPermissionChecker: Found wildcard '*', setting allow_all=true");
+            continue;
+        }
+
         if (entry.substr(0, 6) == "group:") {
             std::string group_name = entry.substr(6);
+            spdlog::info("ToolPermissionChecker: Found group: '{}'", group_name);
+
             if (group_name == "all") {
                 allow_all_ = true;
+                spdlog::info("ToolPermissionChecker: Set allow_all=true");
             }
             auto it = kGroups.find(group_name);
             if (it != kGroups.end()) {
+                spdlog::info("ToolPermissionChecker: Expanding group '{}' with {} tools",
+                             group_name, it->second.size());
                 for (const auto& tool : it->second) {
                     allowed_tools_.insert(tool);
+                    spdlog::info("ToolPermissionChecker: Added tool '{}' from group '{}'",
+                                 tool, group_name);
                 }
+            } else {
+                spdlog::warn("ToolPermissionChecker: Unknown group '{}'", group_name);
             }
         } else if (entry.substr(0, 5) == "tool:") {
             allowed_tools_.insert(entry.substr(5));
@@ -61,6 +88,19 @@ ToolPermissionChecker::ToolPermissionChecker(const ToolPermissionConfig& config)
     if (config.allow.empty()) {
         allow_all_ = true;
         mcp_allow_all_ = true;
+        spdlog::info("ToolPermissionChecker: Empty allow list, setting allow_all=true");
+    }
+
+    // Log configuration
+    spdlog::info("ToolPermissionChecker: allow_all={}, allowed_tools={}, denied_tools={}",
+                 allow_all_, allowed_tools_.size(), denied_tools_.size());
+    if (!allowed_tools_.empty()) {
+        std::string tools_list;
+        for (const auto& tool : allowed_tools_) {
+            if (!tools_list.empty()) tools_list += ", ";
+            tools_list += tool;
+        }
+        spdlog::info("ToolPermissionChecker: allowed_tools=[{}]", tools_list);
     }
 }
 

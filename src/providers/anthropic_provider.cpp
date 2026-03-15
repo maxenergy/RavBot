@@ -4,6 +4,8 @@
 #include "quantclaw/providers/anthropic_provider.hpp"
 
 #include <sstream>
+#include <fstream>
+#include <unordered_set>
 
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
@@ -67,10 +69,16 @@ serialize_messages_to_anthropic(const std::vector<Message>& messages) {
 
     // Build content block array — Anthropic uses native content blocks
     nlohmann::json content_arr = nlohmann::json::array();
+    std::unordered_set<std::string> seen_text_blocks;  // Dedup text blocks
 
     for (const auto& b : msg.content) {
       if (b.type == "text" || b.type == "thinking") {
         if (!b.text.empty()) {
+          // Deduplicate identical text blocks within the same message
+          if (seen_text_blocks.count(b.text) > 0) {
+            continue;  // Skip duplicate text block
+          }
+          seen_text_blocks.insert(b.text);
           content_arr.push_back({{"type", "text"}, {"text", b.text}});
         }
       } else if (b.type == "tool_use") {
@@ -347,15 +355,47 @@ AnthropicProvider::ChatCompletion(const ChatCompletionRequest& request) {
 
   if (!request.tools.empty()) {
     payload["tools"] = convert_tools_to_anthropic(request.tools);
-    if (request.tool_choice_auto) {
+    logger_->info("Added {} tools to request, tool_choice_type={}",
+                  request.tools.size(), request.tool_choice_type);
+    // Support different tool_choice types
+    if (request.tool_choice_type == "any") {
+      payload["tool_choice"] = {{"type", "any"}};
+    } else if (request.tool_choice_type == "tool" && !request.tool_choice_name.empty()) {
+      payload["tool_choice"] = {{"type", "tool"}, {"name", request.tool_choice_name}};
+    } else if (request.tool_choice_auto) {
       payload["tool_choice"] = {{"type", "auto"}};
     }
+  } else {
+    logger_->warn("No tools provided in request! tool_choice will be ignored.");
   }
 
   apply_thinking_params(payload, request);
 
   std::string json_payload = payload.dump();
-  logger_->debug("Sending request to Anthropic API: {}", json_payload);
+  logger_->info("Sending request to Anthropic API (tool_choice: {})",
+                payload.contains("tool_choice") ? payload["tool_choice"].dump() : "none");
+  logger_->info("Request payload size: {} bytes, messages: {}",
+                json_payload.size(), payload["messages"].size());
+
+  // Save payload to file for debugging if it's the problematic size
+  if (json_payload.size() > 20000 && json_payload.size() < 30000) {
+    std::ofstream debug_file("/tmp/quantclaw_error_payload.json");
+    debug_file << json_payload;
+    debug_file.close();
+    logger_->warn("Saved potentially problematic payload to /tmp/quantclaw_error_payload.json");
+  }
+
+  // Validate message alternation (Anthropic requires alternating user/assistant)
+  if (payload.contains("messages") && payload["messages"].is_array()) {
+    std::string last_role;
+    for (size_t i = 0; i < payload["messages"].size(); ++i) {
+      std::string role = payload["messages"][i].value("role", "");
+      if (!last_role.empty() && role == last_role) {
+        logger_->error("INVALID: Consecutive {} messages at index {}", role, i);
+      }
+      last_role = role;
+    }
+  }
 
   std::string response = MakeApiRequest(json_payload);
   logger_->debug("Received response from Anthropic API: {}", response);
@@ -595,9 +635,18 @@ void AnthropicProvider::ChatCompletionStream(
 
   if (!request.tools.empty()) {
     payload["tools"] = convert_tools_to_anthropic(request.tools);
-    if (request.tool_choice_auto) {
+    logger_->info("Added {} tools to request, tool_choice_type={}",
+                  request.tools.size(), request.tool_choice_type);
+    // Support different tool_choice types
+    if (request.tool_choice_type == "any") {
+      payload["tool_choice"] = {{"type", "any"}};
+    } else if (request.tool_choice_type == "tool" && !request.tool_choice_name.empty()) {
+      payload["tool_choice"] = {{"type", "tool"}, {"name", request.tool_choice_name}};
+    } else if (request.tool_choice_auto) {
       payload["tool_choice"] = {{"type", "auto"}};
     }
+  } else {
+    logger_->warn("No tools provided in request! tool_choice will be ignored.");
   }
 
   apply_thinking_params(payload, request);

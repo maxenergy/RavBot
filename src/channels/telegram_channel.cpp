@@ -33,16 +33,33 @@ std::vector<std::string> split_telegram_message(const std::string& message) {
 
     std::vector<std::string> chunks;
     size_t start = 0;
+
     while (start < message.size()) {
         size_t end = std::min(start + kTelegramMessageChunkLimit, message.size());
+
+        // 如果不是最后一块,尝试在句子边界分块
         if (end < message.size()) {
-            while (end > start && (static_cast<unsigned char>(message[end]) & 0xC0) == 0x80) {
-                --end;
-            }
-            if (end == start) {
-                end = std::min(start + kTelegramMessageChunkLimit, message.size());
+            // 优先在句号、问号、感叹号处分块
+            size_t sentence_end = message.find_last_of(".?!\n", end);
+            if (sentence_end != std::string::npos && sentence_end > start) {
+                end = sentence_end + 1;
+            } else {
+                // 其次在空格处分块
+                size_t space_pos = message.find_last_of(" \t\n", end);
+                if (space_pos != std::string::npos && space_pos > start) {
+                    end = space_pos + 1;
+                } else {
+                    // 最后确保不在 UTF-8 字符中间分块
+                    while (end > start && (static_cast<unsigned char>(message[end]) & 0xC0) == 0x80) {
+                        --end;
+                    }
+                    if (end == start) {
+                        end = std::min(start + kTelegramMessageChunkLimit, message.size());
+                    }
+                }
             }
         }
+
         chunks.push_back(message.substr(start, end - start));
         start = end;
     }
@@ -79,8 +96,16 @@ void TelegramChannel::Start() {
     }
 
     running_ = true;
-    polling_thread_ = std::thread(&TelegramChannel::PollingLoop, this);
-    logger_->info("Telegram channel started");
+
+    // 根据配置选择模式
+    if (config_.mode == "webhook") {
+        logger_->info("Telegram channel started in webhook mode");
+        // Webhook 模式不需要轮询线程，由外部 WebServer 调用 HandleWebhookUpdate
+    } else {
+        // 默认使用轮询模式
+        polling_thread_ = std::thread(&TelegramChannel::PollingLoop, this);
+        logger_->info("Telegram channel started in polling mode");
+    }
 }
 
 void TelegramChannel::Stop() {
@@ -107,45 +132,109 @@ void TelegramChannel::SendReply(const std::string& chat_id, int message_id, cons
 void TelegramChannel::SendTextChunks(const std::string& chat_id,
                                      const std::string& message,
                                      std::optional<int> reply_to_message_id) {
-    auto chunks = split_telegram_message(message);
-    for (size_t i = 0; i < chunks.size(); ++i) {
+    // 清理系统标签
+    std::string sanitized_message = sanitizer_.SanitizeOutput(message);
+
+    auto chunks = split_telegram_message(sanitized_message);
+
+    // 如果只有一个分块,直接同步发送
+    if (chunks.size() == 1) {
         nlohmann::json params = {
             {"chat_id", chat_id},
-            {"text", chunks[i]}
+            {"text", chunks[0]}
         };
-        if (reply_to_message_id.has_value() && i == 0) {
+        if (reply_to_message_id.has_value()) {
             params["reply_to_message_id"] = *reply_to_message_id;
         }
 
         auto response = MakeApiRequest("sendMessage", params);
         if (!telegram_response_ok(response)) {
-            logger_->error("Failed to send message chunk {}/{} to {}: {}",
-                           i + 1,
-                           chunks.size(),
-                           chat_id,
-                           response.dump());
-            return;
+            logger_->error("Failed to send message to {}: {}", chat_id, response.dump());
         }
+        return;
     }
+
+    // 多个分块时使用线程化发送
+    // 使用 shared_ptr 确保数据在异步操作中有效
+    auto chunks_ptr = std::make_shared<std::vector<std::string>>(std::move(chunks));
+    auto chat_id_ptr = std::make_shared<std::string>(chat_id);
+    auto reply_id_ptr = std::make_shared<std::optional<int>>(reply_to_message_id);
+
+    // 启动异步发送线程
+    std::thread([this, chunks_ptr, chat_id_ptr, reply_id_ptr]() {
+        for (size_t i = 0; i < chunks_ptr->size(); ++i) {
+            nlohmann::json params = {
+                {"chat_id", *chat_id_ptr},
+                {"text", (*chunks_ptr)[i]}
+            };
+
+            // 只在第一个分块添加 reply_to
+            if (reply_id_ptr->has_value() && i == 0) {
+                params["reply_to_message_id"] = **reply_id_ptr;
+            }
+
+            auto response = MakeApiRequest("sendMessage", params);
+            if (!telegram_response_ok(response)) {
+                logger_->error("Failed to send message chunk {}/{} to {}: {}",
+                               i + 1,
+                               chunks_ptr->size(),
+                               *chat_id_ptr,
+                               response.dump());
+                return;
+            }
+
+            // 添加小延迟避免 Telegram API 速率限制
+            if (i < chunks_ptr->size() - 1) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        }
+
+        logger_->debug("Sent {} message chunks to {}", chunks_ptr->size(), *chat_id_ptr);
+    }).detach();
 }
 
 void TelegramChannel::SendPhoto(const std::string& chat_id, const std::string& photo_path, const std::string& caption) {
-    // TODO: Implement file upload
-    logger_->warn("SendPhoto not yet implemented");
+    std::lock_guard<std::mutex> lock(send_mutex_);
+
+    // 清理系统标签
+    std::string sanitized_caption = sanitizer_.SanitizeOutput(caption);
+
+    try {
+        auto response = UploadFile("sendPhoto", chat_id, photo_path, "photo", sanitized_caption);
+        if (!telegram_response_ok(response)) {
+            logger_->error("Failed to send photo to {}: {}", chat_id, response.dump());
+        }
+    } catch (const std::exception& e) {
+        logger_->error("Error sending photo: {}", e.what());
+    }
 }
 
 void TelegramChannel::SendDocument(const std::string& chat_id, const std::string& file_path, const std::string& caption) {
-    // TODO: Implement file upload
-    logger_->warn("SendDocument not yet implemented");
+    std::lock_guard<std::mutex> lock(send_mutex_);
+
+    // 清理系统标签
+    std::string sanitized_caption = sanitizer_.SanitizeOutput(caption);
+
+    try {
+        auto response = UploadFile("sendDocument", chat_id, file_path, "document", sanitized_caption);
+        if (!telegram_response_ok(response)) {
+            logger_->error("Failed to send document to {}: {}", chat_id, response.dump());
+        }
+    } catch (const std::exception& e) {
+        logger_->error("Error sending document: {}", e.what());
+    }
 }
 
 void TelegramChannel::EditMessage(const std::string& chat_id, int message_id, const std::string& new_text) {
     std::lock_guard<std::mutex> lock(send_mutex_);
 
+    // 清理系统标签
+    std::string sanitized_text = sanitizer_.SanitizeOutput(new_text);
+
     nlohmann::json params = {
         {"chat_id", chat_id},
         {"message_id", message_id},
-        {"text", new_text},
+        {"text", sanitized_text},
         {"parse_mode", "Markdown"}
     };
 
@@ -161,6 +250,17 @@ void TelegramChannel::DeleteMessage(const std::string& chat_id, int message_id) 
     };
 
     MakeApiRequest("deleteMessage", params);
+}
+
+void TelegramChannel::SendChatAction(const std::string& chat_id, const std::string& action) {
+    std::lock_guard<std::mutex> lock(send_mutex_);
+
+    nlohmann::json params = {
+        {"chat_id", chat_id},
+        {"action", action}
+    };
+
+    MakeApiRequest("sendChatAction", params);
 }
 
 nlohmann::json TelegramChannel::GetMe() {
@@ -319,18 +419,11 @@ void TelegramChannel::HandleMessage(const nlohmann::json& message) {
     logger_->info("Received message from {} (session={}): {}", user_id,
                   session_key, text.substr(0, 50));
 
-    // Forward to agent system via message handler
-    if (!ShouldProcessMessage(message)) {
-        return;
-    }
-
-    // Check permissions
-    if (!IsAllowed(user_id)) {
-        logger_->warn("User {} not allowed", user_id);
-        return;
-    }
-
-    logger_->info("Received message from {}: {}", user_id, text.substr(0, 50));
+    // 启动持续的 "正在输入" 状态刷新
+    // 使用 RAII 模式，函数结束时自动停止
+    channels::TypingStateGuard typing_guard(chat_id, [this](const std::string& id) {
+        this->SendChatAction(id, "typing");
+    });
 
     // Forward to agent system via message handler
     if (message_handler_) {
@@ -395,6 +488,10 @@ nlohmann::json TelegramChannel::MakeApiRequest(const std::string& method, const 
 
 std::string TelegramChannel::GetApiUrl(const std::string& method) const {
     return "https://api.telegram.org/bot" + config_.bot_token + "/" + method;
+}
+
+std::string TelegramChannel::GetFileUrl(const std::string& file_path) const {
+    return "https://api.telegram.org/file/bot" + config_.bot_token + "/" + file_path;
 }
 
 bool TelegramChannel::CheckConnection() {
@@ -539,6 +636,239 @@ std::optional<std::string> TelegramChannel::extract_thread_id(
     return std::to_string(message["message_thread_id"].get<int64_t>());
   }
   return std::nullopt;
+}
+
+// Webhook 方法实现
+bool TelegramChannel::SetWebhook(const std::string& url, const std::string& secret_token) {
+    nlohmann::json params = {
+        {"url", url},
+        {"allowed_updates", nlohmann::json::array({"message", "callback_query"})}
+    };
+
+    if (!secret_token.empty()) {
+        params["secret_token"] = secret_token;
+    }
+
+    auto response = MakeApiRequest("setWebhook", params);
+
+    if (telegram_response_ok(response)) {
+        logger_->info("Webhook set successfully: {}", url);
+        return true;
+    } else {
+        logger_->error("Failed to set webhook: {}", response.dump());
+        return false;
+    }
+}
+
+bool TelegramChannel::DeleteWebhook() {
+    auto response = MakeApiRequest("deleteWebhook");
+
+    if (telegram_response_ok(response)) {
+        logger_->info("Webhook deleted successfully");
+        return true;
+    } else {
+        logger_->error("Failed to delete webhook: {}", response.dump());
+        return false;
+    }
+}
+
+nlohmann::json TelegramChannel::GetWebhookInfo() {
+    auto response = MakeApiRequest("getWebhookInfo");
+
+    if (telegram_response_ok(response) && response.contains("result")) {
+        return response["result"];
+    }
+
+    return nlohmann::json::object();
+}
+
+void TelegramChannel::HandleWebhookUpdate(const nlohmann::json& update, const std::string& secret_token) {
+    // 验证 secret token（如果配置了）
+    if (!config_.webhook_secret.empty() && secret_token != config_.webhook_secret) {
+        logger_->warn("Webhook update rejected: invalid secret token");
+        return;
+    }
+
+    // 处理更新（与轮询模式相同的逻辑）
+    try {
+        HandleUpdate(update);
+
+        // 保存 update_id（用于故障恢复）
+        if (update.contains("update_id")) {
+            last_update_id_ = update["update_id"].get<int64_t>();
+            SaveLastUpdateId();
+        }
+    } catch (const std::exception& e) {
+        logger_->error("Error handling webhook update: {}", e.what());
+    }
+}
+
+// 媒体处理方法实现
+nlohmann::json TelegramChannel::GetFile(const std::string& file_id) {
+    nlohmann::json params = {{"file_id", file_id}};
+    auto response = MakeApiRequest("getFile", params);
+
+    if (telegram_response_ok(response) && response.contains("result")) {
+        return response["result"];
+    }
+
+    return nlohmann::json::object();
+}
+
+std::string TelegramChannel::DownloadFile(const std::string& file_id, const std::string& save_path) {
+    // 获取文件信息
+    auto file_info = GetFile(file_id);
+    if (!file_info.contains("file_path")) {
+        logger_->error("Failed to get file path for file_id: {}", file_id);
+        return "";
+    }
+
+    std::string file_path = file_info["file_path"].get<std::string>();
+    std::string file_url = GetFileUrl(file_path);
+
+    // 下载文件内容
+    std::string content = DownloadFileContent(file_url);
+    if (content.empty()) {
+        logger_->error("Failed to download file from: {}", file_url);
+        return "";
+    }
+
+    // 如果指定了保存路径，保存到文件
+    if (!save_path.empty()) {
+        try {
+            std::ofstream file(save_path, std::ios::binary);
+            if (!file) {
+                logger_->error("Failed to open file for writing: {}", save_path);
+                return "";
+            }
+            file.write(content.data(), content.size());
+            file.close();
+            logger_->info("File downloaded successfully: {}", save_path);
+            return save_path;
+        } catch (const std::exception& e) {
+            logger_->error("Error saving file: {}", e.what());
+            return "";
+        }
+    }
+
+    return content;
+}
+
+nlohmann::json TelegramChannel::UploadFile(const std::string& method,
+                                           const std::string& chat_id,
+                                           const std::string& file_path,
+                                           const std::string& file_field,
+                                           const std::string& caption) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        logger_->error("Failed to initialize CURL");
+        return nlohmann::json::object();
+    }
+
+    std::string url = GetApiUrl(method);
+    std::string response_data;
+
+    // 读取文件内容
+    std::string file_content = ReadFileContent(file_path);
+    if (file_content.empty()) {
+        curl_easy_cleanup(curl);
+        return nlohmann::json::object();
+    }
+
+    // 提取文件名
+    std::string filename = file_path;
+    size_t last_slash = file_path.find_last_of("/\\");
+    if (last_slash != std::string::npos) {
+        filename = file_path.substr(last_slash + 1);
+    }
+
+    // 构建 multipart/form-data
+    curl_mime* mime = curl_mime_init(curl);
+    curl_mimepart* part;
+
+    // 添加 chat_id 字段
+    part = curl_mime_addpart(mime);
+    curl_mime_name(part, "chat_id");
+    curl_mime_data(part, chat_id.c_str(), CURL_ZERO_TERMINATED);
+
+    // 添加文件字段
+    part = curl_mime_addpart(mime);
+    curl_mime_name(part, file_field.c_str());
+    curl_mime_data(part, file_content.c_str(), file_content.size());
+    curl_mime_filename(part, filename.c_str());
+
+    // 添加 caption 字段（如果有）
+    if (!caption.empty()) {
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "caption");
+        curl_mime_data(part, caption.c_str(), CURL_ZERO_TERMINATED);
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+
+    CURLcode res = curl_easy_perform(curl);
+
+    curl_mime_free(mime);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        logger_->error("CURL error: {}", curl_easy_strerror(res));
+        return nlohmann::json::object();
+    }
+
+    try {
+        return nlohmann::json::parse(response_data);
+    } catch (const std::exception& e) {
+        logger_->error("Failed to parse response: {}", e.what());
+        return nlohmann::json::object();
+    }
+}
+
+std::string TelegramChannel::ReadFileContent(const std::string& file_path) {
+    try {
+        std::ifstream file(file_path, std::ios::binary);
+        if (!file) {
+            logger_->error("Failed to open file: {}", file_path);
+            return "";
+        }
+
+        std::ostringstream ss;
+        ss << file.rdbuf();
+        return ss.str();
+    } catch (const std::exception& e) {
+        logger_->error("Error reading file: {}", e.what());
+        return "";
+    }
+}
+
+std::string TelegramChannel::DownloadFileContent(const std::string& url) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        logger_->error("Failed to initialize CURL");
+        return "";
+    }
+
+    std::string response_data;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        logger_->error("CURL error: {}", curl_easy_strerror(res));
+        return "";
+    }
+
+    return response_data;
 }
 
 } // namespace quantclaw

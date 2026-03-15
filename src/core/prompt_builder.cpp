@@ -37,6 +37,52 @@ void PromptBuilder::SetSenderTrust(const std::string& sender_id,
 std::string PromptBuilder::BuildFull(const std::string& /*agent_id*/) const {
   std::ostringstream prompt;
 
+  // 0. CRITICAL: Tool usage enforcement (must be first!)
+  prompt << "## CRITICAL: Tool Usage Rules\n"
+         << "**YOU MUST ACTUALLY CALL TOOLS - DO NOT JUST DESCRIBE THEM**\n\n"
+         << "When the user asks you to search, fetch, check, or execute something:\n"
+         << "1. **IMMEDIATELY call the appropriate tool** (web_search, github_search_repos, exec, etc.)\n"
+         << "2. **WAIT for the tool result**\n"
+         << "3. **PRESENT the actual results to the user**\n\n"
+         << "❌ WRONG: \"Let me search GitHub... I didn't find any results.\"\n"
+         << "✅ CORRECT: [calls github_search_repos tool] → receives results → presents them\n\n"
+         << "❌ WRONG: \"I'll use the web_search tool to find...\"\n"
+         << "✅ CORRECT: [actually calls web_search tool]\n\n"
+         << "**NEVER respond with text when a tool call is needed. ALWAYS call the tool first.**\n\n"
+         << "## CRITICAL: Data Integrity Rules\n"
+         << "**NEVER MODIFY NUMERICAL DATA FROM TOOL RESULTS**\n\n"
+         << "When presenting tool results:\n"
+         << "- **PRESERVE all numbers EXACTLY as received** (star counts, follower counts, etc.)\n"
+         << "- **DO NOT round, abbreviate, or modify numbers**\n"
+         << "- **DO NOT change formatting of numerical data**\n\n"
+         << "Example:\n"
+         << "Tool returns: \"⭐ 37,265 stars\"\n"
+         << "❌ WRONG: \"⭐ 0 stars\" or \"⭐ 37k stars\" or \"⭐ 37.3k stars\"\n"
+         << "✅ CORRECT: \"⭐ 37,265 stars\" (EXACT copy)\n\n"
+         << "If a tool returns star count data, you MUST present it exactly as received.\n"
+         << "If you see a number in the tool result, that EXACT number must appear in your response.\n\n"
+         << "## CRITICAL: GitHub Search Keyword Strategy\n"
+         << "**ALWAYS use SPECIFIC and PRECISE keywords for GitHub searches**\n\n"
+         << "### For Skills/Plugins/Extensions:\n"
+         << "- ✅ CORRECT: \"awesome-[project]-skills\", \"[project] skills\", \"[project] skill marketplace\"\n"
+         << "- ❌ WRONG: \"[project]\" alone (too generic, matches unrelated projects)\n\n"
+         << "### Examples:\n"
+         << "User: \"Find OpenClaw skills\"\n"
+         << "❌ WRONG: github_search_repos({\"query\": \"openclaw\"})\n"
+         << "  → Returns: OpenCopilot, OpenChat, ChatDev (UNRELATED!)\n"
+         << "✅ CORRECT: github_search_repos({\"query\": \"awesome-openclaw-skills\"})\n"
+         << "  → Returns: VoltAgent/awesome-openclaw-skills (CORRECT!)\n\n"
+         << "User: \"Find Python project list\"\n"
+         << "❌ WRONG: github_search_repos({\"query\": \"python\"})\n"
+         << "  → Returns: Too many unrelated results\n"
+         << "✅ CORRECT: github_search_repos({\"query\": \"awesome-python\"})\n"
+         << "  → Returns: Curated Python project list (CORRECT!)\n\n"
+         << "### Multiple Search Strategy:\n"
+         << "If the first search doesn't find relevant results:\n"
+         << "1. Add \"skills\", \"awesome\", \"marketplace\", or \"collection\" to the query\n"
+         << "2. Try variations: \"skill\" vs \"skills\", \"plugin\" vs \"plugins\"\n"
+         << "3. Use exact repository names if known\n\n";
+
   // 1. SOUL.md - identity
   auto soul = get_section("SOUL.md");
   if (!soul.empty()) {
@@ -97,6 +143,21 @@ std::string PromptBuilder::BuildFull(const std::string& /*agent_id*/) const {
       prompt << "- **" << schema.name << "**: " << schema.description << "\n";
     }
     prompt << "\n";
+
+    // Tool usage instructions
+    prompt << "### CRITICAL: Tool Usage Rules\n"
+           << "1. **Execute, Don't Show**: When you need to run commands (gh, curl, etc.), "
+           << "you MUST use the exec/bash tool to actually execute them. "
+           << "DO NOT just show commands in markdown code blocks.\n"
+           << "2. **Get Real Results**: After executing tools, present the actual results to the user. "
+           << "Do NOT say \"you can run this command\" - run it yourself and show the output.\n"
+           << "3. **Tool Call Format**: Use the proper tool call format with tool name and parameters.\n\n"
+           << "**Example of CORRECT behavior:**\n"
+           << "User: \"Search GitHub for Python projects\"\n"
+           << "You: [calls exec tool with gh command] → gets results → presents formatted results\n\n"
+           << "**Example of WRONG behavior:**\n"
+           << "User: \"Search GitHub for Python projects\"\n"
+           << "You: \"You can run: ```bash\\ngh search repos python\\n```\" ❌ WRONG!\n\n";
   }
 
   // Default identity fallback
