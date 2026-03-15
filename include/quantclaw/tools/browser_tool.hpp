@@ -72,6 +72,24 @@ struct BrowserToolConfig {
   int cdp_debug_port = 9222;
   SsrfPolicy ssrf_policy;
 
+  // Convenience factory methods
+  static BrowserToolConfig Default() {
+    return BrowserToolConfig{};
+  }
+
+  static BrowserToolConfig Headless() {
+    BrowserToolConfig c;
+    c.headless = true;
+    return c;
+  }
+
+  static BrowserToolConfig WithViewport(int width, int height) {
+    BrowserToolConfig c;
+    c.viewport_width = width;
+    c.viewport_height = height;
+    return c;
+  }
+
   static BrowserToolConfig FromJson(const nlohmann::json& j);
 };
 
@@ -83,6 +101,11 @@ class BrowserSession {
 
   // Initialize browser (launch or connect)
   bool initialize(const BrowserToolConfig& config);
+
+  // Simplified initialization with default config
+  bool initialize() {
+    return initialize(BrowserToolConfig::Default());
+  }
 
   // Close browser
   void close();
@@ -107,6 +130,13 @@ class BrowserSession {
   // Get connection info
   const BrowserConnection& connection() const { return connection_; }
 
+  // Session metadata
+  std::string session_id() const { return session_id_; }
+  void set_session_id(const std::string& id) { session_id_ = id; }
+  std::chrono::system_clock::time_point created_at() const { return created_at_; }
+  std::chrono::system_clock::time_point last_used_at() const { return last_used_at_; }
+  void update_last_used() { last_used_at_ = std::chrono::system_clock::now(); }
+
  private:
   std::shared_ptr<spdlog::logger> logger_;
   BrowserToolConfig config_;
@@ -114,6 +144,11 @@ class BrowserSession {
   PageState state_;
   mutable std::mutex mu_;
   platform::ProcessId browser_pid_ = platform::kInvalidPid;
+
+  // Session metadata
+  std::string session_id_;
+  std::chrono::system_clock::time_point created_at_;
+  std::chrono::system_clock::time_point last_used_at_;
 
   // CDP WebSocket connection
   ix::WebSocket cdp_ws_;
@@ -139,6 +174,73 @@ class BrowserSession {
 
   // Check SSRF policy
   bool check_navigation(const std::string& url) const;
+};
+
+// Session info for listing
+struct SessionInfo {
+  std::string session_id;
+  std::string current_url;
+  std::string page_title;
+  bool is_connected;
+  std::chrono::system_clock::time_point created_at;
+  std::chrono::system_clock::time_point last_used_at;
+};
+
+// Session lifecycle configuration
+struct SessionLifecycleConfig {
+  int idle_timeout_seconds = 300;        // 5 minutes idle timeout
+  int max_lifetime_seconds = 3600;       // 1 hour max lifetime
+  int health_check_interval_seconds = 30; // Health check every 30 seconds
+  bool auto_cleanup = true;              // Auto cleanup expired sessions
+};
+
+// Browser session manager: manages multiple browser sessions
+class BrowserSessionManager {
+ public:
+  explicit BrowserSessionManager(std::shared_ptr<spdlog::logger> logger);
+  explicit BrowserSessionManager(std::shared_ptr<spdlog::logger> logger,
+                                  const SessionLifecycleConfig& lifecycle_config);
+  ~BrowserSessionManager();
+
+  // Create a new session
+  std::string create_session(const BrowserToolConfig& config);
+
+  // Get a session by ID
+  std::shared_ptr<BrowserSession> get_session(const std::string& session_id);
+
+  // List all sessions
+  std::vector<SessionInfo> list_sessions() const;
+
+  // Close a session
+  bool close_session(const std::string& session_id);
+
+  // Close all sessions
+  void close_all_sessions();
+
+  // Get or create default session
+  std::shared_ptr<BrowserSession> get_or_create_default(const BrowserToolConfig& config);
+
+  // Lifecycle management
+  bool validate_session(const std::string& session_id);
+  void cleanup_expired_sessions();
+  void start_lifecycle_manager();
+  void stop_lifecycle_manager();
+
+ private:
+  std::shared_ptr<spdlog::logger> logger_;
+  mutable std::mutex mu_;
+  std::unordered_map<std::string, std::shared_ptr<BrowserSession>> sessions_;
+  int next_session_id_ = 1;
+  SessionLifecycleConfig lifecycle_config_;
+
+  // Lifecycle management
+  std::atomic<bool> lifecycle_running_{false};
+  std::thread lifecycle_thread_;
+
+  std::string generate_session_id();
+  void lifecycle_loop();
+  bool is_session_expired(const std::shared_ptr<BrowserSession>& session) const;
+  bool is_session_idle(const std::shared_ptr<BrowserSession>& session) const;
 };
 
 // Browser tool functions for registration with ToolRegistry

@@ -91,7 +91,9 @@ BrowserToolConfig BrowserToolConfig::FromJson(const nlohmann::json& j) {
 // --- BrowserSession ---
 
 BrowserSession::BrowserSession(std::shared_ptr<spdlog::logger> logger)
-    : logger_(std::move(logger)) {}
+    : logger_(std::move(logger)),
+      created_at_(std::chrono::system_clock::now()),
+      last_used_at_(std::chrono::system_clock::now()) {}
 
 BrowserSession::~BrowserSession() { close(); }
 
@@ -198,6 +200,11 @@ bool BrowserSession::launch_local() {
   };
   if (config_.headless) {
     args.push_back("--headless=new");
+    // Additional headless optimizations for resource usage
+    args.push_back("--disable-gpu");
+    args.push_back("--disable-dev-shm-usage");
+    args.push_back("--disable-software-rasterizer");
+    args.push_back("--disable-extensions");
   }
   args.push_back("--window-size=" + std::to_string(config_.viewport_width) +
                  "," + std::to_string(config_.viewport_height));
@@ -571,5 +578,249 @@ create_executor(std::shared_ptr<BrowserSession> session) {
 }
 
 }  // namespace browser_tools
+
+// --- BrowserSessionManager ---
+
+BrowserSessionManager::BrowserSessionManager(std::shared_ptr<spdlog::logger> logger)
+    : logger_(std::move(logger)) {
+  // Use default lifecycle config
+  lifecycle_config_.idle_timeout_seconds = 300;
+  lifecycle_config_.max_lifetime_seconds = 3600;
+  lifecycle_config_.health_check_interval_seconds = 30;
+  lifecycle_config_.auto_cleanup = true;
+
+  if (lifecycle_config_.auto_cleanup) {
+    start_lifecycle_manager();
+  }
+}
+
+BrowserSessionManager::BrowserSessionManager(std::shared_ptr<spdlog::logger> logger,
+                                              const SessionLifecycleConfig& lifecycle_config)
+    : logger_(std::move(logger)), lifecycle_config_(lifecycle_config) {
+  if (lifecycle_config_.auto_cleanup) {
+    start_lifecycle_manager();
+  }
+}
+
+BrowserSessionManager::~BrowserSessionManager() {
+  stop_lifecycle_manager();
+  close_all_sessions();
+}
+
+std::string BrowserSessionManager::generate_session_id() {
+  std::lock_guard<std::mutex> lock(mu_);
+  return "session_" + std::to_string(next_session_id_++);
+}
+
+std::string BrowserSessionManager::create_session(const BrowserToolConfig& config) {
+  auto session = std::make_shared<BrowserSession>(logger_);
+  std::string session_id = generate_session_id();
+  session->set_session_id(session_id);
+
+  if (!session->initialize(config)) {
+    logger_->error("Failed to initialize browser session: {}", session_id);
+    return "";
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(mu_);
+    sessions_[session_id] = session;
+  }
+
+  logger_->info("Created browser session: {}", session_id);
+  return session_id;
+}
+
+std::shared_ptr<BrowserSession> BrowserSessionManager::get_session(const std::string& session_id) {
+  std::lock_guard<std::mutex> lock(mu_);
+  auto it = sessions_.find(session_id);
+  if (it != sessions_.end()) {
+    it->second->update_last_used();
+    return it->second;
+  }
+  return nullptr;
+}
+
+std::vector<SessionInfo> BrowserSessionManager::list_sessions() const {
+  std::lock_guard<std::mutex> lock(mu_);
+  std::vector<SessionInfo> result;
+
+  for (const auto& [id, session] : sessions_) {
+    SessionInfo info;
+    info.session_id = id;
+    info.current_url = session->current_url();
+    info.page_title = session->page_title();
+    info.is_connected = session->is_connected();
+    info.created_at = session->created_at();
+    info.last_used_at = session->last_used_at();
+    result.push_back(info);
+  }
+
+  return result;
+}
+
+bool BrowserSessionManager::close_session(const std::string& session_id) {
+  std::shared_ptr<BrowserSession> session;
+  {
+    std::lock_guard<std::mutex> lock(mu_);
+    auto it = sessions_.find(session_id);
+    if (it == sessions_.end()) {
+      return false;
+    }
+    session = it->second;
+    sessions_.erase(it);
+  }
+
+  session->close();
+  logger_->info("Closed browser session: {}", session_id);
+  return true;
+}
+
+void BrowserSessionManager::close_all_sessions() {
+  std::unordered_map<std::string, std::shared_ptr<BrowserSession>> sessions_copy;
+  {
+    std::lock_guard<std::mutex> lock(mu_);
+    sessions_copy = std::move(sessions_);
+    sessions_.clear();
+  }
+
+  for (auto& [id, session] : sessions_copy) {
+    session->close();
+    logger_->info("Closed browser session: {}", id);
+  }
+}
+
+std::shared_ptr<BrowserSession> BrowserSessionManager::get_or_create_default(const BrowserToolConfig& config) {
+  const std::string default_id = "default";
+
+  {
+    std::lock_guard<std::mutex> lock(mu_);
+    auto it = sessions_.find(default_id);
+    if (it != sessions_.end() && it->second->is_connected()) {
+      it->second->update_last_used();
+      return it->second;
+    }
+  }
+
+  // Create new default session
+  auto session = std::make_shared<BrowserSession>(logger_);
+  session->set_session_id(default_id);
+
+  if (!session->initialize(config)) {
+    logger_->error("Failed to initialize default browser session");
+    return nullptr;
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(mu_);
+    sessions_[default_id] = session;
+  }
+
+  logger_->info("Created default browser session");
+  return session;
+}
+
+// Lifecycle management methods
+
+bool BrowserSessionManager::validate_session(const std::string& session_id) {
+  std::lock_guard<std::mutex> lock(mu_);
+  auto it = sessions_.find(session_id);
+  if (it == sessions_.end()) {
+    return false;
+  }
+
+  auto& session = it->second;
+
+  // Check if session is connected
+  if (!session->is_connected()) {
+    logger_->warn("Session {} is not connected", session_id);
+    return false;
+  }
+
+  // Check if session is expired
+  if (is_session_expired(session)) {
+    logger_->warn("Session {} has exceeded max lifetime", session_id);
+    return false;
+  }
+
+  // Check if session is idle
+  if (is_session_idle(session)) {
+    logger_->warn("Session {} has been idle too long", session_id);
+    return false;
+  }
+
+  return true;
+}
+
+void BrowserSessionManager::cleanup_expired_sessions() {
+  std::vector<std::string> expired_ids;
+
+  {
+    std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& [id, session] : sessions_) {
+      if (!session->is_connected() || is_session_expired(session) || is_session_idle(session)) {
+        expired_ids.push_back(id);
+      }
+    }
+  }
+
+  for (const auto& id : expired_ids) {
+    logger_->info("Cleaning up expired session: {}", id);
+    close_session(id);
+  }
+
+  if (!expired_ids.empty()) {
+    logger_->info("Cleaned up {} expired sessions", expired_ids.size());
+  }
+}
+
+void BrowserSessionManager::start_lifecycle_manager() {
+  if (lifecycle_running_.exchange(true)) {
+    return;  // Already running
+  }
+
+  lifecycle_thread_ = std::thread(&BrowserSessionManager::lifecycle_loop, this);
+  logger_->info("Started browser session lifecycle manager");
+}
+
+void BrowserSessionManager::stop_lifecycle_manager() {
+  if (!lifecycle_running_.exchange(false)) {
+    return;  // Not running
+  }
+
+  if (lifecycle_thread_.joinable()) {
+    lifecycle_thread_.join();
+  }
+
+  logger_->info("Stopped browser session lifecycle manager");
+}
+
+void BrowserSessionManager::lifecycle_loop() {
+  while (lifecycle_running_) {
+    // Sleep for health check interval
+    for (int i = 0; i < lifecycle_config_.health_check_interval_seconds && lifecycle_running_; ++i) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+
+    if (!lifecycle_running_) {
+      break;
+    }
+
+    // Cleanup expired sessions
+    cleanup_expired_sessions();
+  }
+}
+
+bool BrowserSessionManager::is_session_expired(const std::shared_ptr<BrowserSession>& session) const {
+  auto now = std::chrono::system_clock::now();
+  auto age = std::chrono::duration_cast<std::chrono::seconds>(now - session->created_at()).count();
+  return age > lifecycle_config_.max_lifetime_seconds;
+}
+
+bool BrowserSessionManager::is_session_idle(const std::shared_ptr<BrowserSession>& session) const {
+  auto now = std::chrono::system_clock::now();
+  auto idle_time = std::chrono::duration_cast<std::chrono::seconds>(now - session->last_used_at()).count();
+  return idle_time > lifecycle_config_.idle_timeout_seconds;
+}
 
 }  // namespace quantclaw

@@ -2051,21 +2051,25 @@ void register_rpc_handlers(
                           .count();
 
         // Aggregate totals across all sessions
-        long long total_input = 0, total_output = 0;
+        long long total_input = 0, total_output = 0, total_cache_read = 0, total_cache_write = 0;
         nlohmann::json session_entries = nlohmann::json::array();
 
         auto sessions = session_manager->ListSessions();
         for (const auto& s : sessions) {
           auto history = session_manager->GetHistory(s.session_key, -1);
-          long long in_tok = 0, out_tok = 0;
+          long long in_tok = 0, out_tok = 0, cache_read = 0, cache_write = 0;
           for (const auto& msg : history) {
             if (msg.usage) {
               in_tok += msg.usage->input_tokens;
               out_tok += msg.usage->output_tokens;
+              cache_read += msg.usage->cache_read_input_tokens;
+              cache_write += msg.usage->cache_creation_input_tokens;
             }
           }
           total_input += in_tok;
           total_output += out_tok;
+          total_cache_read += cache_read;
+          total_cache_write += cache_write;
 
           session_entries.push_back({{"key", s.session_key},
                                      {"label", s.display_name},
@@ -2073,9 +2077,9 @@ void register_rpc_handlers(
                                      {"usage",
                                       {{"input", in_tok},
                                        {"output", out_tok},
-                                       {"cacheRead", 0},
-                                       {"cacheWrite", 0},
-                                       {"totalTokens", in_tok + out_tok},
+                                       {"cacheRead", cache_read},
+                                       {"cacheWrite", cache_write},
+                                       {"totalTokens", in_tok + out_tok + cache_read + cache_write},
                                        {"totalCost", 0.0},
                                        {"missingCostEntries", 0}}}});
         }
@@ -2083,9 +2087,9 @@ void register_rpc_handlers(
         nlohmann::json zero_totals = {
             {"input", total_input},
             {"output", total_output},
-            {"cacheRead", 0},
-            {"cacheWrite", 0},
-            {"totalTokens", total_input + total_output},
+            {"cacheRead", total_cache_read},
+            {"cacheWrite", total_cache_write},
+            {"totalTokens", total_input + total_output + total_cache_read + total_cache_write},
             {"totalCost", 0.0},
             {"inputCost", 0.0},
             {"outputCost", 0.0},

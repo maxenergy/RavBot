@@ -45,14 +45,28 @@ std::string BuildMainSessionKey(const std::string& agent_id = "main");
 struct UsageInfo {
     int input_tokens = 0;
     int output_tokens = 0;
+    int cache_creation_input_tokens = 0;  // Anthropic cache write tokens
+    int cache_read_input_tokens = 0;      // Anthropic cache read tokens
 
     nlohmann::json ToJson() const {
-        return {{"inputTokens", input_tokens}, {"outputTokens", output_tokens}};
+        nlohmann::json j = {
+            {"inputTokens", input_tokens},
+            {"outputTokens", output_tokens}
+        };
+        if (cache_creation_input_tokens > 0) {
+            j["cacheCreationInputTokens"] = cache_creation_input_tokens;
+        }
+        if (cache_read_input_tokens > 0) {
+            j["cacheReadInputTokens"] = cache_read_input_tokens;
+        }
+        return j;
     }
     static UsageInfo FromJson(const nlohmann::json& j) {
         UsageInfo u;
         u.input_tokens = j.value("inputTokens", 0);
         u.output_tokens = j.value("outputTokens", 0);
+        u.cache_creation_input_tokens = j.value("cacheCreationInputTokens", 0);
+        u.cache_read_input_tokens = j.value("cacheReadInputTokens", 0);
         return u;
     }
 };
