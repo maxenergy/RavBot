@@ -148,6 +148,8 @@ AgentConfig AgentConfig::FromJson(const nlohmann::json& json) {
                                              json.value("compact_keep_recent", kDefaultCompactKeepRecent));
     config.compact_max_tokens = json.value("compactMaxTokens",
                                             json.value("compact_max_tokens", kDefaultCompactMaxTokens));
+    config.compact_timeout_seconds = json.value("compactTimeoutSeconds",
+                                                 json.value("compact_timeout_seconds", 900));
     return config;
 }
 

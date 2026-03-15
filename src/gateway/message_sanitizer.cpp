@@ -124,4 +124,115 @@ std::string MessageSanitizer::RemoveBoundaryMarkers(const std::string& text) {
   return result;
 }
 
+// 清理助手输出消息
+// Requirements: 7.1, 13.1
+std::string MessageSanitizer::SanitizeOutput(const std::string& output) {
+  // 1. 移除边界标记
+  std::string sanitized = RemoveBoundaryMarkers(output);
+
+  // 2. 移除系统内部标签
+  sanitized = RemoveSystemTags(sanitized);
+
+  return sanitized;
+}
+
+// 移除系统内部标签
+// Requirements: 13.1
+std::string MessageSanitizer::RemoveSystemTags(const std::string& text) {
+  std::string result = text;
+
+  // 定义需要移除的系统标签模式
+  // 这些标签是系统内部使用的，不应该暴露给用户
+  // 注意：使用 dotall 模式让 . 匹配换行符
+  std::vector<std::regex> system_tag_patterns = {
+      // <system.run>...</system.run>
+      std::regex(R"(<system\.run>[\s\S]*?</system\.run>)", std::regex::icase),
+      // <command>...</command>
+      std::regex(R"(<command>[\s\S]*?</command>)", std::regex::icase),
+      // <thinking>...</thinking>
+      std::regex(R"(<thinking>[\s\S]*?</thinking>)", std::regex::icase),
+      // <system>...</system>
+      std::regex(R"(<system>[\s\S]*?</system>)", std::regex::icase),
+      // <internal>...</internal>
+      std::regex(R"(<internal>[\s\S]*?</internal>)", std::regex::icase),
+      // <debug>...</debug>
+      std::regex(R"(<debug>[\s\S]*?</debug>)", std::regex::icase),
+      // <tool_use>...</tool_use>
+      std::regex(R"(<tool_use>[\s\S]*?</tool_use>)", std::regex::icase),
+      // <tool_result>...</tool_result>
+      std::regex(R"(<tool_result>[\s\S]*?</tool_result>)", std::regex::icase),
+      // <function_calls>...</function_calls>
+      std::regex(R"(<function_calls>[\s\S]*?</function_calls>)", std::regex::icase),
+      // <invoke>...</invoke>
+      std::regex(R"(<invoke[^>]*>[\s\S]*?</invoke>)", std::regex::icase),
+      // <parameter>...</parameter>
+      std::regex(R"(<parameter[^>]*>[\s\S]*?</parameter>)", std::regex::icase),
+      // <system-reminder>...</system-reminder>
+      std::regex(R"(<system-reminder>[\s\S]*?</system-reminder>)", std::regex::icase),
+      // Bash command outputs ($ command or # command)
+      std::regex(R"(^\s*[$#]\s+.*$)", std::regex::multiline),
+      // File paths with line numbers (file.cpp:123)
+      std::regex(R"(\S+\.(cpp|hpp|h|c|py|js|ts):\d+)", std::regex::icase),
+      // Tool execution markers
+      std::regex(R"(Tool:\s*\w+)", std::regex::icase),
+      std::regex(R"(Executing:\s*.*$)", std::regex::icase | std::regex::multiline),
+  };
+
+  // 应用所有过滤模式
+  for (const auto& pattern : system_tag_patterns) {
+    result = std::regex_replace(result, pattern, "");
+  }
+
+  return result;
+}
+
+// 清理外部内容元数据
+// Requirements: 13.2
+nlohmann::json MessageSanitizer::SanitizeMetadata(const nlohmann::json& metadata) {
+  if (!metadata.is_object()) {
+    return nlohmann::json::object();
+  }
+
+  nlohmann::json sanitized;
+
+  // 允许的元数据字段白名单
+  const std::vector<std::string> allowed_fields = {
+      "source",      // 来源标识
+      "timestamp",   // 时间戳
+      "type",        // 内容类型
+      "url",         // URL（如果是 web 内容）
+      "title",       // 标题
+      "author",      // 作者
+      "language",    // 语言
+  };
+
+  // 只保留白名单中的字段
+  for (const auto& field : allowed_fields) {
+    if (metadata.contains(field)) {
+      const auto& value = metadata[field];
+
+      // 验证字段值类型和内容
+      if (value.is_string()) {
+        std::string str_value = value.get<std::string>();
+
+        // 移除潜在的注入内容
+        str_value = RemoveBoundaryMarkers(str_value);
+
+        // 限制字符串长度
+        if (str_value.size() > 1000) {
+          str_value = str_value.substr(0, 1000);
+        }
+
+        sanitized[field] = str_value;
+      } else if (value.is_number() || value.is_boolean()) {
+        // 数字和布尔值直接保留
+        sanitized[field] = value;
+      }
+      // 忽略其他类型（对象、数组等）
+    }
+  }
+
+  return sanitized;
+}
+
 }  // namespace quantclaw

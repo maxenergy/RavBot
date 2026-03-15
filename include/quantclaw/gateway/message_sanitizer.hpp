@@ -29,10 +29,24 @@ class MessageSanitizer {
   // Requirements: 7.1, 7.2
   bool ValidateMessage(const nlohmann::json& message);
 
+  // 清理助手输出消息
+  // 移除系统内部标签，防止泄露给用户
+  // Requirements: 7.1, 13.1
+  std::string SanitizeOutput(const std::string& output);
+
+  // 清理外部内容元数据
+  // 移除可能包含注入攻击的元数据字段
+  // Requirements: 13.2
+  nlohmann::json SanitizeMetadata(const nlohmann::json& metadata);
+
  private:
   // 移除所有边界标记
   // Requirements: 13.1, 13.2
   std::string RemoveBoundaryMarkers(const std::string& text);
+
+  // 移除系统内部标签
+  // Requirements: 13.1
+  std::string RemoveSystemTags(const std::string& text);
 
   // 已知的边界标记模式
   std::vector<std::string> boundary_markers_;

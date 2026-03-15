@@ -27,6 +27,7 @@ struct AgentConfig {
     int compact_max_messages = kDefaultCompactMaxMessages;  // Compact when history exceeds this
     int compact_keep_recent = kDefaultCompactKeepRecent;    // Keep this many recent messages
     int compact_max_tokens = kDefaultCompactMaxTokens;      // Compact when tokens exceed this
+    int compact_timeout_seconds = 900;  // Compaction timeout (default 15 min, supports up to ~400k tokens)
 
     static AgentConfig FromJson(const nlohmann::json& json);
 
