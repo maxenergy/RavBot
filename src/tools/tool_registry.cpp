@@ -1182,12 +1182,20 @@ std::string ToolRegistry::web_search_tool(const nlohmann::json& params) {
 
             auto j = nlohmann::json::parse(res->body);
             nlohmann::json results = nlohmann::json::array();
+            size_t total_size = 0;
             if (j.contains("organic_results")) {
                 for (const auto& r : j["organic_results"]) {
+                    std::string desc = r.value("snippet", "");
+                    if (desc.size() > MAX_DESCRIPTION_SIZE) {
+                        desc = desc.substr(0, MAX_DESCRIPTION_SIZE) + "...";
+                    }
+                    total_size += desc.size();
+                    if (total_size > MAX_TOTAL_SIZE) break;
+
                     nlohmann::json item;
                     item["title"]       = r.value("title", "");
                     item["url"]         = r.value("link", "");
-                    item["description"] = r.value("snippet", "");
+                    item["description"] = desc;
                     results.push_back(item);
                 }
             }
