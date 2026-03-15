@@ -128,6 +128,11 @@ class AgentLoop : public Noncopyable {
     context_pruner_ = std::move(pruner);
   }
 
+  // Set embedding manager for automatic message indexing
+  void SetEmbeddingManager(std::shared_ptr<class EmbeddingManager> manager) {
+    embedding_manager_ = manager;
+  }
+
   // Set model dynamically (resolves via ProviderRegistry if available)
   void SetModel(const std::string& model_ref);
 
@@ -173,6 +178,7 @@ class AgentLoop : public Noncopyable {
   std::shared_ptr<UsageAccumulator> usage_accumulator_;  // Shared ownership
   std::shared_ptr<TurnValidator> turn_validator_;        // Shared ownership
   std::shared_ptr<ContextPruner> context_pruner_;        // Shared ownership
+  std::shared_ptr<class EmbeddingManager> embedding_manager_;  // Shared ownership
   std::string session_key_;  // For failover session pinning
   std::shared_ptr<spdlog::logger> logger_;
   AgentConfig agent_config_;

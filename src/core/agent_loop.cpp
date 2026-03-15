@@ -19,6 +19,7 @@
 #include <spdlog/spdlog.h>
 
 #include "quantclaw/core/context_pruner.hpp"
+#include "quantclaw/core/embedding_manager.hpp"
 #include "quantclaw/core/memory_manager.hpp"
 #include "quantclaw/core/session_compaction.hpp"
 #include "quantclaw/core/skill_loader.hpp"
@@ -1652,6 +1653,40 @@ std::vector<Message> AgentLoop::ProcessMessage(
         final_msg.role = "assistant";
         final_msg.content.push_back(ContentBlock::MakeText(response.content));
         new_messages.push_back(final_msg);
+
+        // Index messages to vector database if embedding manager is available
+        if (embedding_manager_ && !effective_session_key.empty()) {
+          try {
+            // Index user message
+            if (!message.empty()) {
+              std::string user_msg_id = effective_session_key + ":user:" +
+                  std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+              nlohmann::json user_metadata = {
+                {"role", "user"},
+                {"session", effective_session_key},
+                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
+              };
+              embedding_manager_->IndexText(user_msg_id, message, user_metadata);
+              logger_->debug("Indexed user message: {}", user_msg_id);
+            }
+
+            // Index assistant response
+            if (!response.content.empty()) {
+              std::string assistant_msg_id = effective_session_key + ":assistant:" +
+                  std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+              nlohmann::json assistant_metadata = {
+                {"role", "assistant"},
+                {"session", effective_session_key},
+                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
+              };
+              embedding_manager_->IndexText(assistant_msg_id, response.content, assistant_metadata);
+              logger_->debug("Indexed assistant message: {}", assistant_msg_id);
+            }
+          } catch (const std::exception& e) {
+            logger_->warn("Failed to index messages to vector database: {}", e.what());
+          }
+        }
+
         return new_messages;
       }
 
@@ -1941,6 +1976,40 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
         final_msg.role = "assistant";
         final_msg.content.push_back(ContentBlock::MakeText(full_response));
         new_messages.push_back(final_msg);
+
+        // Index messages to vector database if embedding manager is available
+        if (embedding_manager_ && !effective_session_key.empty()) {
+          try {
+            // Index user message
+            if (!message.empty()) {
+              std::string user_msg_id = effective_session_key + ":user:" +
+                  std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+              nlohmann::json user_metadata = {
+                {"role", "user"},
+                {"session", effective_session_key},
+                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
+              };
+              embedding_manager_->IndexText(user_msg_id, message, user_metadata);
+              logger_->debug("Indexed user message (stream): {}", user_msg_id);
+            }
+
+            // Index assistant response
+            if (!full_response.empty()) {
+              std::string assistant_msg_id = effective_session_key + ":assistant:" +
+                  std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+              nlohmann::json assistant_metadata = {
+                {"role", "assistant"},
+                {"session", effective_session_key},
+                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
+              };
+              embedding_manager_->IndexText(assistant_msg_id, full_response, assistant_metadata);
+              logger_->debug("Indexed assistant message (stream): {}", assistant_msg_id);
+            }
+          } catch (const std::exception& e) {
+            logger_->warn("Failed to index messages to vector database: {}", e.what());
+          }
+        }
+
         return new_messages;
       }
 
