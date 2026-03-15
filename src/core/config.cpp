@@ -299,6 +299,21 @@ GatewayConfig GatewayConfig::FromJson(const nlohmann::json& json) {
     if (json.contains("controlUi")) {
         config.control_ui = GatewayControlUiConfig::FromJson(json["controlUi"]);
     }
+
+    // Health monitoring configuration (support both camelCase and snake_case)
+    config.health_timeout_threshold_percent = json.value("healthTimeoutThresholdPercent",
+                                                          json.value("health_timeout_threshold_percent", 80));
+    config.health_max_timeout_count = json.value("healthMaxTimeoutCount",
+                                                  json.value("health_max_timeout_count", 5));
+    config.health_degraded_check_count = json.value("healthDegradedCheckCount",
+                                                     json.value("health_degraded_check_count", 3));
+
+    // Auth lockout configuration (support both camelCase and snake_case)
+    config.auth_max_attempts = json.value("authMaxAttempts",
+                                           json.value("auth_max_attempts", 5));
+    config.auth_lockout_duration_sec = json.value("authLockoutDurationSec",
+                                                   json.value("auth_lockout_duration_sec", 300));
+
     return config;
 }
 

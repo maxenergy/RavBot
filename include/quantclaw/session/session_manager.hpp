@@ -78,6 +78,7 @@ struct SessionInfo {
     std::string created_at;
     std::string display_name;
     std::string channel;
+    int compaction_count = 0;  // Number of times this session has been compacted
 };
 
 // --- Session Policy ---
@@ -187,6 +188,12 @@ public:
     // Requirements: 8.7
     void Unsubscribe(const std::string& session_key,
                      const std::string& subscription_id);
+
+    // Increment compaction count for a session
+    void IncrementCompactionCount(const std::string& session_key);
+
+    // Get compaction count for a session
+    int GetCompactionCount(const std::string& session_key) const;
 
     // Persistence
     void SaveStore();

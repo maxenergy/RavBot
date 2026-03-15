@@ -274,6 +274,17 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   auto rate_limiter = std::make_shared<quantclaw::RateLimiter>(rl_config);
   server.SetRateLimiter(rate_limiter);
 
+  // Configure health monitoring
+  server.SetHealthConfig(
+      config.gateway.health_timeout_threshold_percent,
+      config.gateway.health_max_timeout_count,
+      config.gateway.health_degraded_check_count);
+
+  // Configure auth lockout
+  server.SetAuthLockoutConfig(
+      config.gateway.auth_max_attempts,
+      config.gateway.auth_lockout_duration_sec);
+
   // Start file watcher
   memory_manager->StartFileWatcher();
 

@@ -157,6 +157,15 @@ struct GatewayConfig {
     GatewayAuthConfig auth;
     GatewayControlUiConfig control_ui;
 
+    // Health monitoring configuration
+    int health_timeout_threshold_percent = 80;  // Timeout threshold percentage (default 80%)
+    int health_max_timeout_count = 5;           // Max timeout count before degradation (default 5)
+    int health_degraded_check_count = 3;        // Consecutive checks before degradation (default 3)
+
+    // Auth lockout configuration
+    int auth_max_attempts = 5;           // Max failed auth attempts before lockout (default 5)
+    int auth_lockout_duration_sec = 300; // Lockout duration in seconds (default 5 minutes)
+
     static GatewayConfig FromJson(const nlohmann::json& json);
 };
 

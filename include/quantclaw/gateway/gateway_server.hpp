@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <mutex>
 #include <atomic>
+#include <thread>
+#include <chrono>
 #include <ixwebsocket/IXWebSocketServer.h>
 #include <ixwebsocket/IXHttp.h>
 #include <nlohmann/json.hpp>
@@ -107,6 +109,16 @@ public:
         return auth_mode_;
     }
 
+    // Configure auth lockout
+    void SetAuthLockoutConfig(int max_attempts, int lockout_duration_sec) {
+        std::lock_guard<std::mutex> lock(auth_mutex_);
+        auth_max_attempts_ = std::max(1, max_attempts);
+        auth_lockout_duration_sec_ = std::max(1, lockout_duration_sec);
+    }
+
+    // Clear auth lockout state (for testing or manual unlock)
+    void ClearAuthLockout(const std::string& identifier = "");
+
     // Set HTTP port for redirect when plain HTTP hits the WS port
     void SetHttpRedirectPort(int port) { http_redirect_port_ = port; }
 
@@ -128,6 +140,30 @@ public:
     // Requirements: 3.3.3
     bool AbortRequest(const std::string& connection_id, const std::string& request_id);
 
+    // 设置请求超时时间（毫秒）
+    void SetRequestTimeout(int64_t timeout_ms) {
+        request_timeout_ms_ = std::max(int64_t(1000), std::min(timeout_ms, int64_t(2147483647)));
+    }
+
+    // 获取请求超时时间
+    int64_t GetRequestTimeout() const { return request_timeout_ms_; }
+
+    // 获取健康状态
+    HealthStatus GetHealthStatus() const { return health_status_.load(); }
+
+    // 设置健康状态
+    void SetHealthStatus(HealthStatus status) { health_status_.store(status); }
+
+    // 探测健康状态（用于降级检测）
+    HealthStatus ProbeHealth();
+
+    // 设置健康监控配置
+    void SetHealthConfig(int timeout_threshold_percent, int max_timeout_count, int degraded_check_count) {
+        health_timeout_threshold_percent_ = std::max(1, std::min(timeout_threshold_percent, 100));
+        health_max_timeout_count_ = std::max(1, max_timeout_count);
+        health_degraded_check_count_ = std::max(1, degraded_check_count);
+    }
+
 private:
     void on_connection(std::shared_ptr<ix::ConnectionState> state,
                        ix::WebSocket& ws,
@@ -143,6 +179,11 @@ private:
                       const nlohmann::json& params,
                       bool is_openclaw = false);
 
+    // Watchdog: 定期检查并清理超时请求
+    void start_watchdog();
+    void stop_watchdog();
+    void watchdog_tick();
+
     int port_;
     std::shared_ptr<spdlog::logger> logger_;
     std::unique_ptr<ix::WebSocketServer> server_;
@@ -153,6 +194,12 @@ private:
     mutable std::mutex auth_mutex_;
     std::string auth_mode_ = "token";
     std::string expected_token_;
+
+    // Auth lockout tracking (protected by auth_mutex_)
+    std::unordered_map<std::string, int> auth_fail_counts_;  // IP/conn_id -> fail count
+    std::unordered_map<std::string, int64_t> auth_lockout_until_;  // IP/conn_id -> unlock time (ms)
+    int auth_max_attempts_ = 5;  // Max failed attempts before lockout
+    int auth_lockout_duration_sec_ = 300;  // Lockout duration (5 minutes)
 
     // HTTP redirect target (Control UI port)
     int http_redirect_port_ = 0;
@@ -183,6 +230,22 @@ private:
     // Requirements: 3.3.3
     std::mutex active_requests_mutex_;
     std::unordered_map<std::string, std::string> active_requests_;  // request_id -> connection_id
+
+    // 请求超时配置和 watchdog
+    int64_t request_timeout_ms_ = 30000;  // 默认 30 秒
+    std::atomic<bool> watchdog_running_{false};
+    std::thread watchdog_thread_;
+
+    // 健康状态
+    std::atomic<HealthStatus> health_status_{HealthStatus::kHealthy};
+    mutable std::mutex health_mutex_;
+    int64_t last_health_check_ms_ = 0;
+    int degraded_check_count_ = 0;  // 降级检测计数器
+
+    // 健康监控配置
+    int health_timeout_threshold_percent_ = 80;  // 超时阈值百分比
+    int health_max_timeout_count_ = 5;           // 最大超时数量
+    int health_degraded_check_count_ = 3;        // 连续检测次数
 };
 
 } // namespace quantclaw::gateway

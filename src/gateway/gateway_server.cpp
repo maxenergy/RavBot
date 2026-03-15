@@ -51,6 +51,9 @@ void GatewayServer::Start() {
         std::chrono::system_clock::now().time_since_epoch()
     ).count());
 
+    // 启动 watchdog 线程
+    start_watchdog();
+
     logger_->info("GatewayServer started on port {}", port_);
 }
 
@@ -58,6 +61,10 @@ void GatewayServer::Stop() {
     if (!running_) return;
 
     running_ = false;
+
+    // 停止 watchdog 线程
+    stop_watchdog();
+
     if (server_) {
         server_->stop();
         server_.reset();
@@ -390,11 +397,45 @@ void GatewayServer::handle_rpc_request(const std::string& conn_id,
         }
     }
 
+    // 记录待处理请求（用于超时管理）
+    bool expect_final = (request.method == "agent.request" || request.method == "chat.send");
+    {
+        std::lock_guard<std::mutex> lock(connections_mutex_);
+        auto it = connections_.find(conn_id);
+        if (it != connections_.end()) {
+            auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()
+            ).count();
+            it->second.pending_requests[request.id] = PendingRequest(
+                request.id, request.method, now_ms, expect_final
+            );
+        }
+    }
+
     try {
         auto result = handler(request.params, *client);
+
+        // 移除待处理请求
+        {
+            std::lock_guard<std::mutex> lock(connections_mutex_);
+            auto it = connections_.find(conn_id);
+            if (it != connections_.end()) {
+                it->second.pending_requests.erase(request.id);
+            }
+        }
+
         auto resp = RpcResponse::success(request.id, result);
         ws.send(resp.ToJson().dump());
     } catch (const std::exception& e) {
+        // 移除待处理请求
+        {
+            std::lock_guard<std::mutex> lock(connections_mutex_);
+            auto it = connections_.find(conn_id);
+            if (it != connections_.end()) {
+                it->second.pending_requests.erase(request.id);
+            }
+        }
+
         logger_->error("RPC handler error for {}: {}", request.method, e.what());
         auto resp = RpcResponse::failure(request.id, e.what(), "HANDLER_ERROR");
         ws.send(resp.ToJson().dump());
@@ -441,10 +482,41 @@ bool GatewayServer::handle_hello(const std::string& conn_id,
     {
         std::lock_guard<std::mutex> lock(auth_mutex_);
         if (auth_mode_ == "token" && !expected_token_.empty()) {
-            if (hello.auth_token != expected_token_) {
-                logger_->warn("Auth failed for {}: bad token", conn_id);
+            // Check if this connection is locked out
+            auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()
+            ).count();
+
+            auto lockout_it = auth_lockout_until_.find(conn_id);
+            if (lockout_it != auth_lockout_until_.end() && now_ms < lockout_it->second) {
+                int remaining_sec = (lockout_it->second - now_ms) / 1000;
+                logger_->warn("Auth locked out for {}: {} seconds remaining", conn_id, remaining_sec);
                 return false;
             }
+
+            // Validate token
+            if (hello.auth_token != expected_token_) {
+                // Increment fail count
+                auth_fail_counts_[conn_id]++;
+                int fail_count = auth_fail_counts_[conn_id];
+
+                logger_->warn("Auth failed for {}: bad token (attempt {}/{})",
+                              conn_id, fail_count, auth_max_attempts_);
+
+                // Lock out if max attempts exceeded
+                if (fail_count >= auth_max_attempts_) {
+                    int64_t lockout_until = now_ms + (auth_lockout_duration_sec_ * 1000);
+                    auth_lockout_until_[conn_id] = lockout_until;
+                    logger_->error("Auth locked out for {}: too many failed attempts ({})",
+                                   conn_id, fail_count);
+                }
+
+                return false;
+            }
+
+            // Success - clear fail count
+            auth_fail_counts_.erase(conn_id);
+            auth_lockout_until_.erase(conn_id);
         }
     }
     // auth mode "none" → skip validation
@@ -471,6 +543,96 @@ bool GatewayServer::handle_hello(const std::string& conn_id,
     logger_->info("Client {} authenticated: role={}, client={}, type={}",
                   conn_id, hello.role, hello.client_name, it->second.client_type);
     return true;
+}
+
+// Watchdog: 启动定期检查线程
+void GatewayServer::start_watchdog() {
+    if (watchdog_running_) {
+        return;
+    }
+
+    watchdog_running_ = true;
+    watchdog_thread_ = std::thread([this]() {
+        logger_->info("Watchdog thread started");
+
+        while (watchdog_running_) {
+            // 每 5 秒检查一次
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+
+            if (!watchdog_running_) {
+                break;
+            }
+
+            watchdog_tick();
+        }
+
+        logger_->info("Watchdog thread stopped");
+    });
+}
+
+// Watchdog: 停止检查线程
+void GatewayServer::stop_watchdog() {
+    if (!watchdog_running_) {
+        return;
+    }
+
+    watchdog_running_ = false;
+
+    if (watchdog_thread_.joinable()) {
+        watchdog_thread_.join();
+    }
+}
+
+// Watchdog: 检查并清理超时请求
+void GatewayServer::watchdog_tick() {
+    auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+
+    std::vector<std::pair<std::string, std::string>> timed_out;  // (conn_id, request_id)
+
+    {
+        std::lock_guard<std::mutex> lock(connections_mutex_);
+
+        for (auto& [conn_id, conn] : connections_) {
+            std::vector<std::string> to_remove;
+
+            for (auto& [req_id, pending] : conn.pending_requests) {
+                // 如果是 expect_final 请求，跳过超时检查
+                if (pending.expect_final) {
+                    continue;
+                }
+
+                int64_t elapsed_ms = now_ms - pending.created_at;
+                if (elapsed_ms > request_timeout_ms_) {
+                    to_remove.push_back(req_id);
+                    timed_out.push_back({conn_id, req_id});
+                }
+            }
+
+            // 移除超时请求
+            for (const auto& req_id : to_remove) {
+                conn.pending_requests.erase(req_id);
+            }
+        }
+    }
+
+    // 发送超时响应
+    for (const auto& [conn_id, req_id] : timed_out) {
+        logger_->warn("Request timed out: conn_id={}, request_id={}, timeout={}ms",
+                      conn_id, req_id, request_timeout_ms_);
+
+        SendResponseTo(conn_id, req_id, false,
+                       RpcError{"REQUEST_TIMEOUT",
+                                "Request timed out after " + std::to_string(request_timeout_ms_) + "ms",
+                                true,  // retryable
+                                1000   // retry after 1s
+                       }.ToJson());
+    }
+
+    if (!timed_out.empty()) {
+        logger_->info("Watchdog cleaned up {} timed out requests", timed_out.size());
+    }
 }
 
 // 中止正在执行的请求
@@ -505,6 +667,87 @@ bool GatewayServer::AbortRequest(const std::string& connection_id,
 
     logger_->info("Request aborted: request_id={}, conn_id={}", request_id, connection_id);
     return true;
+}
+
+// 探测健康状态（用于降级检测）
+HealthStatus GatewayServer::ProbeHealth() {
+    std::lock_guard<std::mutex> lock(health_mutex_);
+
+    auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+
+    // 更新最后检查时间
+    last_health_check_ms_ = now_ms;
+
+    // 检查服务器是否运行
+    if (!running_) {
+        health_status_.store(HealthStatus::kUnreachable);
+        degraded_check_count_ = 0;
+        return HealthStatus::kUnreachable;
+    }
+
+    // 检查连接数
+    size_t conn_count = GetConnectionCount();
+
+    // 检查是否有超时请求
+    int timeout_count = 0;
+    {
+        std::lock_guard<std::mutex> conn_lock(connections_mutex_);
+        for (const auto& [conn_id, conn] : connections_) {
+            for (const auto& [req_id, pending] : conn.pending_requests) {
+                if (!pending.expect_final) {
+                    int64_t elapsed_ms = now_ms - pending.created_at;
+                    if (elapsed_ms > request_timeout_ms_ * health_timeout_threshold_percent_ / 100) {
+                        timeout_count++;
+                    }
+                }
+            }
+        }
+    }
+
+    // 降级检测逻辑
+    // 1. 如果有大量超时请求（> health_max_timeout_count_），标记为降级
+    // 2. 如果连续 health_degraded_check_count_ 次检测到降级条件，才真正降级
+    bool should_degrade = (timeout_count > health_max_timeout_count_);
+
+    if (should_degrade) {
+        degraded_check_count_++;
+        if (degraded_check_count_ >= health_degraded_check_count_) {
+            health_status_.store(HealthStatus::kDegraded);
+            logger_->warn("Gateway health degraded: timeout_count={}, conn_count={}",
+                          timeout_count, conn_count);
+            return HealthStatus::kDegraded;
+        }
+    } else {
+        // 恢复健康
+        if (degraded_check_count_ > 0) {
+            degraded_check_count_--;
+        }
+        if (health_status_.load() == HealthStatus::kDegraded && degraded_check_count_ == 0) {
+            health_status_.store(HealthStatus::kHealthy);
+            logger_->info("Gateway health recovered");
+        }
+    }
+
+    return health_status_.load();
+}
+
+void GatewayServer::ClearAuthLockout(const std::string& identifier) {
+    std::lock_guard<std::mutex> lock(auth_mutex_);
+
+    if (identifier.empty()) {
+        // Clear all lockouts
+        int cleared_count = auth_fail_counts_.size() + auth_lockout_until_.size();
+        auth_fail_counts_.clear();
+        auth_lockout_until_.clear();
+        logger_->info("Cleared all auth lockout state ({} entries)", cleared_count);
+    } else {
+        // Clear specific identifier
+        auth_fail_counts_.erase(identifier);
+        auth_lockout_until_.erase(identifier);
+        logger_->info("Cleared auth lockout state for {}", identifier);
+    }
 }
 
 } // namespace quantclaw::gateway

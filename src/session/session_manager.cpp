@@ -456,7 +456,8 @@ void SessionManager::SaveStore() {
             {"updatedAt", info.updated_at},
             {"createdAt", info.created_at},
             {"displayName", info.display_name},
-            {"channel", info.channel}
+            {"channel", info.channel},
+            {"compactionCount", info.compaction_count}
         };
     }
     std::ofstream file(store_path);
@@ -486,6 +487,7 @@ void SessionManager::LoadStore() {
             info.created_at = value.value("createdAt", "");
             info.display_name = value.value("displayName", "");
             info.channel = value.value("channel", "cli");
+            info.compaction_count = value.value("compactionCount", 0);
             store_[key] = info;
         }
 
@@ -493,6 +495,33 @@ void SessionManager::LoadStore() {
     } catch (const std::exception& e) {
         logger_->warn("Failed to load sessions.json: {}", e.what());
     }
+}
+
+void SessionManager::IncrementCompactionCount(const std::string& session_key) {
+    std::string normalized_key = NormalizeSessionKey(session_key);
+    std::unique_lock lock(mutex_);
+
+    auto it = store_.find(normalized_key);
+    if (it != store_.end()) {
+        it->second.compaction_count++;
+        lock.unlock();
+        SaveStore();
+        logger_->debug("Incremented compaction count for session {}: {}",
+                       normalized_key, it->second.compaction_count);
+    } else {
+        logger_->warn("Cannot increment compaction count: session {} not found", normalized_key);
+    }
+}
+
+int SessionManager::GetCompactionCount(const std::string& session_key) const {
+    std::string normalized_key = NormalizeSessionKey(session_key);
+    std::shared_lock lock(mutex_);
+
+    auto it = store_.find(normalized_key);
+    if (it != store_.end()) {
+        return it->second.compaction_count;
+    }
+    return 0;
 }
 
 std::string SessionManager::generate_session_id() const {

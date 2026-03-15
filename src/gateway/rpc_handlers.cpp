@@ -294,6 +294,33 @@ void register_rpc_handlers(
                 {"version", quantclaw::kVersion}};
       });
 
+  // --- gateway.probe ---
+  server.RegisterHandler(
+      methods::kGatewayProbe,
+      [&server, logger](const nlohmann::json& /*params*/,
+                        ClientConnection& /*client*/) -> nlohmann::json {
+        auto health_status = server.ProbeHealth();
+        std::string status_str = HealthStatusToString(health_status);
+
+        nlohmann::json result = {
+            {"status", status_str},
+            {"uptime", server.GetUptimeSeconds()},
+            {"connections", server.GetConnectionCount()},
+            {"version", quantclaw::kVersion}
+        };
+
+        // 如果是降级状态,添加额外信息
+        if (health_status == HealthStatus::kDegraded) {
+            result["degraded"] = true;
+            result["reason"] = "High number of timeout requests detected";
+        } else if (health_status == HealthStatus::kUnreachable) {
+            result["unreachable"] = true;
+            result["reason"] = "Server not running";
+        }
+
+        return result;
+      });
+
   // --- gateway.status ---
   server.RegisterHandler(methods::kGatewayStatus,
                          [&server, session_manager, logger](
@@ -1133,9 +1160,14 @@ void register_rpc_handlers(
 
         auto compacted = compaction.Truncate(history_json, opts);
 
+        // Increment compaction count
+        session_manager->IncrementCompactionCount(session_key);
+        int compaction_count = session_manager->GetCompactionCount(session_key);
+
         return {{"compacted", true},
                 {"originalCount", static_cast<int>(history.size())},
-                {"newCount", static_cast<int>(compacted.size())}};
+                {"newCount", static_cast<int>(compacted.size())},
+                {"compactionCount", compaction_count}};
       });
 
   // --- skills.status ---
