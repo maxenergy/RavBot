@@ -171,6 +171,7 @@ private:
     std::string web_fetch_tool(const nlohmann::json& params);
     std::string memory_search_tool(const nlohmann::json& params);
     std::string memory_get_tool(const nlohmann::json& params);
+    std::string memory_write_tool(const nlohmann::json& params);
     std::string github_search_repos_tool(const nlohmann::json& params);
     std::string github_search_code_tool(const nlohmann::json& params);
     std::string github_get_repo_tool(const nlohmann::json& params);

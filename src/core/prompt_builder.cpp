@@ -503,7 +503,25 @@ std::string PromptBuilder::build_memory_recall_rules() const {
         << "prioritize the new information\n";
   rules << "5. **Graceful Degradation**: If memory retrieval fails or returns no results, "
         << "proceed with available context\n\n";
-  
+
+  rules << "### Memory Management\n\n";
+
+  rules << "**Saving Important Information:**\n\n";
+  rules << "- Use `memory_write` to save important information to MEMORY.md\n";
+  rules << "- Save user preferences, key facts, project decisions, and important context\n";
+  rules << "- Update memory when you learn new information about the user or project\n";
+  rules << "- Use mode='append' to add new information, mode='overwrite' to replace content\n\n";
+
+  rules << "**What to Save:**\n\n";
+  rules << "1. **User Preferences**: Coding style, tool preferences, workflow patterns\n";
+  rules << "2. **Project Context**: Architecture decisions, conventions, important files\n";
+  rules << "3. **Key Facts**: Important information that should persist across sessions\n";
+  rules << "4. **Corrections**: When user corrects your understanding, update memory\n\n";
+
+  rules << "**Memory Retrieval:**\n\n";
+  rules << "- Use `memory_search` to find relevant information in workspace files\n";
+  rules << "- Use `memory_get` to read specific memory files (e.g., MEMORY.md)\n\n";
+
   rules << "### Memory Types and Priority\n\n";
   
   rules << "When multiple memories are available, prioritize in this order:\n\n";

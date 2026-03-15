@@ -187,6 +187,12 @@ void ToolRegistry::RegisterBuiltinTools() {
         nlohmann::json::parse(R"({"type":"object","properties":{"path":{"type":"string","description":"Relative path within the workspace, e.g. MEMORY.md or memory/notes.md"}},"required":["path"]})"),
         [this](const nlohmann::json& p) { return memory_get_tool(p); });
 
+    // ---- memory_write ----
+    register_tool("memory_write",
+        "Write or update content in agent memory files (MEMORY.md, notes, etc.). Use this to save important information, user preferences, and key facts for long-term memory.",
+        nlohmann::json::parse(R"({"type":"object","properties":{"path":{"type":"string","description":"Relative path within the workspace, e.g. MEMORY.md or memory/notes.md"},"content":{"type":"string","description":"Content to write"},"mode":{"type":"string","enum":["overwrite","append"],"description":"Write mode: 'overwrite' (default) or 'append'"}},"required":["path","content"]})"),
+        [this](const nlohmann::json& p) { return memory_write_tool(p); });
+
     // ---- github_search_repos ----
     register_tool("github_search_repos",
         "Search GitHub repositories using gh CLI. Returns structured JSON data with repo info. "
@@ -984,6 +990,10 @@ std::string ToolRegistry::process_tool(const nlohmann::json& params) {
 // ---------------------------------------------------------------------------
 
 std::string ToolRegistry::web_search_tool(const nlohmann::json& params) {
+    // Content size limits to prevent API 502 errors
+    constexpr size_t MAX_DESCRIPTION_SIZE = 500;  // Max chars per result
+    constexpr size_t MAX_TOTAL_SIZE = 5000;       // Max total chars
+
     std::string query     = params.value("query", "");
     // Handle count as either integer or string
     int count = 5;
@@ -1033,12 +1043,20 @@ std::string ToolRegistry::web_search_tool(const nlohmann::json& params) {
 
             auto j = nlohmann::json::parse(res->body);
             nlohmann::json results = nlohmann::json::array();
+            size_t total_size = 0;
             if (j.contains("web") && j["web"].contains("results")) {
                 for (const auto& r : j["web"]["results"]) {
+                    std::string desc = r.value("description", "");
+                    if (desc.size() > MAX_DESCRIPTION_SIZE) {
+                        desc = desc.substr(0, MAX_DESCRIPTION_SIZE) + "...";
+                    }
+                    total_size += desc.size();
+                    if (total_size > MAX_TOTAL_SIZE) break;
+
                     nlohmann::json item;
                     item["title"]       = r.value("title", "");
                     item["url"]         = r.value("url", "");
-                    item["description"] = r.value("description", "");
+                    item["description"] = desc;
                     results.push_back(item);
                 }
             }
@@ -1072,12 +1090,20 @@ std::string ToolRegistry::web_search_tool(const nlohmann::json& params) {
 
             auto j = nlohmann::json::parse(res->body);
             nlohmann::json results = nlohmann::json::array();
+            size_t total_size = 0;
             if (j.contains("results")) {
                 for (const auto& r : j["results"]) {
+                    std::string desc = r.value("content", "");
+                    if (desc.size() > MAX_DESCRIPTION_SIZE) {
+                        desc = desc.substr(0, MAX_DESCRIPTION_SIZE) + "...";
+                    }
+                    total_size += desc.size();
+                    if (total_size > MAX_TOTAL_SIZE) break;
+
                     nlohmann::json item;
                     item["title"]       = r.value("title", "");
                     item["url"]         = r.value("url", "");
-                    item["description"] = r.value("content", "");
+                    item["description"] = desc;
                     results.push_back(item);
                 }
             }
@@ -1117,6 +1143,9 @@ std::string ToolRegistry::web_search_tool(const nlohmann::json& params) {
             std::string answer;
             if (j.contains("choices") && !j["choices"].empty()) {
                 answer = j["choices"][0]["message"].value("content", "");
+                if (answer.size() > MAX_TOTAL_SIZE) {
+                    answer = answer.substr(0, MAX_TOTAL_SIZE) + "...";
+                }
             }
             nlohmann::json results = nlohmann::json::array();
             nlohmann::json perp_item;
@@ -1465,6 +1494,65 @@ std::string ToolRegistry::memory_get_tool(const nlohmann::json& params) {
 }
 
 // ---------------------------------------------------------------------------
+// memory_write_tool
+// ---------------------------------------------------------------------------
+
+std::string ToolRegistry::memory_write_tool(const nlohmann::json& params) {
+    std::string rel_path = params.value("path", "");
+    std::string content = params.value("content", "");
+    std::string mode = params.value("mode", "overwrite");
+
+    if (rel_path.empty()) throw std::runtime_error("path is required");
+    if (content.empty()) throw std::runtime_error("content is required");
+    if (mode != "overwrite" && mode != "append") {
+        throw std::runtime_error("mode must be 'overwrite' or 'append'");
+    }
+
+    const char* home = std::getenv("HOME");
+    std::string home_str = home ? home : "/tmp";
+    auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+    auto full_path = workspace / rel_path;
+
+    // Security: must remain inside workspace
+    auto canonical = std::filesystem::weakly_canonical(full_path);
+    auto ws_canon = std::filesystem::weakly_canonical(workspace);
+    if (canonical.string().substr(0, ws_canon.string().size()) != ws_canon.string()) {
+        throw std::runtime_error("Access denied: path outside workspace");
+    }
+
+    // Create parent directories if needed
+    auto parent = full_path.parent_path();
+    if (!std::filesystem::exists(parent)) {
+        std::filesystem::create_directories(parent);
+    }
+
+    // Write or append
+    std::ios_base::openmode open_mode = std::ios::out;
+    if (mode == "append") {
+        open_mode |= std::ios::app;
+    }
+
+    std::ofstream ofs(full_path, open_mode);
+    if (!ofs) {
+        throw std::runtime_error("Failed to open file: " + rel_path);
+    }
+
+    ofs << content;
+    if (mode == "append" && !content.empty() && content.back() != '\n') {
+        ofs << "\n";
+    }
+
+    logger_->info("Wrote {} bytes to {} (mode: {})", content.size(), rel_path, mode);
+
+    return nlohmann::json{
+        {"success", true},
+        {"path", rel_path},
+        {"bytes", content.size()},
+        {"mode", mode}
+    }.dump();
+}
+
+// ---------------------------------------------------------------------------
 // Security Integration
 // ---------------------------------------------------------------------------
 
@@ -1652,8 +1740,12 @@ std::string ToolRegistry::github_search_repos_tool(const nlohmann::json& params)
             return result;
         }
     } catch (const std::exception& e) {
-        return "Error searching GitHub repositories: " + std::string(e.what()) +
-               "\nMake sure gh CLI is installed and authenticated (run: gh auth login)";
+        logger_->error("GitHub search failed: {}", e.what());
+        return nlohmann::json{
+            {"error", "GitHub CLI not available or authentication failed"},
+            {"hint", "Install gh CLI and run: gh auth login"},
+            {"results", nlohmann::json::array()}
+        }.dump();
     }
 }
 
