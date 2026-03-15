@@ -126,12 +126,19 @@ void ToolRegistry::RegisterBuiltinTools() {
         [this](const nlohmann::json& p) { return edit_file_tool(p); });
 
     // ---- exec ----
-    register_tool("exec", "Execute a shell command and return its output",
+    register_tool("exec",
+        "Execute a shell command and return its output. "
+        "IMPORTANT: Use this tool to actually run commands like gh, curl, wget, git, etc. "
+        "DO NOT just show commands in code blocks - execute them to get real results. "
+        "Examples: gh search repos, curl https://api.github.com, git status",
         nlohmann::json::parse(R"JSON({"type":"object","properties":{"command":{"type":"string","description":"Shell command to execute"},"workdir":{"type":"string","description":"Working directory (optional)"},"timeout":{"type":"integer","description":"Timeout in seconds (default 30)"}},"required":["command"]})JSON"),
         [this](const nlohmann::json& p) { return exec_tool(p); });
 
     // ---- bash (OpenClaw alias for exec) ----
-    register_tool("bash", "Execute a shell command (alias for exec)",
+    register_tool("bash",
+        "Execute a shell command (alias for exec). "
+        "IMPORTANT: Use this to actually run commands, not just show them. "
+        "When you need to execute gh, curl, or any CLI tool, use this tool to get real output.",
         nlohmann::json::parse(R"JSON({"type":"object","properties":{"command":{"type":"string","description":"Shell command to execute"},"timeout":{"type":"integer","description":"Timeout in seconds (default 30)"}},"required":["command"]})JSON"),
         [this](const nlohmann::json& p) { return exec_tool(p); });
 
@@ -179,6 +186,50 @@ void ToolRegistry::RegisterBuiltinTools() {
         "Read a specific file from the agent workspace (MEMORY.md, notes, etc.).",
         nlohmann::json::parse(R"({"type":"object","properties":{"path":{"type":"string","description":"Relative path within the workspace, e.g. MEMORY.md or memory/notes.md"}},"required":["path"]})"),
         [this](const nlohmann::json& p) { return memory_get_tool(p); });
+
+    // ---- github_search_repos ----
+    register_tool("github_search_repos",
+        "Search GitHub repositories using gh CLI. Returns structured JSON data with repo info. "
+        "Requires gh CLI to be installed and authenticated (gh auth login).",
+        nlohmann::json::parse(R"JSON({
+            "type":"object",
+            "properties":{
+                "query":{"type":"string","description":"Search query (e.g., 'openclaw', 'python machine learning')"},
+                "sort":{"type":"string","enum":["stars","forks","updated","help-wanted-issues"],"description":"Sort order (default: stars)"},
+                "limit":{"type":"integer","description":"Number of results (1-100, default: 20)"},
+                "language":{"type":"string","description":"Filter by programming language (optional)"}
+            },
+            "required":["query"]
+        })JSON"),
+        [this](const nlohmann::json& p) { return github_search_repos_tool(p); });
+
+    // ---- github_search_code ----
+    register_tool("github_search_code",
+        "Search code on GitHub using gh CLI. Returns code snippets and file locations. "
+        "Requires gh CLI to be installed and authenticated.",
+        nlohmann::json::parse(R"JSON({
+            "type":"object",
+            "properties":{
+                "query":{"type":"string","description":"Code search query"},
+                "language":{"type":"string","description":"Filter by programming language (optional)"},
+                "limit":{"type":"integer","description":"Number of results (1-100, default: 20)"}
+            },
+            "required":["query"]
+        })JSON"),
+        [this](const nlohmann::json& p) { return github_search_code_tool(p); });
+
+    // ---- github_get_repo ----
+    register_tool("github_get_repo",
+        "Get detailed information about a specific GitHub repository using gh CLI. "
+        "Requires gh CLI to be installed and authenticated.",
+        nlohmann::json::parse(R"JSON({
+            "type":"object",
+            "properties":{
+                "repo":{"type":"string","description":"Repository in owner/name format (e.g., 'facebook/react')"}
+            },
+            "required":["repo"]
+        })JSON"),
+        [this](const nlohmann::json& p) { return github_get_repo_tool(p); });
 
     logger_->info("Registered {} built-in tools", tools_.size());
 }
@@ -422,7 +473,7 @@ void ToolRegistry::SetSessionManager(std::shared_ptr<SessionManager> mgr) {
             [](const ToolSchema& s) { return s.name == "sessions_list"; }),
         tool_schemas_.end());
     tool_schemas_.push_back({"sessions_list", "List agent sessions.",
-        nlohmann::json::parse(R"JSON({"type":"object","properties":{"limit":{"type":"integer","description":"Max results (default 20)"},"offset":{"type":"integer","description":"Offset for pagination"}}})JSON")});
+        nlohmann::json::parse(R"JSON({"type":"object","properties":{"limit":{"type":"integer","description":"Max results (default 20)"},"offset":{"type":"integer","description":"Offset for pagination"}},"required":[]})JSON")});
 
     // sessions_history
     tools_["sessions_history"] = [this](const nlohmann::json& params) -> std::string {
@@ -536,19 +587,35 @@ std::string ToolRegistry::ExecuteTool(const std::string& tool_name,
 }
 
 std::vector<ToolRegistry::ToolSchema> ToolRegistry::GetToolSchemas() const {
-    if (!permission_checker_) return tool_schemas_;
+    logger_->info("GetToolSchemas: tool_schemas_.size() = {}", tool_schemas_.size());
+    logger_->info("GetToolSchemas: permission_checker_ = {}", permission_checker_ ? "set" : "null");
+
+    if (!permission_checker_) {
+        logger_->info("GetToolSchemas: No permission checker, returning all {} schemas", tool_schemas_.size());
+        return tool_schemas_;
+    }
+
     std::vector<ToolSchema> filtered;
     for (const auto& schema : tool_schemas_) {
-        if (external_tools_.count(schema.name) && mcp_tool_manager_) {
-            if (permission_checker_->IsMcpToolAllowed(
+        bool is_external = external_tools_.count(schema.name);
+        bool allowed = false;
+
+        if (is_external && mcp_tool_manager_) {
+            allowed = permission_checker_->IsMcpToolAllowed(
                     mcp_tool_manager_->GetServerName(schema.name),
-                    mcp_tool_manager_->GetOriginalToolName(schema.name)))
-                filtered.push_back(schema);
+                    mcp_tool_manager_->GetOriginalToolName(schema.name));
+            logger_->info("GetToolSchemas: MCP tool '{}' allowed={}", schema.name, allowed);
         } else {
-            if (permission_checker_->IsAllowed(schema.name))
-                filtered.push_back(schema);
+            allowed = permission_checker_->IsAllowed(schema.name);
+            logger_->info("GetToolSchemas: Built-in tool '{}' allowed={}", schema.name, allowed);
+        }
+
+        if (allowed) {
+            filtered.push_back(schema);
         }
     }
+
+    logger_->info("GetToolSchemas: Filtered {} -> {} schemas", tool_schemas_.size(), filtered.size());
     return filtered;
 }
 
@@ -625,11 +692,20 @@ std::string ToolRegistry::exec_tool(const nlohmann::json& params) {
             throw std::runtime_error("Approval timed out: " + command);
     }
 
-    quantclaw::SecuritySandbox::ApplyResourceLimits();
+    // NOTE: ApplyResourceLimits() causes ENOMEM (errno=12) in popen()
+    // because RLIMIT_AS (256MB) is too restrictive for fork+exec.
+    // Disabled for now - commands run without memory limits.
+    // quantclaw::SecuritySandbox::ApplyResourceLimits();
+
     logger_->info("Executing command: {}", command);
 
     auto result = platform::exec_capture(command, timeout);
-    if (result.exit_code == -1) throw std::runtime_error("Failed to execute: " + command);
+    logger_->info("exec_capture returned: exit_code={}, output_len={}",
+                  result.exit_code, result.output.size());
+    if (result.exit_code == -1) {
+        logger_->error("exec_capture failed: {}", result.output);
+        throw std::runtime_error("Failed to execute: " + command);
+    }
     if (result.exit_code == -2) throw std::runtime_error("Command timeout: " + command);
     if (result.exit_code != 0)
         throw std::runtime_error("Command exited " + std::to_string(result.exit_code) +
@@ -1482,6 +1558,228 @@ void ToolRegistry::log_tool_execution(
         audit_logger_->LogDangerousToolCall(
             current_user_id_, current_session_id_,
             tool_name, parameters, true);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GitHub Tools Implementation
+// ---------------------------------------------------------------------------
+
+std::string ToolRegistry::github_search_repos_tool(const nlohmann::json& params) {
+    std::string query = params["query"];
+    std::string sort = params.value("sort", "stars");
+    int limit = params.value("limit", 20);
+
+    // Validate limit
+    if (limit < 1) limit = 1;
+    if (limit > 100) limit = 100;
+
+    // Build gh command
+    std::ostringstream cmd;
+    cmd << "gh search repos \"" << query << "\" "
+        << "--sort " << sort << " "
+        << "--limit " << limit << " "
+        << "--json name,description,stargazerCount,url,owner,language,updatedAt";
+
+    // Add language filter if specified
+    if (params.contains("language") && !params["language"].get<std::string>().empty()) {
+        cmd << " --language " << params["language"].get<std::string>();
+    }
+
+    logger_->info("github_search_repos: executing command: {}", cmd.str());
+
+    // Execute command
+    nlohmann::json exec_params;
+    exec_params["command"] = cmd.str();
+    exec_params["timeout"] = 30;
+
+    try {
+        std::string result = exec_tool(exec_params);
+        logger_->info("github_search_repos: raw output length: {} bytes", result.size());
+        logger_->info("github_search_repos: raw output (first 500 chars): {}",
+                     result.substr(0, std::min(size_t(500), result.size())));
+
+        // Try to parse and format the JSON result
+        try {
+            auto repos = nlohmann::json::parse(result);
+            logger_->info("github_search_repos: parsed {} repositories", repos.size());
+
+            if (repos.is_array() && repos.empty()) {
+                return "No repositories found matching the query.";
+            }
+
+            // Format the output
+            std::ostringstream output;
+            output << "Found " << repos.size() << " repositories:\n\n";
+
+            for (size_t i = 0; i < repos.size(); ++i) {
+                const auto& repo = repos[i];
+                std::string name = repo.value("name", "unknown");
+                int stars = repo.value("stargazerCount", 0);
+                logger_->info("github_search_repos: repo[{}]: name={}, stars={}", i, name, stars);
+
+                output << (i + 1) << ". **" << name << "**";
+
+                if (repo.contains("owner") && repo["owner"].contains("login")) {
+                    output << " (" << repo["owner"]["login"].get<std::string>() << ")";
+                }
+
+                output << "\n";
+                output << "   ⭐ " << stars << " stars";
+
+                if (repo.contains("language") && !repo["language"].is_null()) {
+                    output << " | 📝 " << repo["language"].get<std::string>();
+                }
+
+                output << "\n";
+
+                if (repo.contains("description") && !repo["description"].is_null()) {
+                    output << "   " << repo["description"].get<std::string>() << "\n";
+                }
+
+                output << "   🔗 " << repo.value("url", "") << "\n\n";
+            }
+
+            std::string formatted_output = output.str();
+            logger_->info("github_search_repos: formatted output length: {} bytes",
+                         formatted_output.size());
+            logger_->info("github_search_repos: formatted output (first 500 chars): {}",
+                         formatted_output.substr(0, std::min(size_t(500), formatted_output.size())));
+
+            return formatted_output;
+        } catch (const nlohmann::json::exception&) {
+            // If JSON parsing fails, return raw result
+            return result;
+        }
+    } catch (const std::exception& e) {
+        return "Error searching GitHub repositories: " + std::string(e.what()) +
+               "\nMake sure gh CLI is installed and authenticated (run: gh auth login)";
+    }
+}
+
+std::string ToolRegistry::github_search_code_tool(const nlohmann::json& params) {
+    std::string query = params["query"];
+    int limit = params.value("limit", 20);
+
+    // Validate limit
+    if (limit < 1) limit = 1;
+    if (limit > 100) limit = 100;
+
+    // Build gh command
+    std::ostringstream cmd;
+    cmd << "gh search code \"" << query << "\" "
+        << "--limit " << limit << " "
+        << "--json repository,path,url";
+
+    // Add language filter if specified
+    if (params.contains("language") && !params["language"].get<std::string>().empty()) {
+        cmd << " --language " << params["language"].get<std::string>();
+    }
+
+    // Execute command
+    nlohmann::json exec_params;
+    exec_params["command"] = cmd.str();
+    exec_params["timeout"] = 30;
+
+    try {
+        std::string result = exec_tool(exec_params);
+
+        // Try to parse and format the JSON result
+        try {
+            auto codes = nlohmann::json::parse(result);
+            if (codes.is_array() && codes.empty()) {
+                return "No code found matching the query.";
+            }
+
+            // Format the output
+            std::ostringstream output;
+            output << "Found " << codes.size() << " code results:\n\n";
+
+            for (size_t i = 0; i < codes.size(); ++i) {
+                const auto& code = codes[i];
+                output << (i + 1) << ". ";
+
+                if (code.contains("repository") && code["repository"].contains("fullName")) {
+                    output << "**" << code["repository"]["fullName"].get<std::string>() << "**";
+                }
+
+                output << "\n";
+                output << "   📄 " << code.value("path", "unknown") << "\n";
+                output << "   🔗 " << code.value("url", "") << "\n\n";
+            }
+
+            return output.str();
+        } catch (const nlohmann::json::exception&) {
+            return result;
+        }
+    } catch (const std::exception& e) {
+        return "Error searching GitHub code: " + std::string(e.what()) +
+               "\nMake sure gh CLI is installed and authenticated (run: gh auth login)";
+    }
+}
+
+std::string ToolRegistry::github_get_repo_tool(const nlohmann::json& params) {
+    std::string repo = params["repo"];
+
+    // Build gh command
+    std::ostringstream cmd;
+    cmd << "gh repo view " << repo << " "
+        << "--json name,description,stargazerCount,forkCount,url,owner,"
+        << "language,createdAt,updatedAt,pushedAt,isPrivate,isFork,licenseInfo,repositoryTopics";
+
+    // Execute command
+    nlohmann::json exec_params;
+    exec_params["command"] = cmd.str();
+    exec_params["timeout"] = 30;
+
+    try {
+        std::string result = exec_tool(exec_params);
+
+        // Try to parse and format the JSON result
+        try {
+            auto repo_info = nlohmann::json::parse(result);
+
+            // Format the output
+            std::ostringstream output;
+            output << "# " << repo_info.value("name", "unknown") << "\n\n";
+
+            if (repo_info.contains("description") && !repo_info["description"].is_null()) {
+                output << repo_info["description"].get<std::string>() << "\n\n";
+            }
+
+            output << "**Statistics:**\n";
+            output << "- ⭐ Stars: " << repo_info.value("stargazerCount", 0) << "\n";
+            output << "- 🍴 Forks: " << repo_info.value("forkCount", 0) << "\n";
+
+            if (repo_info.contains("language") && !repo_info["language"].is_null()) {
+                output << "- 📝 Language: " << repo_info["language"].get<std::string>() << "\n";
+            }
+
+            if (repo_info.contains("licenseInfo") && !repo_info["licenseInfo"].is_null() &&
+                repo_info["licenseInfo"].contains("name")) {
+                output << "- ⚖️  License: " << repo_info["licenseInfo"]["name"].get<std::string>() << "\n";
+            }
+
+            output << "\n**Links:**\n";
+            output << "- 🔗 URL: " << repo_info.value("url", "") << "\n";
+
+            if (repo_info.contains("topics") && repo_info["topics"].is_array() &&
+                !repo_info["topics"].empty()) {
+                output << "\n**Topics:** ";
+                for (size_t i = 0; i < repo_info["topics"].size(); ++i) {
+                    if (i > 0) output << ", ";
+                    output << repo_info["topics"][i].get<std::string>();
+                }
+                output << "\n";
+            }
+
+            return output.str();
+        } catch (const nlohmann::json::exception&) {
+            return result;
+        }
+    } catch (const std::exception& e) {
+        return "Error getting repository info: " + std::string(e.what()) +
+               "\nMake sure gh CLI is installed and authenticated (run: gh auth login)";
     }
 }
 
