@@ -7,9 +7,19 @@ Testing/
 *.a
 *.so
 *.dylib
+obj-*/
 
 # Release artifacts (scripts/release.sh)
 dist/
+
+# Debian packaging build artifacts
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.debhelper
+debian/*.substvars
+debian/quantclaw/
+debian/*-dbgsym/
 
 # clang compile commands (generated locally or by CI)
 compile_commands.json

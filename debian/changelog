@@ -1,0 +1,15 @@
+quantclaw (0.3.0-1) noble; urgency=medium
+
+  * Initial release for Ubuntu 24.04 (Noble Numbat)
+  * High-performance C++17 AI assistant implementation
+  * OpenClaw compatible workspace and protocol
+  * Multi-provider LLM support (OpenAI, Anthropic, Google, Qwen)
+  * WebSocket RPC gateway + HTTP REST API
+  * Plugin ecosystem with Node.js sidecar
+  * MCP (Model Context Protocol) support
+  * Session persistence and context management
+  * Skill system compatible with OpenClaw format
+  * Security sandbox with RBAC and rate limiting
+  * 886 passing tests
+
+ -- QuantClaw Team <team@quantclaw.io>  Sun, 16 Mar 2026 00:00:00 +0000

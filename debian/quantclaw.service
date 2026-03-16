@@ -1,0 +1,29 @@
+[Unit]
+Description=QuantClaw AI Assistant Gateway
+Documentation=https://quantclaw.github.io
+After=network.target
+
+[Service]
+Type=simple
+# Run as the user who installed the service
+# Use: systemctl --user enable quantclaw (for current user)
+# Or edit this file to set User=your-username
+ExecStart=/usr/bin/quantclaw gateway
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.quantclaw
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=512
+
+[Install]
+WantedBy=multi-user.target

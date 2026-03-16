@@ -1,0 +1,97 @@
+┌─────────────────────────────────────────────────────────────┐
+│                  QuantClaw DEB 打包快速参考                  │
+│              (包含 Node.js Sidecar 用于插件支持)              │
+└─────────────────────────────────────────────────────────────┘
+
+📦 构建 DEB 包
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ./scripts/build-deb.sh              # 自动构建(需要 sudo)
+  ./scripts/build-deb-local.sh        # 本地构建(无需 sudo)
+
+  依赖: nodejs npm (用于编译 Sidecar)
+
+🔧 安装
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  sudo dpkg -i dist/quantclaw_*.deb
+  sudo apt-get install -f             # 修复依赖(会安装 nodejs)
+
+🚀 初始化(在当前用户下)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  quantclaw onboard                   # 初始化向导
+  quantclaw gateway                   # 前台运行
+
+  # 或安装为系统服务
+  quantclaw gateway install
+  systemctl start quantclaw
+  systemctl enable quantclaw
+
+🔍 验证
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  quantclaw --version
+  quantclaw health
+  quantclaw plugins list              # 查看插件状态
+  quantclaw dashboard
+
+⚙️  配置(在当前用户下)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  quantclaw config set providers.openai.apiKey "sk-..."
+  quantclaw config set plugins.allow '["my-plugin"]'
+  quantclaw config reload
+
+🔌 插件管理
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 安装插件
+  mkdir -p ~/.quantclaw/plugins/my-plugin
+
+  # 启用插件
+  quantclaw config set plugins.allow '["my-plugin"]'
+
+  # 查看插件
+  quantclaw plugins list
+  curl http://localhost:18801/api/plugins/tools
+
+📊 服务管理
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  systemctl start quantclaw           # 启动
+  systemctl stop quantclaw            # 停止
+  systemctl restart quantclaw         # 重启
+  journalctl -u quantclaw -f          # 查看日志
+
+🗑️  卸载
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  sudo apt-get remove quantclaw       # 保留配置
+  sudo apt-get purge quantclaw        # 删除包
+  rm -rf ~/.quantclaw                 # 手动删除用户数据
+
+📁 文件位置
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  /usr/bin/quantclaw                  # 主程序 (C++)
+  /usr/share/quantclaw/sidecar/       # Node.js Sidecar
+  /usr/share/quantclaw/skills/        # 内置技能
+  ~/.quantclaw/                       # 配置和数据(当前用户)
+  ~/.quantclaw/plugins/               # 用户插件
+
+🔌 Sidecar (插件运行时)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  自动包含在 DEB 包中
+  支持 OpenClaw TypeScript 插件
+  通过 TCP Socket 与 C++ 通信
+
+  验证: ls -la /usr/share/quantclaw/sidecar/dist/
+
+🧪 测试
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ./scripts/test-deb.sh dist/quantclaw_*.deb
+
+📚 文档
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  INSTALL_DEB.md                      # 快速安装指南
+  docs/DEB_PACKAGING.md               # 详细打包指南
+  docs/SIDECAR_GUIDE.md               # Sidecar 使用指南
+  docs/DEB_DESIGN_UPDATE.md           # 设计更新说明
+
+🔗 链接
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  官网: https://quantclaw.github.io
+  GitHub: https://github.com/QuantClaw/QuantClaw
+  Issues: https://github.com/QuantClaw/QuantClaw/issues

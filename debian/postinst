@@ -1,0 +1,55 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    configure)
+        # Verify sidecar installation
+        if [ -f /usr/share/quantclaw/sidecar/dist/index.js ]; then
+            echo "✓ Sidecar installed successfully"
+        else
+            echo "⚠ Warning: Sidecar not found, plugin system may not work"
+        fi
+
+        # Reload systemd
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload || true
+        fi
+
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  QuantClaw has been installed successfully!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Next steps:"
+        echo "  1. Run the onboarding wizard:"
+        echo "     quantclaw onboard"
+        echo ""
+        echo "  2. Start the gateway:"
+        echo "     quantclaw gateway"
+        echo ""
+        echo "  3. Or install as system service:"
+        echo "     quantclaw gateway install"
+        echo "     systemctl start quantclaw"
+        echo "     systemctl enable quantclaw"
+        echo ""
+        echo "Configuration will be stored in: ~/.quantclaw/"
+        echo ""
+        echo "Plugin system (Node.js Sidecar) is ready for OpenClaw plugins."
+        echo ""
+        echo "For more information, visit: https://quantclaw.github.io"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

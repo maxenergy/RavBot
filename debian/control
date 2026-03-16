@@ -1,0 +1,47 @@
+Source: quantclaw
+Section: utils
+Priority: optional
+Maintainer: QuantClaw Team <team@quantclaw.io>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.20),
+               g++ (>= 7),
+               libssl-dev,
+               libcurl4-openssl-dev,
+               nlohmann-json3-dev,
+               libspdlog-dev,
+               zlib1g-dev,
+               libsqlite3-dev,
+               nodejs (>= 18),
+               npm
+Standards-Version: 4.6.2
+Homepage: https://quantclaw.github.io
+Vcs-Git: https://github.com/QuantClaw/QuantClaw.git
+Vcs-Browser: https://github.com/QuantClaw/QuantClaw
+
+Package: quantclaw
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+         libssl3,
+         libcurl4,
+         libsqlite3-0,
+         zlib1g,
+         nodejs (>= 18)
+Description: High-performance personal AI assistant in C++17
+ QuantClaw is a native C++ implementation of the OpenClaw ecosystem,
+ built for performance and low memory footprint while staying fully
+ compatible with OpenClaw workspace files, skills, and the WebSocket
+ RPC protocol.
+ .
+ Features:
+  - Blazing fast C++17 native performance
+  - Memory efficient with small footprint
+  - OpenClaw compatible workspace and skills
+  - Dual protocol: WebSocket RPC + HTTP REST API
+  - Multi-provider LLM support (OpenAI, Anthropic, Google, Qwen)
+  - Plugin ecosystem with Node.js sidecar for OpenClaw compatibility
+  - MCP (Model Context Protocol) support
+  - File system first, no database dependencies
+ .
+ This package includes the Node.js sidecar for running OpenClaw-compatible
+ TypeScript plugins, providing full compatibility with the OpenClaw plugin
+ ecosystem.

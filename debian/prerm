@@ -1,0 +1,30 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        # Stop the service if it's running (user may have installed it)
+        if [ -d /run/systemd/system ]; then
+            if systemctl is-active --quiet quantclaw 2>/dev/null; then
+                echo "Stopping quantclaw service..."
+                systemctl stop quantclaw || true
+            fi
+            if systemctl is-enabled --quiet quantclaw 2>/dev/null; then
+                echo "Disabling quantclaw service..."
+                systemctl disable quantclaw || true
+            fi
+        fi
+        ;;
+
+    failed-upgrade)
+        ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

@@ -1,0 +1,66 @@
+name: Build DEB Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    name: Build DEB for Ubuntu 24.04
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            dpkg-dev debhelper devscripts \
+            build-essential cmake \
+            libssl-dev libcurl4-openssl-dev \
+            nlohmann-json3-dev libspdlog-dev \
+            zlib1g-dev libsqlite3-dev
+
+      - name: Build DEB package
+        run: |
+          dpkg-buildpackage -us -uc -b -j$(nproc)
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p dist
+          mv ../quantclaw_*.deb dist/
+          mv ../quantclaw_*.changes dist/ || true
+          mv ../quantclaw_*.buildinfo dist/ || true
+          cd dist
+          for file in quantclaw_*.deb; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+            fi
+          done
+
+      - name: Upload DEB package
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantclaw-deb-ubuntu-24.04
+          path: |
+            dist/*.deb
+            dist/*.sha256
+          retention-days: 90
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.deb
+            dist/*.sha256
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
