@@ -137,6 +137,11 @@ class AgentLoop : public Noncopyable {
   void SetModel(const std::string& model_ref);
 
  private:
+  // Index messages to vector database (called at end of conversation)
+  void IndexConversationMessages(const std::string& user_message,
+                                  const std::vector<Message>& new_messages,
+                                  const std::string& session_key);
+
   // Resolve current provider (from registry or fallback to injected provider)
   std::shared_ptr<LLMProvider> resolve_provider();
   std::string resolved_request_model() const;

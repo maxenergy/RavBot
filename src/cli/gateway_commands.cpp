@@ -16,11 +16,14 @@
 #include "quantclaw/constants.hpp"
 #include "quantclaw/core/agent_loop.hpp"
 #include "quantclaw/core/cron_scheduler.hpp"
+#include "quantclaw/core/embedding_manager.hpp"
 #include "quantclaw/core/memory_manager.hpp"
+#include "quantclaw/core/ollama_embedding_provider.hpp"
 #include "quantclaw/core/prompt_builder.hpp"
 #include "quantclaw/core/signal_handler.hpp"
 #include "quantclaw/core/skill_loader.hpp"
 #include "quantclaw/core/subagent.hpp"
+#include "quantclaw/core/vector_database.hpp"
 #include "quantclaw/gateway/command_queue.hpp"
 #include "quantclaw/gateway/daemon_manager.hpp"
 #include "quantclaw/gateway/gateway_client.hpp"
@@ -37,6 +40,7 @@
 #include "quantclaw/security/tool_permissions.hpp"
 #include "quantclaw/session/session_manager.hpp"
 #include "quantclaw/tools/tool_registry.hpp"
+#include "quantclaw/utils/port_checker.hpp"
 #include "quantclaw/web/api_routes.hpp"
 #include "quantclaw/web/web_server.hpp"
 
@@ -147,8 +151,34 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
     }
   }
 
-  int port = config.gateway.port;
-  logger_->info("Starting Gateway in foreground mode on port {}", port);
+  int base_gateway_port = config.gateway.port;
+  int gateway_port = base_gateway_port;
+  int http_port = base_gateway_port + 1;  // HTTP port is always gateway_port + 1
+
+  // Check if default ports (slot 0) are available
+  bool gateway_available = utils::PortChecker::IsPortAvailable(base_gateway_port);
+  bool http_available = utils::PortChecker::IsPortAvailable(base_gateway_port + 1);
+
+  if (!gateway_available || !http_available) {
+
+    // Find an available instance slot (supports up to 20 instances by default)
+    int instance_slot = utils::PortChecker::FindAvailableInstanceSlot(base_gateway_port, 20);
+
+    if (instance_slot >= 0) {
+      gateway_port = base_gateway_port + (instance_slot * 2);
+      http_port = gateway_port + 1;
+
+      logger_->warn("Default ports occupied, using instance slot {}", instance_slot);
+      logger_->warn("Gateway port: {} -> {}", base_gateway_port, gateway_port);
+      logger_->warn("HTTP port: {} -> {}", base_gateway_port + 1, http_port);
+    } else {
+      logger_->error("No available instance slots found (max 20 instances supported)");
+      logger_->error("Base ports: gateway={}, http={}", base_gateway_port, base_gateway_port + 1);
+      return 1;
+    }
+  }
+
+  logger_->info("Starting Gateway in foreground mode on port {}", gateway_port);
 
   std::string home_str = platform::home_directory();
 
@@ -238,6 +268,34 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   failover_resolver->SetFallbackChain(config.agent.fallbacks);
   agent_loop->SetFailoverResolver(failover_resolver.get());
 
+  // Initialize vector search components
+  auto vector_db_path = base_dir / "data" / "vectors.db";
+  std::filesystem::create_directories(base_dir / "data");
+  auto vector_db = std::make_shared<quantclaw::VectorDatabase>(
+      vector_db_path.string(), logger_);
+
+  // Initialize vector database
+  if (!vector_db->Initialize()) {
+    logger_->error("Failed to initialize vector database");
+    return 1;
+  }
+
+  auto embedding_registry = std::make_shared<quantclaw::EmbeddingProviderRegistry>();
+
+  // Register Ollama embedding provider as default
+  auto ollama_provider = std::make_shared<quantclaw::OllamaEmbeddingProvider>(
+      "nomic-embed-text", "http://localhost:11434", logger_);
+  embedding_registry->RegisterProvider("ollama", ollama_provider);
+  embedding_registry->SetDefaultProvider("ollama");
+
+  auto embedding_manager = std::make_shared<quantclaw::EmbeddingManager>(
+      embedding_registry, vector_db, logger_);
+
+  // Set embedding manager for automatic message indexing
+  agent_loop->SetEmbeddingManager(embedding_manager);
+
+  logger_->info("Vector search initialized with Ollama embedding provider");
+
   auto session_manager =
       std::make_shared<quantclaw::SessionManager>(sessions_dir, logger_);
 
@@ -245,11 +303,11 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
       memory_manager, skill_loader, tool_registry, &config);
 
   // Create and configure gateway server
-  gateway::GatewayServer server(port, logger_);
+  gateway::GatewayServer server(gateway_port, logger_);
 
   // Tell WS server to redirect plain HTTP requests to the Control UI port
   if (config.gateway.control_ui.enabled) {
-    server.SetHttpRedirectPort(config.gateway.control_ui.port);
+    server.SetHttpRedirectPort(http_port);
   }
 
   // Configure auth: prefer env var, fall back to config file
@@ -462,12 +520,11 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
     return 1;
   }
 
-  logger_->info("Gateway running on ws://0.0.0.0:{}", port);
+  logger_->info("Gateway running on ws://0.0.0.0:{}", gateway_port);
 
   // Start HTTP API server (Control UI)
   std::unique_ptr<quantclaw::web::WebServer> http_server;
   if (config.gateway.control_ui.enabled) {
-    int http_port = config.gateway.control_ui.port;
     http_server =
         std::make_unique<quantclaw::web::WebServer>(http_port, logger_);
     http_server->EnableCors("*");
@@ -512,10 +569,10 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
     // Gateway info endpoint for UI to discover WebSocket port
     http_server->AddRawRoute(
         "/api/gateway-info", "GET",
-        [port](const httplib::Request&, httplib::Response& res) {
+        [gateway_port](const httplib::Request&, httplib::Response& res) {
           nlohmann::json info = {
-              {"wsUrl", "ws://localhost:" + std::to_string(port)},
-              {"wsPort", port},
+              {"wsUrl", "ws://localhost:" + std::to_string(gateway_port)},
+              {"wsPort", gateway_port},
               {"version", quantclaw::kVersion}};
           res.status = 200;
           res.set_content(info.dump(), "application/json");
@@ -638,7 +695,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   // Start other channel adapters (Discord, etc.) via external scripts
   if (!config.channels.empty()) {
     adapter_manager = std::make_unique<quantclaw::ChannelAdapterManager>(
-        port, auth_token, config.channels, logger_);
+        gateway_port, auth_token, config.channels, logger_);
     adapter_manager->Start();
   }
 

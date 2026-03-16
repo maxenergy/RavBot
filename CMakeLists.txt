@@ -170,6 +170,8 @@ set(QUANTCLAW_CORE_SOURCES
     # Web
     src/web/web_server.cpp
     src/web/api_routes.cpp
+    # Utils
+    src/utils/port_checker.cpp
     # IPC — single TCP implementation for all platforms
     src/platform/ipc_tcp.cpp
 )

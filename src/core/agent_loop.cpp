@@ -1389,6 +1389,43 @@ std::vector<Message> AgentLoop::ProcessMessage(
   logger_->info("Processing message (non-streaming)");
   stop_requested_ = false;
 
+  // Check for duplicate messages
+  std::string duplicate_notice;
+  if (embedding_manager_ && !effective_session_key.empty()) {
+    try {
+      auto similar_results = embedding_manager_->SearchText(message, 10, 0.80f);
+      int total_occurrences = 0;
+
+      // Count how many times similar messages appeared
+      for (const auto& result : similar_results) {
+        try {
+          auto metadata = result.metadata;
+          if (metadata.contains("role") && metadata["role"] == "user" &&
+              metadata.contains("session") && metadata["session"] == effective_session_key) {
+            // Found similar user message in same session
+            total_occurrences++;
+            logger_->info("Found similar message: id={}, similarity={:.3f}, hit_count={}",
+                         result.id, result.distance, metadata.value("hit_count", 1));
+          }
+        } catch (const std::exception& e) {
+          logger_->warn("Failed to parse search result metadata: {}", e.what());
+        }
+      }
+
+      // If found similar messages, this is a repeat (total_occurrences + 1 for current)
+      if (total_occurrences > 0) {
+        int repeat_count = total_occurrences + 1;
+        duplicate_notice = "[SYSTEM NOTICE: The user has sent a very similar message " +
+                          std::to_string(repeat_count) + " times. " +
+                          "Please acknowledge this repetition in your response and ask if " +
+                          "there's something unclear or if they need different information.]";
+        logger_->info("Duplicate message detected: total occurrences={}", repeat_count);
+      }
+    } catch (const std::exception& e) {
+      logger_->warn("Failed to search for duplicate messages: {}", e.what());
+    }
+  }
+
   auto provider = resolve_provider();
   const int ctx_window = agent_config_.context_window > 0
                              ? agent_config_.context_window
@@ -1434,6 +1471,11 @@ std::vector<Message> AgentLoop::ProcessMessage(
   // System message (always first, re-injected after compaction)
   if (!system_prompt.empty()) {
     context.push_back(Message{"system", system_prompt});
+  }
+
+  // Add duplicate notice if detected
+  if (!duplicate_notice.empty()) {
+    context.push_back(Message{"system", duplicate_notice});
   }
 
   // History
@@ -1655,37 +1697,7 @@ std::vector<Message> AgentLoop::ProcessMessage(
         new_messages.push_back(final_msg);
 
         // Index messages to vector database if embedding manager is available
-        if (embedding_manager_ && !effective_session_key.empty()) {
-          try {
-            // Index user message
-            if (!message.empty()) {
-              std::string user_msg_id = effective_session_key + ":user:" +
-                  std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
-              nlohmann::json user_metadata = {
-                {"role", "user"},
-                {"session", effective_session_key},
-                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
-              };
-              embedding_manager_->IndexText(user_msg_id, message, user_metadata);
-              logger_->debug("Indexed user message: {}", user_msg_id);
-            }
-
-            // Index assistant response
-            if (!response.content.empty()) {
-              std::string assistant_msg_id = effective_session_key + ":assistant:" +
-                  std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
-              nlohmann::json assistant_metadata = {
-                {"role", "assistant"},
-                {"session", effective_session_key},
-                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
-              };
-              embedding_manager_->IndexText(assistant_msg_id, response.content, assistant_metadata);
-              logger_->debug("Indexed assistant message: {}", assistant_msg_id);
-            }
-          } catch (const std::exception& e) {
-            logger_->warn("Failed to index messages to vector database: {}", e.what());
-          }
-        }
+        IndexConversationMessages(message, new_messages, effective_session_key);
 
         return new_messages;
       }
@@ -1735,6 +1747,10 @@ std::vector<Message> AgentLoop::ProcessMessage(
     stop_msg.content.push_back(
         ContentBlock::MakeText("[Agent turn stopped by user]"));
     new_messages.push_back(stop_msg);
+
+    // Index messages even if stopped
+    IndexConversationMessages(message, new_messages, effective_session_key);
+
     return new_messages;
   }
 
@@ -2096,6 +2112,102 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
   stop_msg.content.push_back(ContentBlock::MakeText(stop_text));
   new_messages.push_back(stop_msg);
   return new_messages;
+}
+
+void AgentLoop::IndexConversationMessages(
+    const std::string& user_message,
+    const std::vector<Message>& new_messages,
+    const std::string& session_key) {
+  logger_->info("IndexConversationMessages called: embedding_manager_={}, session_key='{}'",
+               (void*)embedding_manager_.get(), session_key);
+
+  if (!embedding_manager_ || session_key.empty()) {
+    logger_->warn("Skipping indexing: embedding_manager_={}, session_key='{}'",
+                 (void*)embedding_manager_.get(), session_key);
+    return;
+  }
+
+  try {
+    logger_->info("Indexing conversation messages for session: {}", session_key);
+
+    // Index user message with duplicate detection
+    if (!user_message.empty()) {
+      // Search for similar messages to track hit count
+      auto similar_results = embedding_manager_->SearchText(user_message, 10, 0.80f);
+
+      int hit_count = 1;
+      std::string original_id;
+
+      // Count similar messages in same session
+      for (const auto& result : similar_results) {
+        try {
+          auto metadata = result.metadata;
+          if (metadata.contains("role") && metadata["role"] == "user" &&
+              metadata.contains("session") && metadata["session"] == session_key) {
+            // Found similar user message in same session
+            hit_count++;
+            if (original_id.empty()) {
+              original_id = result.id;
+            }
+          }
+        } catch (const std::exception& e) {
+          logger_->warn("Failed to parse metadata: {}", e.what());
+        }
+      }
+
+      std::string user_msg_id = session_key + ":user:" +
+          std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+      nlohmann::json user_metadata = {
+        {"role", "user"},
+        {"session", session_key},
+        {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()},
+        {"hit_count", hit_count}
+      };
+
+      if (!original_id.empty()) {
+        user_metadata["original_id"] = original_id;
+      }
+
+      logger_->debug("Indexing user message: {} (hit_count: {})", user_msg_id, hit_count);
+      logger_->debug("Calling embedding_manager_->IndexText...");
+      bool result = embedding_manager_->IndexText(user_msg_id, user_message, user_metadata.dump());
+      logger_->debug("IndexText returned: {}", result);
+    }
+
+    // Index all assistant messages
+    for (const auto& msg : new_messages) {
+      if (msg.role != "assistant") {
+        continue;
+      }
+
+      // Extract text content from message
+      std::string content_text;
+      for (const auto& block : msg.content) {
+        if (block.type == "text" && !block.text.empty()) {
+          if (!content_text.empty()) {
+            content_text += "\n";
+          }
+          content_text += block.text;
+        }
+      }
+
+      if (!content_text.empty()) {
+        std::string assistant_msg_id = session_key + ":assistant:" +
+            std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+        nlohmann::json assistant_metadata = {
+          {"role", "assistant"},
+          {"session", session_key},
+          {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
+        };
+        logger_->debug("Indexing assistant message: {}", assistant_msg_id);
+        embedding_manager_->IndexText(assistant_msg_id, content_text, assistant_metadata.dump());
+      }
+    }
+
+    logger_->info("Conversation indexing completed");
+  } catch (const std::exception& e) {
+    logger_->warn("Failed to index conversation messages: {}", e.what());
+  }
 }
 
 void AgentLoop::Stop() {
