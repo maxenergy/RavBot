@@ -227,7 +227,7 @@
       - **Validates: Requirements 5.1**
       - 验证可重试错误触发重试
 
-  - [~] 1.5 Checkpoint - Phase 1 完成验证
+  - [ ] 1.5 Checkpoint - Phase 1 完成验证
     - 确保所有测试通过
     - 运行 `./scripts/build.sh --tests && cd build && ctest --output-on-failure`
     - 询问用户是否有问题
@@ -315,7 +315,7 @@
       - **Validates: Requirements 2.8**
       - 验证速率限制错误导致更长冷却时间
 
-  - [~] 2.3 Checkpoint - Phase 2 完成验证
+  - [ ] 2.3 Checkpoint - Phase 2 完成验证
     - 确保所有测试通过
     - 运行 `cd build && ctest --output-on-failure`
     - 询问用户是否有问题
@@ -457,7 +457,7 @@
       - **Validates: Requirements 7.3, 7.4, 7.5**
       - 验证中止请求在 5 秒内生效
 
-  - [~] 3.4 Session Manager 增强
+  - [ ] 3.4 Session Manager 增强
     - [x] 3.4.1 实现 SessionPolicy 支持
       - 在 `include/quantclaw/session/session_manager.hpp` 中定义 SessionPolicy 结构体
       - 实现 SetPolicy() 方法
@@ -507,7 +507,7 @@
       - **Validates: Requirements 8.1, 8.2**
       - 验证所有 transcript 更新触发事件
 
-  - [~] 3.5 Telegram Channel 增强
+  - [ ] 3.5 Telegram Channel 增强
     - [x] 3.5.1 实现 DeduplicationStore
       - 创建 `include/quantclaw/channels/deduplication_store.hpp`
       - 创建 `src/channels/deduplication_store.cpp`
@@ -778,7 +778,7 @@
     - 运行 `cd build && ctest --output-on-failure`
     - 询问用户是否有问题
 
-- [~] 5. Phase 5: Plugin System Enhancement (Weeks 11-12)
+- [ ] 5. Phase 5: Plugin System Enhancement (Weeks 11-12)
   - [x] 5.1 Enhanced Plugin Registry
     - [x] 5.1.1 实现清单验证
       - 在 `src/plugins/plugin_registry.cpp` 中实现 ValidateManifest()
@@ -917,7 +917,7 @@
       - _Requirements: 19.8_
       - ✅ 已完成 (commit: 8f1a6c7)
 
-    - [~] 5.3.5 实现日志收集和转发
+    - [ ] 5.3.5 实现日志收集和转发
       - Sidecar 进程输出已通过 IPC 通信
       - 日志通过 spdlog 系统记录
       - _Requirements: 19.6_

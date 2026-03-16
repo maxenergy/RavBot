@@ -31,7 +31,9 @@ HNSWIndex::~HNSWIndex() {
 }
 
 bool HNSWIndex::Initialize() {
+  logger_->debug("[HNSWIndex::Initialize] START");
   std::lock_guard<std::mutex> lock(mutex_);
+  logger_->debug("[HNSWIndex::Initialize] Mutex acquired");
 
   if (initialized_) {
     logger_->warn("HNSW index already initialized");
@@ -39,6 +41,7 @@ bool HNSWIndex::Initialize() {
   }
 
   try {
+    logger_->debug("[HNSWIndex::Initialize] Creating space for metric: {}", config_.metric);
     // Create space based on metric
     if (config_.metric == "cosine") {
       space_ = new hnswlib::InnerProductSpace(config_.dimension);
@@ -50,12 +53,17 @@ bool HNSWIndex::Initialize() {
       logger_->error("Unknown metric: {}", config_.metric);
       return false;
     }
+    logger_->debug("[HNSWIndex::Initialize] Space created");
 
+    logger_->debug("[HNSWIndex::Initialize] Creating HierarchicalNSW with max_elements={}, M={}, ef_construction={}",
+                   config_.max_elements, config_.M, config_.ef_construction);
     // Create HNSW index
     auto* hnsw = new hnswlib::HierarchicalNSW<float>(
         static_cast<hnswlib::SpaceInterface<float>*>(space_),
         config_.max_elements, config_.M, config_.ef_construction);
+    logger_->debug("[HNSWIndex::Initialize] HierarchicalNSW created");
 
+    logger_->debug("[HNSWIndex::Initialize] Setting ef_search={}", config_.ef_search);
     hnsw->setEf(config_.ef_search);
     index_ = hnsw;
 

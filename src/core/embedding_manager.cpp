@@ -37,7 +37,12 @@ bool EmbeddingManager::IndexText(const std::string& id,
                                  const std::string& text,
                                  const std::string& metadata) {
   try {
+    logger_->debug("[IndexText] START: id={}, text_len={}", id, text.size());
+
+    logger_->debug("[IndexText] Calling GetEmbedding...");
     auto embedding = GetEmbedding(text);
+    logger_->debug("[IndexText] GetEmbedding returned, embedding_size={}", embedding.size());
+
     nlohmann::json meta_json;
     if (!metadata.empty()) {
       try {
@@ -46,7 +51,12 @@ bool EmbeddingManager::IndexText(const std::string& id,
         meta_json = {{"raw", metadata}};
       }
     }
-    return vector_db_->IndexVector(id, embedding, text, meta_json);
+
+    logger_->debug("[IndexText] Calling vector_db_->IndexVector...");
+    bool result = vector_db_->IndexVector(id, embedding, text, meta_json);
+    logger_->debug("[IndexText] IndexVector returned: {}", result);
+
+    return result;
   } catch (const std::exception& e) {
     logger_->error("Failed to index text '{}': {}", id, e.what());
     return false;

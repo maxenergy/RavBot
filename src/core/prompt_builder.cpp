@@ -506,17 +506,41 @@ std::string PromptBuilder::build_memory_recall_rules() const {
 
   rules << "### Memory Management\n\n";
 
-  rules << "**Saving Important Information:**\n\n";
-  rules << "- Use `memory_write` to save important information to MEMORY.md\n";
-  rules << "- Save user preferences, key facts, project decisions, and important context\n";
-  rules << "- Update memory when you learn new information about the user or project\n";
-  rules << "- Use mode='append' to add new information, mode='overwrite' to replace content\n\n";
+  rules << "**CRITICAL: When to Use memory_write Tool**\n\n";
+  rules << "You MUST immediately call `memory_write` tool when:\n\n";
+  rules << "1. **User explicitly asks you to remember something**\n";
+  rules << "   - Phrases like \"请记住\", \"remember\", \"don't forget\", \"save this\"\n";
+  rules << "   - Example: \"请记住，我的 sudo 密码是 xxx\"\n";
+  rules << "   - Action: Call memory_write IMMEDIATELY, don't just say \"I'll remember\"\n\n";
+  rules << "2. **User shares important preferences or credentials**\n";
+  rules << "   - System passwords, API keys, configuration preferences\n";
+  rules << "   - Development environment details, tool preferences\n";
+  rules << "   - Action: Save to MEMORY.md with appropriate security warnings\n\n";
+  rules << "3. **User corrects your understanding**\n";
+  rules << "   - When user says \"actually\", \"no\", \"that's wrong\"\n";
+  rules << "   - Action: Update existing memory or add correction\n\n";
+  rules << "4. **Important project decisions are made**\n";
+  rules << "   - Architecture choices, naming conventions, workflow patterns\n";
+  rules << "   - Action: Document the decision and rationale\n\n";
+
+  rules << "**How to Use memory_write:**\n\n";
+  rules << "```json\n";
+  rules << "{\n";
+  rules << "  \"name\": \"memory_write\",\n";
+  rules << "  \"input\": {\n";
+  rules << "    \"path\": \"MEMORY.md\",\n";
+  rules << "    \"content\": \"## User Preferences\\n\\n- sudo password: xxx\\n- Full system control authorized\\n\",\n";
+  rules << "    \"mode\": \"append\"  // or \"overwrite\" to replace entire file\n";
+  rules << "  }\n";
+  rules << "}\n";
+  rules << "```\n\n";
 
   rules << "**What to Save:**\n\n";
   rules << "1. **User Preferences**: Coding style, tool preferences, workflow patterns\n";
   rules << "2. **Project Context**: Architecture decisions, conventions, important files\n";
   rules << "3. **Key Facts**: Important information that should persist across sessions\n";
-  rules << "4. **Corrections**: When user corrects your understanding, update memory\n\n";
+  rules << "4. **Credentials**: Passwords, API keys (with security warnings)\n";
+  rules << "5. **Corrections**: When user corrects your understanding, update memory\n\n";
 
   rules << "**Memory Retrieval:**\n\n";
   rules << "- Use `memory_search` to find relevant information in workspace files\n";

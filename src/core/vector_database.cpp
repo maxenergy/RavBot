@@ -170,7 +170,9 @@ bool VectorDatabase::IndexVector(const std::string& id,
                                  const std::vector<float>& vector,
                                  const std::string& text,
                                  const nlohmann::json& metadata) {
+  logger_->debug("[IndexVector] START: id={}, vector_size={}", id, vector.size());
   std::lock_guard<std::mutex> lock(mutex_);
+  logger_->debug("[IndexVector] Mutex acquired");
 
   if (!db_) {
     logger_->error("Vector database not initialized");
@@ -191,10 +193,12 @@ bool VectorDatabase::IndexVector(const std::string& id,
 
     // Initialize HNSW now that we know the dimension
     if (use_hnsw_ && !hnsw_initialized_) {
+      logger_->debug("[IndexVector] Calling InitializeHNSW...");
       if (!InitializeHNSW()) {
         logger_->warn("Failed to initialize HNSW index after setting dimension");
         use_hnsw_ = false;
       }
+      logger_->debug("[IndexVector] InitializeHNSW returned");
     }
   } else if (static_cast<int>(vector.size()) != dimension_) {
     logger_->error("Vector dimension mismatch: expected {}, got {}",
@@ -202,6 +206,7 @@ bool VectorDatabase::IndexVector(const std::string& id,
     return false;
   }
 
+  logger_->debug("[IndexVector] Preparing SQLite insert...");
   std::vector<uint8_t> blob(vector.size() * sizeof(float));
   std::memcpy(blob.data(), vector.data(), blob.size());
   std::string metadata_json = metadata.dump();
@@ -223,8 +228,10 @@ bool VectorDatabase::IndexVector(const std::string& id,
   sqlite3_bind_text(stmt, 3, text.c_str(), -1, SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 4, metadata_json.c_str(), -1, SQLITE_TRANSIENT);
 
+  logger_->debug("[IndexVector] Executing SQLite insert...");
   rc = sqlite3_step(stmt);
   sqlite3_finalize(stmt);
+  logger_->debug("[IndexVector] SQLite insert completed: rc={}", rc);
 
   if (rc != SQLITE_DONE) {
     logger_->error("Failed to insert vector: {}", sqlite3_errmsg(db_));
@@ -233,12 +240,15 @@ bool VectorDatabase::IndexVector(const std::string& id,
 
   // Add to HNSW index
   if (use_hnsw_ && hnsw_index_ && hnsw_initialized_) {
+    logger_->debug("[IndexVector] Adding to HNSW index...");
     if (!hnsw_index_->AddVector(id, vector)) {
       logger_->warn("Failed to add vector to HNSW index: {}", id);
       // Continue anyway, SQLite has the data
     }
+    logger_->debug("[IndexVector] HNSW add completed");
   }
 
+  logger_->debug("[IndexVector] END: success");
   return true;
 }
 
@@ -526,6 +536,8 @@ std::string VectorDatabase::GetIndexPath() const {
 }
 
 bool VectorDatabase::InitializeHNSW() {
+  logger_->debug("[InitializeHNSW] START: use_hnsw={}, dimension={}", use_hnsw_, dimension_);
+
   if (!use_hnsw_) {
     return false;
   }
@@ -537,6 +549,7 @@ bool VectorDatabase::InitializeHNSW() {
   }
 
   try {
+    logger_->debug("[InitializeHNSW] Creating HNSW config...");
     // Create HNSW config
     HNSWConfig hnsw_config;
     hnsw_config.dimension = dimension_;
@@ -546,12 +559,16 @@ bool VectorDatabase::InitializeHNSW() {
     hnsw_config.ef_search = config_.hnsw_ef_search;
     hnsw_config.metric = config_.metric;
 
+    logger_->debug("[InitializeHNSW] Creating HNSW index object...");
     // Create HNSW index
     hnsw_index_ = std::make_unique<HNSWIndex>(hnsw_config, logger_);
+    logger_->debug("[InitializeHNSW] HNSW index object created");
 
     // Try to load existing index
     std::string index_path = GetIndexPath();
+    logger_->debug("[InitializeHNSW] Checking for existing index: {}", index_path);
     if (std::filesystem::exists(index_path)) {
+      logger_->debug("[InitializeHNSW] Loading existing index...");
       if (hnsw_index_->LoadIndex(index_path)) {
         logger_->info("Loaded existing HNSW index from: {}", index_path);
         hnsw_initialized_ = true;
@@ -561,11 +578,13 @@ bool VectorDatabase::InitializeHNSW() {
       }
     }
 
+    logger_->debug("[InitializeHNSW] Initializing new HNSW index...");
     // Initialize new index
     if (!hnsw_index_->Initialize()) {
       logger_->error("Failed to initialize HNSW index");
       return false;
     }
+    logger_->debug("[InitializeHNSW] HNSW index initialized");
 
     // Note: Don't call RebuildIndex() here as it would cause deadlock
     // when called from IndexVector() which already holds the mutex.
