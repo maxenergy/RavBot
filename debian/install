@@ -1,2 +1,3 @@
 assets/skills/* usr/share/quantclaw/skills/
 sidecar/* usr/share/quantclaw/sidecar/
+debian/quantclaw.service usr/lib/systemd/system/

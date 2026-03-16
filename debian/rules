@@ -30,9 +30,6 @@ override_dh_auto_install:
 	cp -r sidecar/node_modules debian/quantclaw/usr/share/quantclaw/sidecar/
 	cp sidecar/package.json debian/quantclaw/usr/share/quantclaw/sidecar/
 	cp sidecar/package-lock.json debian/quantclaw/usr/share/quantclaw/sidecar/
-	# Install systemd service
-	install -d debian/quantclaw/lib/systemd/system
-	install -m 644 debian/quantclaw.service debian/quantclaw/lib/systemd/system/
 	# Install documentation
 	install -d debian/quantclaw/usr/share/doc/quantclaw
 	install -m 644 README.md debian/quantclaw/usr/share/doc/quantclaw/
