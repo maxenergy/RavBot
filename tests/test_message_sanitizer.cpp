@@ -1,10 +1,10 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/gateway/message_sanitizer.hpp"
+#include "ravbot/gateway/message_sanitizer.hpp"
 #include <gtest/gtest.h>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 class MessageSanitizerTest : public ::testing::Test {
  protected:

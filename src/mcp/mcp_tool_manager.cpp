@@ -1,10 +1,10 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/mcp/mcp_tool_manager.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
+#include "ravbot/mcp/mcp_tool_manager.hpp"
+#include "ravbot/tools/tool_registry.hpp"
 
-namespace quantclaw::mcp {
+namespace ravbot::mcp {
 
 MCPToolManager::MCPToolManager(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {
@@ -115,4 +115,4 @@ std::string MCPToolManager::GetOriginalToolName(const std::string& qualified_nam
     return "";
 }
 
-} // namespace quantclaw::mcp
+} // namespace ravbot::mcp

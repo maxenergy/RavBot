@@ -1,5 +1,5 @@
 name: "🐞 Bug Report"
-description: "Report a bug to help us improve QuantClaw"
+description: "Report a bug to help us improve RavBot"
 title: "[BUG] "
 labels: ["bug"]
 body:
@@ -28,10 +28,10 @@ body:
         ## 🔧 Environment Information
 
   - type: input
-    id: quantclaw-version
+    id: ravbot-version
     attributes:
-      label: "📦 QuantClaw Version"
-      description: "The version of QuantClaw you're using (run `quantclaw --version`)"
+      label: "📦 RavBot Version"
+      description: "The version of RavBot you're using (run `ravbot --version`)"
       placeholder: "e.g., v0.2.0"
     validations:
       required: true

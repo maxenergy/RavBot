@@ -125,7 +125,7 @@ void Normalize(std::vector<float>& vector) const {
 ## 代码统计
 
 ### 新增文件
-1. `include/quantclaw/core/local_embedding_provider.hpp` (75 行)
+1. `include/ravbot/core/local_embedding_provider.hpp` (75 行)
 2. `src/core/local_embedding_provider.cpp` (280 行)
 3. `tests/test_local_embedding_provider.cpp` (180 行)
 

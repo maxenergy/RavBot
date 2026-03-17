@@ -1,8 +1,8 @@
-# 关键发现：OpenClaw vs QuantClaw 的根本差异
+# 关键发现：OpenClaw vs RavBot 的根本差异
 
 ## 问题现象
 
-**QuantClaw 输出**:
+**RavBot 输出**:
 ```
 1. **VoltAgent/awesome-openclaw-skills** ⭐ 0
 ```
@@ -56,11 +56,11 @@ OpenClaw 可能在记忆系统或向量数据库中缓存了常见查询的结�
 - 数据非常完整
 - 包含额外的上下文信息
 
-## QuantClaw 的问题
+## RavBot 的问题
 
 ### 问题 1: 使用 GitHub API 而不是 web_search
 
-QuantClaw 使用 `gh CLI` 调用 GitHub API：
+RavBot 使用 `gh CLI` 调用 GitHub API：
 
 ```bash
 gh search repos "awesome-openclaw-skills" --json name,stargazersCount
@@ -92,10 +92,10 @@ LLM 在呈现给用户时可能：
 
 ### 测试 1: 直接查看工具返回值
 
-在 QuantClaw 日志中查看 github_search_repos 工具的实际返回值：
+在 RavBot 日志中查看 github_search_repos 工具的实际返回值：
 
 ```bash
-tail -500 /tmp/quantclaw_gateway.log | grep -A 20 "github_search_repos: repo\[0\]"
+tail -500 /tmp/ravbot_gateway.log | grep -A 20 "github_search_repos: repo\[0\]"
 ```
 
 如果看到 `stars=37265`，说明工具返回正确，问题在 LLM。
@@ -103,7 +103,7 @@ tail -500 /tmp/quantclaw_gateway.log | grep -A 20 "github_search_repos: repo\[0\
 
 ### 测试 2: 使用 web_search 替代 github_search_repos
 
-修改 QuantClaw，让它使用 web_search 而不是 github_search_repos：
+修改 RavBot，让它使用 web_search 而不是 github_search_repos：
 
 ```cpp
 // 在 has_lookup_intent() 检测到 GitHub 搜索时
@@ -146,7 +146,7 @@ return result.dump();
 
 ## 下一步行动
 
-1. **立即**: 查看 QuantClaw 日志，确认工具返回的 star 数
+1. **立即**: 查看 RavBot 日志，确认工具返回的 star 数
 2. **今天**: 实施方案 B（添加验证标记）
 3. **明天**: 测试使用 web_search 替代 github_search_repos
 4. **本周**: 深度分析 OpenClaw 的 web_search 实现

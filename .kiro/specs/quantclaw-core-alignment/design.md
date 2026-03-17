@@ -1,8 +1,8 @@
-# Technical Design Document: QuantClaw Core Alignment
+# Technical Design Document: RavBot Core Alignment
 
 ## Introduction
 
-本设计文档定义了 QuantClaw 核心对齐项目的技术架构和实现策略。该项目旨在将 QuantClaw 的核心运行时逻辑提升至与 OpenClaw 相当的成熟度，重点关注五个优先级领域：
+本设计文档定义了 RavBot 核心对齐项目的技术架构和实现策略。该项目旨在将 RavBot 的核心运行时逻辑提升至与 OpenClaw 相当的成熟度，重点关注五个优先级领域：
 
 1. Core 模块增强（Prompt Builder 和 Agent Loop）
 2. Gateway/Session/Channel 集成升级
@@ -20,7 +20,7 @@
 
 ### 设计约束
 
-- 保持与现有 QuantClaw 架构的兼容性
+- 保持与现有 RavBot 架构的兼容性
 - 遵循 Google C++ 代码风格
 - 参考 OpenClaw 的实现模式，但适配 C++ 语言特性
 - 考虑性能和内存效率
@@ -34,7 +34,7 @@
 
 ## Overview
 
-QuantClaw 当前已具备基本的架构框架，包括 agent loop、gateway RPC、session transcripts、tool registry、provider abstraction、channel adapters、plugin sidecar 和基础沙箱。但在逻辑深度上与 OpenClaw 存在显著差距。
+RavBot 当前已具备基本的架构框架，包括 agent loop、gateway RPC、session transcripts、tool registry、provider abstraction、channel adapters、plugin sidecar 和基础沙箱。但在逻辑深度上与 OpenClaw 存在显著差距。
 
 本设计将通过以下方式缩小差距：
 
@@ -1364,7 +1364,7 @@ struct PluginManifest {
 
 #### 3.1 Deduplication Store Format
 
-**File**: `~/.quantclaw/channels/telegram/dedup.json`
+**File**: `~/.ravbot/channels/telegram/dedup.json`
 
 ```json
 {
@@ -1376,7 +1376,7 @@ struct PluginManifest {
 
 #### 3.2 Thread Binding Store Format
 
-**File**: `~/.quantclaw/channels/telegram/threads.json`
+**File**: `~/.ravbot/channels/telegram/threads.json`
 
 ```json
 {
@@ -1393,7 +1393,7 @@ struct PluginManifest {
 
 #### 3.3 Session Policy Store Format
 
-**File**: `~/.quantclaw/sessions/<session_id>/policy.json`
+**File**: `~/.ravbot/sessions/<session_id>/policy.json`
 
 ```json
 {
@@ -1410,7 +1410,7 @@ struct PluginManifest {
 
 #### 3.4 Audit Log Format
 
-**File**: `~/.quantclaw/logs/audit/<date>.jsonl`
+**File**: `~/.ravbot/logs/audit/<date>.jsonl`
 
 ```jsonl
 {"timestamp":"2025-01-15T10:30:00Z","event_type":"content_wrapping","user_id":"user123","details":{"tool":"web_search","content_hash":"abc123","size":5000}}
@@ -1607,7 +1607,7 @@ struct ErrorContext {
 **配置要求**:
 - 每个 property test 最少运行 100 次迭代（由于随机化）
 - 每个 test 必须引用设计文档中的 property
-- Tag 格式: `// Feature: quantclaw-core-alignment, Property {number}: {property_text}`
+- Tag 格式: `// Feature: ravbot-core-alignment, Property {number}: {property_text}`
 
 **示例**:
 
@@ -1615,12 +1615,12 @@ struct ErrorContext {
 #include <rapidcheck.h>
 #include <gtest/gtest.h>
 
-// Feature: quantclaw-core-alignment, Property 1: Config round-trip
+// Feature: ravbot-core-alignment, Property 1: Config round-trip
 TEST(ConfigParserTest, RoundTripProperty) {
     rc::check("parsing then formatting produces equivalent config", []() {
-        auto config = *rc::gen::arbitrary<QuantClawConfig>();
+        auto config = *rc::gen::arbitrary<RavBotConfig>();
         auto json = config.ToJson();
-        auto parsed = QuantClawConfig::FromJson(json);
+        auto parsed = RavBotConfig::FromJson(json);
         RC_ASSERT(config == parsed);
     });
 }
@@ -1951,7 +1951,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 
 ### Requirement 21: 配置文件解析器和格式化器
 
-21.1 WHEN 提供有效的 JSON 配置文件时，THE Config_Parser SHALL 解析为 QuantClawConfig 对象
+21.1 WHEN 提供有效的 JSON 配置文件时，THE Config_Parser SHALL 解析为 RavBotConfig 对象
   Thoughts: 这是基本的解析功能测试。
   Testable: yes - property
 
@@ -1959,11 +1959,11 @@ TEST(ConfigParserTest, RoundTripProperty) {
   Thoughts: 这是错误处理测试。
   Testable: yes - property
 
-21.3 THE Config_Formatter SHALL 将 QuantClawConfig 对象格式化为有效的 JSON 配置文件
+21.3 THE Config_Formatter SHALL 将 RavBotConfig 对象格式化为有效的 JSON 配置文件
   Thoughts: 这是格式化功能测试。
   Testable: yes - property
 
-21.4 FOR ALL 有效的 QuantClawConfig 对象，解析、格式化、再解析 SHALL 产生等价的对象
+21.4 FOR ALL 有效的 RavBotConfig 对象，解析、格式化、再解析 SHALL 产生等价的对象
   Thoughts: 这是经典的 round-trip property，最适合测试序列化/反序列化。
   Testable: yes - property
 
@@ -2161,7 +2161,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 
 ### Property 21: Config Round-Trip Preservation
 
-*For any* valid QuantClawConfig object, serializing to JSON and then deserializing should produce an equivalent configuration object.
+*For any* valid RavBotConfig object, serializing to JSON and then deserializing should produce an equivalent configuration object.
 
 **Validates: Requirements 21.4**
 
@@ -2332,7 +2332,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 10. 添加单元测试和 property tests
 
 **Files to Modify**:
-- `include/quantclaw/core/prompt_builder.hpp`
+- `include/ravbot/core/prompt_builder.hpp`
 - `src/core/prompt_builder.cpp`
 - `tests/test_prompt_builder.cpp`
 
@@ -2349,7 +2349,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 6. 添加单元测试
 
 **Files to Create**:
-- `include/quantclaw/core/context_pruner.hpp`
+- `include/ravbot/core/context_pruner.hpp`
 - `src/core/context_pruner.cpp`
 - `tests/test_context_pruner.cpp`
 
@@ -2364,7 +2364,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 6. 添加单元测试
 
 **Files to Create**:
-- `include/quantclaw/core/turn_validator.hpp`
+- `include/ravbot/core/turn_validator.hpp`
 - `src/core/turn_validator.cpp`
 - `tests/test_turn_validator.cpp`
 
@@ -2379,7 +2379,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 6. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/core/agent_loop.hpp`
+- `include/ravbot/core/agent_loop.hpp`
 - `src/core/agent_loop.cpp`
 - `tests/test_agent_loop.cpp`
 
@@ -2399,7 +2399,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 4. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/providers/failover_resolver.hpp`
+- `include/ravbot/providers/failover_resolver.hpp`
 - `src/providers/failover_resolver.cpp`
 - `tests/test_failover_resolver.cpp`
 
@@ -2411,7 +2411,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 3. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/providers/cooldown_tracker.hpp`
+- `include/ravbot/providers/cooldown_tracker.hpp`
 - `src/providers/cooldown_tracker.cpp`
 - `tests/test_cooldown_tracker.cpp`
 
@@ -2432,7 +2432,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 添加单元测试
 
 **Files to Create**:
-- `include/quantclaw/gateway/message_sanitizer.hpp`
+- `include/ravbot/gateway/message_sanitizer.hpp`
 - `src/gateway/message_sanitizer.cpp`
 - `tests/test_message_sanitizer.cpp`
 
@@ -2446,7 +2446,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 添加单元测试
 
 **Files to Create**:
-- `include/quantclaw/gateway/route_manager.hpp`
+- `include/ravbot/gateway/route_manager.hpp`
 - `src/gateway/route_manager.cpp`
 - `tests/test_route_manager.cpp`
 
@@ -2460,7 +2460,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/gateway/gateway_server.hpp`
+- `include/ravbot/gateway/gateway_server.hpp`
 - `src/gateway/gateway_server.cpp`
 - `tests/test_gateway_server.cpp`
 
@@ -2474,7 +2474,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/session/session_manager.hpp`
+- `include/ravbot/session/session_manager.hpp`
 - `src/session/session_manager.cpp`
 - `tests/test_session_manager.cpp`
 
@@ -2489,18 +2489,18 @@ TEST(ConfigParserTest, RoundTripProperty) {
 6. 更新单元测试
 
 **Files to Create**:
-- `include/quantclaw/channels/deduplication_store.hpp`
+- `include/ravbot/channels/deduplication_store.hpp`
 - `src/channels/deduplication_store.cpp`
-- `include/quantclaw/channels/lane_processor.hpp`
+- `include/ravbot/channels/lane_processor.hpp`
 - `src/channels/lane_processor.cpp`
-- `include/quantclaw/channels/thread_binder.hpp`
+- `include/ravbot/channels/thread_binder.hpp`
 - `src/channels/thread_binder.cpp`
 - `tests/test_deduplication_store.cpp`
 - `tests/test_lane_processor.cpp`
 - `tests/test_thread_binder.cpp`
 
 **Files to Modify**:
-- `include/quantclaw/channels/telegram_channel.hpp`
+- `include/ravbot/channels/telegram_channel.hpp`
 - `src/channels/telegram_channel.cpp`
 - `tests/test_telegram_channel.cpp`
 
@@ -2521,7 +2521,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 添加单元测试
 
 **Files to Create**:
-- `include/quantclaw/security/external_content.hpp`
+- `include/ravbot/security/external_content.hpp`
 - `src/security/external_content.cpp`
 - `tests/test_external_content.cpp`
 
@@ -2534,7 +2534,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 4. 添加单元测试
 
 **Files to Create**:
-- `include/quantclaw/security/trust_model.hpp`
+- `include/ravbot/security/trust_model.hpp`
 - `src/security/trust_model.cpp`
 - `tests/test_trust_model.cpp`
 
@@ -2548,7 +2548,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 添加单元测试
 
 **Files to Create**:
-- `include/quantclaw/security/audit_logger.hpp`
+- `include/ravbot/security/audit_logger.hpp`
 - `src/security/audit_logger.cpp`
 - `tests/test_audit_logger.cpp`
 
@@ -2561,7 +2561,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 4. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/tools/tool_registry.hpp`
+- `include/ravbot/tools/tool_registry.hpp`
 - `src/tools/tool_registry.cpp`
 - `src/tools/web_search.cpp`
 - `src/tools/web_fetch.cpp`
@@ -2584,7 +2584,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/plugins/plugin_registry.hpp`
+- `include/ravbot/plugins/plugin_registry.hpp`
 - `src/plugins/plugin_registry.cpp`
 - `tests/test_plugin_registry.cpp`
 
@@ -2597,7 +2597,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 4. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/plugins/hook_manager.hpp`
+- `include/ravbot/plugins/hook_manager.hpp`
 - `src/plugins/hook_manager.cpp`
 - `tests/test_hook_manager.cpp`
 
@@ -2611,7 +2611,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/plugins/sidecar_manager.hpp`
+- `include/ravbot/plugins/sidecar_manager.hpp`
 - `src/plugins/sidecar_manager.cpp`
 - `tests/test_sidecar_manager.cpp`
 
@@ -2632,7 +2632,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 更新单元测试
 
 **Files to Modify**:
-- `include/quantclaw/config.hpp`
+- `include/ravbot/config.hpp`
 - `src/config.cpp`
 - `tests/test_config.cpp`
 
@@ -2646,7 +2646,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 5. 添加单元测试
 
 **Files to Modify**:
-- `include/quantclaw/plugins/plugin_manifest.hpp`
+- `include/ravbot/plugins/plugin_manifest.hpp`
 - `src/plugins/plugin_manifest.cpp`
 - `tests/test_plugin_manifest.cpp`
 
@@ -2695,7 +2695,7 @@ TEST(ConfigParserTest, RoundTripProperty) {
 
 ## Summary
 
-本技术设计文档为 QuantClaw 核心对齐项目提供了全面的架构和实现指南。设计涵盖了五个优先级领域的 22 个功能需求，包括：
+本技术设计文档为 RavBot 核心对齐项目提供了全面的架构和实现指南。设计涵盖了五个优先级领域的 22 个功能需求，包括：
 
 1. **Core 模块增强**: Prompt Builder 重构、Agent Loop 增强、Context Pruner、Turn Validator
 2. **Provider 弹性**: Failover Resolver 和 Cooldown Tracker 增强，支持多配置轮换和故障转移
@@ -2715,5 +2715,5 @@ TEST(ConfigParserTest, RoundTripProperty) {
 
 设计文档定义了 45 个 Correctness Properties，用于指导 property-based testing 的实现，确保系统在各种输入和条件下的正确性。
 
-通过实施本设计，QuantClaw 将在核心运行时逻辑上达到与 OpenClaw 相当的成熟度，为用户提供更可靠、更强大的 AI 助手能力。
+通过实施本设计，RavBot 将在核心运行时逻辑上达到与 OpenClaw 相当的成熟度，为用户提供更可靠、更强大的 AI 助手能力。
 

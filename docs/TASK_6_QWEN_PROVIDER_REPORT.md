@@ -229,7 +229,7 @@ auto response = provider->ChatCompletion(request);
 
 ### 已存在文件
 
-1. `include/quantclaw/providers/qwen_provider.hpp`
+1. `include/ravbot/providers/qwen_provider.hpp`
    - QwenProvider 类定义
    - 已完整实现
 
@@ -284,7 +284,7 @@ auto response = provider->ChatCompletion(request);
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | Qwen Provider | ✅ | ✅ | 完成 |
 | Qwen API 集成 | ✅ | ✅ | 完成 |
@@ -405,7 +405,7 @@ provider->ChatCompletionStream(request, [](const ChatCompletionResponse& chunk) 
 6. ✅ 100% 测试覆盖率
 7. ✅ 已注册到 Provider Registry
 
-该功能使 QuantClaw 能够使用阿里云通义千问模型,特别适合中文场景,扩展了 LLM 提供商选择,提升了系统的灵活性和可靠性。
+该功能使 RavBot 能够使用阿里云通义千问模型,特别适合中文场景,扩展了 LLM 提供商选择,提升了系统的灵活性和可靠性。
 
 ---
 

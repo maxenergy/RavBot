@@ -1,4 +1,4 @@
-# QuantClaw 重启验证报告
+# RavBot 重启验证报告
 
 ## 重启时间
 2026-03-14 22:20:27
@@ -89,7 +89,7 @@
 **修改文件**:
 - `src/core/prompt_builder.cpp` - 添加工具使用指令
 - `src/tools/tool_registry.cpp` - 增强描述 + GitHub 工具
-- `include/quantclaw/tools/tool_registry.hpp` - 函数声明
+- `include/ravbot/tools/tool_registry.hpp` - 函数声明
 
 ### 启动日志摘要
 
@@ -139,12 +139,12 @@
 
 **查看实时日志**:
 ```bash
-tail -f /tmp/quantclaw_gateway.log
+tail -f /tmp/ravbot_gateway.log
 ```
 
 **检查进程状态**:
 ```bash
-ps aux | grep "quantclaw gateway" | grep -v grep
+ps aux | grep "ravbot gateway" | grep -v grep
 ```
 
 **检查端口占用**:
@@ -160,8 +160,8 @@ curl -s https://api.telegram.org/bot8208097744:AAFZ9qFR5wJjaxQPVt5BI4LDKNQ6ZXTLy
 ### 故障排查
 
 **如果 Bot 无响应**:
-1. 检查日志: `tail -100 /tmp/quantclaw_gateway.log`
-2. 检查进程: `ps aux | grep quantclaw`
+1. 检查日志: `tail -100 /tmp/ravbot_gateway.log`
+2. 检查进程: `ps aux | grep ravbot`
 3. 检查网络: `curl http://127.0.0.1:8991/v1/models`
 
 **如果工具不执行**:
@@ -190,7 +190,7 @@ curl -s https://api.telegram.org/bot8208097744:AAFZ9qFR5wJjaxQPVt5BI4LDKNQ6ZXTLy
 
 ## 总结
 
-QuantClaw Gateway 已成功重启，所有核心组件运行正常。Telegram Bot (@cppclawbot) 已连接并准备接收消息。
+RavBot Gateway 已成功重启，所有核心组件运行正常。Telegram Bot (@cppclawbot) 已连接并准备接收消息。
 
 最新的工具执行修复已应用，包括：
 - 改进的 System Prompt（强调执行 vs 展示）

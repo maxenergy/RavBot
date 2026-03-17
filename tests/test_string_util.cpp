@@ -1,10 +1,10 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
-#include "quantclaw/common/string_util.hpp"
+#include "ravbot/common/string_util.hpp"
 
-using namespace quantclaw;
+using namespace ravbot;
 
 // ── Trim ─────────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# QuantClaw CLI Integration Test
+# RavBot CLI Integration Test
 #
 # Tests every CLI command and subcommand: local-only (no gateway), gateway
 # lifecycle, and all commands that route through the gateway client.
@@ -7,7 +7,7 @@
 # unless OPENAI_API_KEY or ANTHROPIC_API_KEY is set.
 #
 # Usage:
-#   bash tests/test-cli.sh [/path/to/quantclaw]
+#   bash tests/test-cli.sh [/path/to/ravbot]
 #   OPENAI_API_KEY=sk-... bash tests/test-cli.sh
 #
 # Exit code: 0 = all passed (skips don't count as failures).
@@ -19,8 +19,8 @@ set -uo pipefail
 # ---------- Configuration ----------
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BINARY="${1:-${REPO_ROOT}/build/quantclaw}"
-TEST_HOME="/tmp/quantclaw-cli-$$"
+BINARY="${1:-${REPO_ROOT}/build/ravbot}"
+TEST_HOME="/tmp/ravbot-cli-$$"
 LOG_DIR="${TEST_HOME}/logs"
 WS_PORT=18870
 HTTP_PORT=18871
@@ -45,10 +45,10 @@ pass() { echo "  [PASS] $1"; PASS=$((PASS + 1)); }
 fail() { echo "  [FAIL] $1: $2"; FAIL=$((FAIL + 1)); }
 skip() { echo "  [SKIP] $1"; SKIP=$((SKIP + 1)); }
 
-# Run quantclaw CLI with the test HOME
+# Run ravbot CLI with the test HOME
 qc() { HOME="$TEST_HOME" "$BINARY" "$@"; }
 
-# Run quantclaw, accept both exit-0 and exit-1 (just don't crash)
+# Run ravbot, accept both exit-0 and exit-1 (just don't crash)
 qc_any() { HOME="$TEST_HOME" "$BINARY" "$@" 2>&1 || true; }
 
 wait_for_gateway() {
@@ -74,7 +74,7 @@ require_cmd() {
 
 # ---------- Pre-flight ----------
 
-echo "=== QuantClaw CLI Integration Test ==="
+echo "=== RavBot CLI Integration Test ==="
 echo "Binary : $BINARY"
 echo "WS port: $WS_PORT  HTTP port: $HTTP_PORT"
 echo ""
@@ -92,11 +92,11 @@ mkdir -p "$LOG_DIR"
 
 echo "--- Phase 0: Setup ---"
 
-mkdir -p "${TEST_HOME}/.quantclaw/agents/main/workspace"
-mkdir -p "${TEST_HOME}/.quantclaw/agents/main/sessions"
-touch "${TEST_HOME}/.quantclaw/agents/main/workspace/SOUL.md"
+mkdir -p "${TEST_HOME}/.ravbot/agents/main/workspace"
+mkdir -p "${TEST_HOME}/.ravbot/agents/main/sessions"
+touch "${TEST_HOME}/.ravbot/agents/main/workspace/SOUL.md"
 
-cat > "${TEST_HOME}/.quantclaw/quantclaw.json" <<EOFCFG
+cat > "${TEST_HOME}/.ravbot/ravbot.json" <<EOFCFG
 {
     "agent": {
         "model": "openai/test-model",
@@ -120,7 +120,7 @@ cat > "${TEST_HOME}/.quantclaw/quantclaw.json" <<EOFCFG
 EOFCFG
 
 # Inject real API key into config if available (enables LLM tests in Phase 17)
-CFG_PATH="${TEST_HOME}/.quantclaw/quantclaw.json"
+CFG_PATH="${TEST_HOME}/.ravbot/ravbot.json"
 if [[ -n "${OPENAI_API_KEY:-}" ]]; then
     python3 - <<PYEOF 2>/dev/null
 import json
@@ -150,7 +150,7 @@ echo "--- Phase 1: version / help ---"
 
 # C1.1 --version
 OUT=$(qc_any --version)
-if echo "$OUT" | grep -qi "quantclaw\|version\|[0-9]\+\.[0-9]\+"; then
+if echo "$OUT" | grep -qi "ravbot\|version\|[0-9]\+\.[0-9]\+"; then
     pass "C1.1 --version"
 else
     fail "C1.1 --version" "output: $OUT"
@@ -202,7 +202,7 @@ fi
 
 # C2.3 config set
 qc config set agent.maxIterations 25 >/dev/null 2>&1
-VAL=$(python3 -c "import json; d=json.load(open('${TEST_HOME}/.quantclaw/quantclaw.json')); print(d['agent']['maxIterations'])" 2>/dev/null)
+VAL=$(python3 -c "import json; d=json.load(open('${TEST_HOME}/.ravbot/ravbot.json')); print(d['agent']['maxIterations'])" 2>/dev/null)
 if [[ "$VAL" == "25" ]]; then
     pass "C2.3 config set"
 else
@@ -211,7 +211,7 @@ fi
 
 # C2.4 config set (string value)
 qc config set agent.model "anthropic/claude-haiku-4-5" >/dev/null 2>&1
-VAL=$(python3 -c "import json; d=json.load(open('${TEST_HOME}/.quantclaw/quantclaw.json')); print(d['agent']['model'])" 2>/dev/null)
+VAL=$(python3 -c "import json; d=json.load(open('${TEST_HOME}/.ravbot/ravbot.json')); print(d['agent']['model'])" 2>/dev/null)
 if echo "$VAL" | grep -q "claude-haiku"; then
     pass "C2.4 config set (string value)"
 else
@@ -221,7 +221,7 @@ fi
 # C2.5 config unset
 qc config set agent.temperature 0.3 >/dev/null 2>&1
 qc config unset agent.temperature >/dev/null 2>&1
-HAS=$(python3 -c "import json; d=json.load(open('${TEST_HOME}/.quantclaw/quantclaw.json')); print('yes' if 'temperature' in d.get('agent',{}) else 'no')" 2>/dev/null)
+HAS=$(python3 -c "import json; d=json.load(open('${TEST_HOME}/.ravbot/ravbot.json')); print('yes' if 'temperature' in d.get('agent',{}) else 'no')" 2>/dev/null)
 if [[ "$HAS" == "no" ]]; then
     pass "C2.5 config unset"
 else
@@ -256,7 +256,7 @@ echo "--- Phase 3: doctor (pre-gateway) ---"
 
 # C3.1 doctor runs without crash (gateway not running)
 OUT=$(qc_any doctor)
-if echo "$OUT" | grep -qi "config\|workspace\|gateway\|doctor\|quantclaw"; then
+if echo "$OUT" | grep -qi "config\|workspace\|gateway\|doctor\|ravbot"; then
     pass "C3.1 doctor (no gateway — shows diagnostics)"
 else
     fail "C3.1 doctor (no gateway)" "output: $OUT"
@@ -514,7 +514,7 @@ else
 fi
 
 # C9.2 memory search (empty index — graceful)
-OUT=$(qc memory search "quantclaw test search query" 2>&1)
+OUT=$(qc memory search "ravbot test search query" 2>&1)
 if [[ $? -eq 0 ]] || echo "$OUT" | grep -qi "no results\|empty\|0 result\|found"; then
     pass "C9.2 memory search (empty index)"
 else

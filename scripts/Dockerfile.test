@@ -1,10 +1,10 @@
-# QuantClaw Test Image
+# RavBot Test Image
 # Builds with tests enabled, runs unit tests + E2E tests.
 #
 # Build & run:
-#   docker build -f scripts/Dockerfile.test -t quantclaw-test .
-#   docker run --rm quantclaw-test
-#   docker-compose -f scripts/docker-compose.yml run quantclaw-test
+#   docker build -f scripts/Dockerfile.test -t ravbot-test .
+#   docker run --rm ravbot-test
+#   docker-compose -f scripts/docker-compose.yml run ravbot-test
 
 FROM ubuntu:22.04
 
@@ -50,13 +50,13 @@ RUN find tests/ -name "*.sh" -exec sed -i 's/\r//' {} + \
     && chmod +x tests/e2e_test.sh 2>/dev/null || true
 
 # Runtime workspace layout (OpenClaw-compatible: agents/main/)
-RUN mkdir -p /root/.quantclaw/agents/main/workspace \
-             /root/.quantclaw/agents/main/sessions \
-             /root/.quantclaw/logs
+RUN mkdir -p /root/.ravbot/agents/main/workspace \
+             /root/.ravbot/agents/main/sessions \
+             /root/.ravbot/logs
 
 # Entry: C++ unit tests → sidecar unit tests → CLI E2E
 CMD ["bash", "-c", \
     "set -e && \
-     echo '=== C++ unit tests ===' && cd /app/build && ./quantclaw_tests && \
+     echo '=== C++ unit tests ===' && cd /app/build && ./ravbot_tests && \
      echo '=== Sidecar unit tests ===' && cd /app/sidecar && npm test && \
      echo '=== E2E tests ===' && cd /app && bash tests/e2e_test.sh"]

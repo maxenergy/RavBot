@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/mock_embedding_provider.hpp"
+#include "ravbot/core/mock_embedding_provider.hpp"
 
 #include <cmath>
 #include <random>
 
-namespace quantclaw {
+namespace ravbot {
 
 MockEmbeddingProvider::MockEmbeddingProvider(int dimension)
     : dimension_(dimension) {}
@@ -53,4 +53,4 @@ std::vector<float> MockEmbeddingProvider::GenerateVector(const std::string& text
   return vector;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

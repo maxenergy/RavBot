@@ -1,16 +1,16 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <spdlog/sinks/null_sink.h>
 #include <spdlog/spdlog.h>
 
-#include "quantclaw/providers/google_provider.hpp"
-#include "quantclaw/providers/provider_registry.hpp"
-#include "quantclaw/providers/qwen_provider.hpp"
+#include "ravbot/providers/google_provider.hpp"
+#include "ravbot/providers/provider_registry.hpp"
+#include "ravbot/providers/qwen_provider.hpp"
 
 #include <gtest/gtest.h>
 
-namespace quantclaw {
+namespace ravbot {
 
 static std::shared_ptr<spdlog::logger> make_logger(const std::string& name) {
   auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
@@ -179,7 +179,7 @@ TEST(ProviderRegistryTest, ProviderEntryInspection) {
   EXPECT_EQ(e->base_url, "http://localhost:11434/v1");
 }
 
-class TransportStubGoogleProvider : public quantclaw::GoogleProvider {
+class TransportStubGoogleProvider : public ravbot::GoogleProvider {
  public:
   explicit TransportStubGoogleProvider(std::shared_ptr<spdlog::logger> logger)
       : GoogleProvider("test-key", "http://stub", 30, logger) {}
@@ -200,7 +200,7 @@ class TransportStubGoogleProvider : public quantclaw::GoogleProvider {
   }
 };
 
-class TransportStubQwenProvider : public quantclaw::QwenProvider {
+class TransportStubQwenProvider : public ravbot::QwenProvider {
  public:
   explicit TransportStubQwenProvider(std::shared_ptr<spdlog::logger> logger)
       : QwenProvider("test-key", "http://stub", 30, logger) {}
@@ -222,14 +222,14 @@ TEST(GoogleProviderStreamTest, EmitsTerminalChunk) {
   provider.api_response =
       R"({"candidates":[{"content":{"parts":[{"text":"hello"}]}}]})";
 
-  quantclaw::ChatCompletionRequest request;
+  ravbot::ChatCompletionRequest request;
   request.model = "gemini-1.5-pro";
   request.messages.push_back({"user", "Hi"});
 
   std::string accumulated;
   bool saw_end = false;
   provider.ChatCompletionStream(
-      request, [&](const quantclaw::ChatCompletionResponse& chunk) {
+      request, [&](const ravbot::ChatCompletionResponse& chunk) {
         accumulated += chunk.content;
         if (chunk.is_stream_end) {
           saw_end = true;
@@ -256,16 +256,16 @@ TEST(QwenProviderStreamTest, ParsesBufferedSseResponse) {
       "\"prompt_tokens\":1,\"completion_tokens\":2,\"total_tokens\":3}}\n\n"
       "data: [DONE]\n\n";
 
-  quantclaw::ChatCompletionRequest request;
+  ravbot::ChatCompletionRequest request;
   request.model = "qwen-max";
   request.messages.push_back({"user", "Hi"});
   request.stream = true;
 
   std::string accumulated;
-  quantclaw::TokenUsage final_usage;
+  ravbot::TokenUsage final_usage;
   bool saw_end = false;
   provider.ChatCompletionStream(
-      request, [&](const quantclaw::ChatCompletionResponse& chunk) {
+      request, [&](const ravbot::ChatCompletionResponse& chunk) {
         accumulated += chunk.content;
         if (chunk.is_stream_end) {
           final_usage = chunk.usage;
@@ -281,4 +281,4 @@ TEST(QwenProviderStreamTest, ParsesBufferedSseResponse) {
   EXPECT_EQ(final_usage.total_tokens, 3);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

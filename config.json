@@ -1,0 +1,206 @@
+{
+  "agent": {
+    "autoCompact": true,
+    "compactMaxMessages": 100,
+    "maxIterations": 15,
+    "maxTokens": 8192,
+    "model": "anthropic/claude-sonnet-4-5",
+    "fallbacks": [],
+    "temperature": 0.7,
+    "contextWindow": 200000
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8208097744:AAFZ9qFR5wJjaxQPVt5BI4LDKNQ6ZXTLyyI",
+      "dmPolicy": "open",
+      "groupPolicy": "open",
+      "historyLimit": 10,
+      "dmHistoryLimit": 15,
+      "streaming": "partial",
+      "groups": {
+        "*": {
+          "requireMention": false
+        }
+      },
+      "allowFrom": [
+        "*"
+      ]
+    },
+    "discord": {
+      "enabled": false
+    }
+  },
+  "gateway": {
+    "auth": {
+      "mode": "token",
+      "token": "d398a11747805e988df70ca69e2a8c37ae32fef646d890c1"
+    },
+    "bind": "127.0.0.1",
+    "port": 18800
+  },
+  "mcp": {
+    "servers": []
+  },
+  "models": {
+    "defaultModel": "anthropic/claude-sonnet-4-5",
+    "providers": {
+      "anthropic": {
+        "baseUrl": "http://127.0.0.1:8991",
+        "apiKey": "sk-s0n19ykdar6jpnbdma79zrw15wbubba28t9to2kkp5y7llqp",
+        "api": "anthropic-messages",
+        "models": [
+          {
+            "id": "claude-sonnet-4-5",
+            "name": "Claude Sonnet 4.5",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "contextWindow": 200000,
+            "maxTokens": 16384
+          },
+          {
+            "id": "opus-4.6",
+            "name": "Anthropic opus 4.6",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "contextWindow": 200000,
+            "maxTokens": 16384
+          }
+        ]
+      },
+      "modelscope": {
+        "baseUrl": "https://api-inference.modelscope.cn",
+        "apiKey": "ms-91f21bed-3e38-43df-a049-9d35b5036256",
+        "api": "anthropic-messages",
+        "models": [
+          {
+            "id": "Qwen/Qwen3.5-397B-A17B",
+            "name": "Qwen3.5 397B",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 256000,
+            "maxTokens": 8192
+          }
+        ]
+      },
+      "ollama": {
+        "baseUrl": "http://127.0.0.1:11434/v1",
+        "apiKey": "ollama-local",
+        "api": "ollama",
+        "timeout": 120,
+        "models": [
+          {
+            "id": "deepseek-r1:latest",
+            "name": "deepseek-r1:latest",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 128000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "minimax-m2.5:cloud",
+            "name": "minimax-m2.5:cloud",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 204800,
+            "maxTokens": 128000
+          }
+        ]
+      },
+      "zai": {
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "apiKey": "dbbba0d6b1464f0da9cfa89d131d559f.iUDaqnmyQCWkt4Dq",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "glm-4.7-flash",
+            "name": "GLM-4.7-Flash",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 256000,
+            "maxTokens": 8192
+          }
+        ]
+      },
+      "openai": {
+        "apiKey": ""
+      }
+    },
+    "aliases": {
+      "anthropic/opus-4.6": {
+        "alias": "opus"
+      },
+      "modelscope/Qwen/Qwen3.5-397B-A17B": {
+        "alias": "qwen"
+      },
+      "zai/glm-4.7-flash": {
+        "alias": "glm"
+      },
+      "anthropic/claude-sonnet-4-5": {
+        "alias": "sonnet"
+      }
+    }
+  },
+  "queue": {
+    "debounceMs": 1000,
+    "maxConcurrent": 4
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "tools": {
+    "allow": [
+      "*"
+    ],
+    "exec": {
+      "ask": "off"
+    },
+    "profile": "coding"
+  },
+  "memory": {
+    "backend": "qmd",
+    "qmd": {
+      "includeDefaultMemory": true,
+      "update": {
+        "interval": "5m"
+      }
+    }
+  },
+  "skills": {
+    "entries": {}
+  },
+  "plugins": {
+    "entries": {}
+  },
+  "providers": {
+    "tavily": {
+      "apiKey": "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"
+    }
+  }
+}

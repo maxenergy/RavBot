@@ -100,13 +100,13 @@ jobs:
         context: .
         file: scripts/Dockerfile
         push: false
-        tags: quantclaw:test
+        tags: ravbot:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
     - name: Test Docker image
       run: |
-        docker run --rm quantclaw:test quantclaw --version || true
+        docker run --rm ravbot:test ravbot --version || true
 
   clang-tidy:
     name: clang-tidy
@@ -135,7 +135,7 @@ jobs:
           -DCMAKE_CXX_STANDARD=17 \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         # Ensure headers are generated (if any)
-        cmake --build build --parallel --target quantclaw 2>/dev/null || true
+        cmake --build build --parallel --target ravbot 2>/dev/null || true
 
     - name: Run clang-tidy
       run: |
@@ -234,7 +234,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: smoke-test-logs
-        path: /tmp/quantclaw-smoke-ci/
+        path: /tmp/ravbot-smoke-ci/
 
   onboard-test:
     name: Onboard Integration Test
@@ -254,7 +254,7 @@ jobs:
           gcc-11 g++-11 \
           python3
 
-    - name: Build (quantclaw binary only)
+    - name: Build (ravbot binary only)
       env:
         CC: gcc-11
         CXX: g++-11
@@ -263,17 +263,17 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_CXX_STANDARD=17 \
           -DBUILD_TESTS=OFF
-        cmake --build build --parallel --target quantclaw
+        cmake --build build --parallel --target ravbot
 
     - name: Run onboard integration tests
-      run: bash tests/test-onboard.sh build/quantclaw
+      run: bash tests/test-onboard.sh build/ravbot
 
     - name: Upload logs on failure
       if: failure()
       uses: actions/upload-artifact@v7
       with:
         name: onboard-test-logs
-        path: /tmp/quantclaw-onboard-*/
+        path: /tmp/ravbot-onboard-*/
 
   cli-test:
     name: CLI Integration Test
@@ -293,7 +293,7 @@ jobs:
           gcc-11 g++-11 \
           curl python3
 
-    - name: Build (quantclaw binary only)
+    - name: Build (ravbot binary only)
       env:
         CC: gcc-11
         CXX: g++-11
@@ -302,17 +302,17 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_CXX_STANDARD=17 \
           -DBUILD_TESTS=OFF
-        cmake --build build --parallel --target quantclaw
+        cmake --build build --parallel --target ravbot
 
     - name: Run CLI integration tests
-      run: bash tests/test-cli.sh build/quantclaw
+      run: bash tests/test-cli.sh build/ravbot
 
     - name: Upload logs on failure
       if: failure()
       uses: actions/upload-artifact@v7
       with:
         name: cli-test-logs
-        path: /tmp/quantclaw-cli-*/
+        path: /tmp/ravbot-cli-*/
 
   static-analysis:
     name: Static Analysis (cppcheck)

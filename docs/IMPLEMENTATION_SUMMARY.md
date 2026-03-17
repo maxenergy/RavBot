@@ -1,8 +1,8 @@
-# QuantClaw 实现总结
+# RavBot 实现总结
 
 ## 项目概述
 
-QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源占用和嵌入式部署。
+RavBot 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源占用和嵌入式部署。
 
 ## 核心指标
 
@@ -103,7 +103,7 @@ QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源�
 
 ### 模块化设计
 ```
-quantclaw/
+ravbot/
 ├── core/          # 核心功能
 ├── gateway/       # 网关服务
 ├── providers/     # LLM 提供商
@@ -205,7 +205,7 @@ quantclaw/
 
 ## 结论
 
-QuantClaw 已经成功实现了 OpenClaw 3.9 的 **92%** 核心功能，所有关键特性都已完整实现并通过测试。项目已达到 **生产就绪** 状态，特别适合高性能、低资源占用的部署场景。
+RavBot 已经成功实现了 OpenClaw 3.9 的 **92%** 核心功能，所有关键特性都已完整实现并通过测试。项目已达到 **生产就绪** 状态，特别适合高性能、低资源占用的部署场景。
 
 ### 核心优势
 1. **高性能** - C++ 原生实现，12.5x 启动速度提升
@@ -221,7 +221,7 @@ QuantClaw 已经成功实现了 OpenClaw 3.9 的 **92%** 核心功能，所有�
 
 ---
 
-**版本**: QuantClaw v0.3.0
+**版本**: RavBot v0.3.0
 **状态**: 生产就绪 ✅
 **更新**: 2026-03-11
-**作者**: QuantClaw Contributors
+**作者**: RavBot Contributors

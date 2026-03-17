@@ -5,7 +5,7 @@
 
 ## 执行摘要
 
-成功实现了 QuantClaw 的自动向量索引系统，实现了对话消息的自动嵌入和存储，为语义搜索和长效记忆奠定了基础。
+成功实现了 RavBot 的自动向量索引系统，实现了对话消息的自动嵌入和存储，为语义搜索和长效记忆奠定了基础。
 
 ## 实现的功能
 
@@ -22,7 +22,7 @@
 
 ### 2. 向量数据库集成 ✅
 
-- **数据库**: SQLite (`/home/rogers/.quantclaw/data/vectors.db`)
+- **数据库**: SQLite (`/home/rogers/.ravbot/data/vectors.db`)
 - **向量索引**: HNSW (Hierarchical Navigable Small World)
   - 维度: 768
   - M: 16
@@ -99,7 +99,7 @@ void AgentLoop::IndexConversationMessages(
 
 ```cpp
 // Initialize vector database
-auto vector_db = std::make_shared<quantclaw::VectorDatabase>(
+auto vector_db = std::make_shared<ravbot::VectorDatabase>(
     vector_db_path.string(), logger_);
 
 if (!vector_db->Initialize()) {
@@ -108,13 +108,13 @@ if (!vector_db->Initialize()) {
 }
 
 // Initialize embedding manager
-auto embedding_registry = std::make_shared<quantclaw::EmbeddingProviderRegistry>();
-auto ollama_provider = std::make_shared<quantclaw::OllamaEmbeddingProvider>(
+auto embedding_registry = std::make_shared<ravbot::EmbeddingProviderRegistry>();
+auto ollama_provider = std::make_shared<ravbot::OllamaEmbeddingProvider>(
     "nomic-embed-text", "http://localhost:11434", logger_);
 embedding_registry->RegisterProvider("ollama", ollama_provider);
 embedding_registry->SetDefaultProvider("ollama");
 
-auto embedding_manager = std::make_shared<quantclaw::EmbeddingManager>(
+auto embedding_manager = std::make_shared<ravbot::EmbeddingManager>(
     embedding_registry, vector_db, logger_);
 
 // Set embedding manager for automatic message indexing
@@ -126,10 +126,10 @@ agent_loop->SetEmbeddingManager(embedding_manager);
 ### 数据库验证
 
 ```bash
-$ sqlite3 /home/rogers/.quantclaw/data/vectors.db "SELECT COUNT(*) FROM vectors;"
+$ sqlite3 /home/rogers/.ravbot/data/vectors.db "SELECT COUNT(*) FROM vectors;"
 4
 
-$ sqlite3 /home/rogers/.quantclaw/data/vectors.db "
+$ sqlite3 /home/rogers/.ravbot/data/vectors.db "
 SELECT
   COUNT(*) as total_vectors,
   COUNT(DISTINCT json_extract(metadata, '$.session')) as unique_sessions,
@@ -184,7 +184,7 @@ Metadata: {"role":"assistant","session":"telegram:7259603376","timestamp":177360
 ### 问题 4: 日志混乱
 **症状**: 多个进程写入同一日志文件
 **原因**: 多次启动服务但未正确清理旧进程
-**解决**: 使用 `pkill -9 quantclaw` 清理所有进程，使用独立日志文件测试
+**解决**: 使用 `pkill -9 ravbot` 清理所有进程，使用独立日志文件测试
 
 ## 性能指标
 
@@ -220,4 +220,4 @@ Metadata: {"role":"assistant","session":"telegram:7259603376","timestamp":177360
 4. ✅ 保留完整的元数据用于过滤和追溯
 5. ✅ 对用户体验无明显影响
 
-这为 QuantClaw 的长效记忆和语义搜索功能奠定了坚实的基础。
+这为 RavBot 的长效记忆和语义搜索功能奠定了坚实的基础。

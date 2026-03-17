@@ -1,8 +1,8 @@
-// Copyright 2024 QuantClaw Contributors
+// Copyright 2024 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 // ---------------------------------------------------------------------------
-// Shared type definitions for the QuantClaw sidecar.
+// Shared type definitions for the RavBot sidecar.
 // ---------------------------------------------------------------------------
 
 /** JSON-RPC 2.0 request. */
@@ -392,7 +392,7 @@ export interface PluginRuntime {
   state: {
     resolveStateDir: (pluginId: string) => string;
   };
-  // Stubs for subsystems not yet implemented in QuantClaw sidecar.
+  // Stubs for subsystems not yet implemented in RavBot sidecar.
   media: Record<string, (...args: unknown[]) => unknown>;
   tts: Record<string, (...args: unknown[]) => unknown>;
   tools: Record<string, (...args: unknown[]) => unknown>;
@@ -400,7 +400,7 @@ export interface PluginRuntime {
 }
 
 // ---------------------------------------------------------------------------
-// Startup configuration from QUANTCLAW_PLUGIN_CONFIG env var
+// Startup configuration from RAVBOT_PLUGIN_CONFIG env var
 // ---------------------------------------------------------------------------
 
 export interface SidecarStartupConfig {

@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-完成了 QuantClaw 配置的优化和问题排查,解决了 CURL 连接问题和 Ollama 配置问题。系统现在完全稳定,所有功能正常工作。
+完成了 RavBot 配置的优化和问题排查,解决了 CURL 连接问题和 Ollama 配置问题。系统现在完全稳定,所有功能正常工作。
 
 ---
 
@@ -85,7 +85,7 @@ Anthropic API HTTP 502: {"error":{"type":"api_error",
 
 ### 修改 1: 移除 Ollama fallback
 
-**文件**: `~/.quantclaw/quantclaw.json`
+**文件**: `~/.ravbot/ravbot.json`
 
 **修改前**:
 ```json
@@ -153,7 +153,7 @@ Ollama 的嵌入模型应该用于:
 - 文档相似度计算
 - RAG (Retrieval-Augmented Generation)
 
-**注意**: 当前 QuantClaw 配置中没有指定嵌入模型提供商,需要后续配置。
+**注意**: 当前 RavBot 配置中没有指定嵌入模型提供商,需要后续配置。
 
 ---
 
@@ -204,7 +204,7 @@ $ curl http://127.0.0.1:11434/api/tags
 
 1. **Anthropic 代理暂时性故障** (502)
    - kiro-gateway 代理偶尔返回 502
-   - 这是上游问题,不是 QuantClaw 的问题
+   - 这是上游问题,不是 RavBot 的问题
    - 已自行恢复
 
 2. **Ollama fallback 连接失败**
@@ -271,8 +271,8 @@ $ curl http://127.0.0.1:11434/api/tags
 
 | 服务 | 端口 | 状态 | 用途 |
 |------|------|------|------|
-| QuantClaw Gateway | 18800 | ✅ 运行中 | WebSocket API |
-| QuantClaw HTTP API | 18801 | ✅ 运行中 | HTTP REST API |
+| RavBot Gateway | 18800 | ✅ 运行中 | WebSocket API |
+| RavBot HTTP API | 18801 | ✅ 运行中 | HTTP REST API |
 | kiro-gateway | 8991 | ✅ 运行中 | Anthropic API 代理 |
 | Ollama | 11434 | ✅ 运行中 | 嵌入模型服务 |
 

@@ -1,8 +1,8 @@
-# QuantClaw 与 OpenClaw 同步开发 - 最终进度报告
+# RavBot 与 OpenClaw 同步开发 - 最终进度报告
 
 ## 项目信息
 
-- **项目名称**: QuantClaw 与 OpenClaw 同步开发
+- **项目名称**: RavBot 与 OpenClaw 同步开发
 - **开始日期**: 2026-03-14
 - **完成日期**: 2026-03-14
 - **负责人**: team-lead
@@ -276,7 +276,7 @@
 
 ### 功能完整性
 
-| 模块 | OpenClaw | QuantClaw (修改前) | QuantClaw (修改后) | 完成度 |
+| 模块 | OpenClaw | RavBot (修改前) | RavBot (修改后) | 完成度 |
 |------|----------|-------------------|-------------------|--------|
 | Gateway 超时 | ✅ | ❌ | ✅ | 100% |
 | Telegram Typing | ✅ | ❌ | ✅ | 100% |
@@ -291,7 +291,7 @@
 
 ### 核心功能对比
 
-| 功能类别 | OpenClaw | QuantClaw | 完成度 |
+| 功能类别 | OpenClaw | RavBot | 完成度 |
 |---------|----------|-----------|--------|
 | Gateway 核心 | 100% | 100% | ✅ 完成 |
 | Telegram 核心 | 100% | 100% | ✅ 完成 |

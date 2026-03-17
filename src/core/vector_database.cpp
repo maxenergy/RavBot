@@ -1,16 +1,18 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/vector_database.hpp"
-#include "quantclaw/core/hnsw_index.hpp"
+#include "ravbot/core/vector_database.hpp"
+#include "ravbot/core/hnsw_index.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <future>
 #include <limits>
 #include <filesystem>
+#include <unordered_map>
 
-namespace quantclaw {
+namespace ravbot {
 
 VectorDatabase::VectorDatabase(const std::string& db_path,
                                std::shared_ptr<spdlog::logger> logger)
@@ -137,6 +139,23 @@ bool VectorDatabase::CreateTables() {
     return false;
   }
 
+  // Create FTS5 virtual table for hybrid search (BM25 full-text search).
+  // content='vectors' means FTS5 mirrors the vectors table but stores no
+  // content itself (external content table), saving disk space.
+  const char* fts_sql =
+      "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts "
+      "USING fts5(id, text, content='vectors', content_rowid='rowid')";
+  rc = sqlite3_exec(db_, fts_sql, nullptr, nullptr, &err_msg);
+  if (rc != SQLITE_OK) {
+    // FTS5 may not be compiled in; degrade gracefully.
+    logger_->warn("Failed to create FTS5 table (FTS5 may not be available): {}",
+                  err_msg ? err_msg : "");
+    if (err_msg) {
+      sqlite3_free(err_msg);
+    }
+    // Not fatal — fall back to vector-only search.
+  }
+
   return true;
 }
 
@@ -236,6 +255,20 @@ bool VectorDatabase::IndexVector(const std::string& id,
   if (rc != SQLITE_DONE) {
     logger_->error("Failed to insert vector: {}", sqlite3_errmsg(db_));
     return false;
+  }
+
+  // Sync FTS5 index (ignore errors — FTS5 may not be available)
+  {
+    const char* fts_sql =
+        "INSERT OR REPLACE INTO chunks_fts(id, text) VALUES (?, ?)";
+    sqlite3_stmt* fts_stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, fts_sql, -1, &fts_stmt, nullptr) ==
+        SQLITE_OK) {
+      sqlite3_bind_text(fts_stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+      sqlite3_bind_text(fts_stmt, 2, text.c_str(), -1, SQLITE_TRANSIENT);
+      sqlite3_step(fts_stmt);
+      sqlite3_finalize(fts_stmt);
+    }
   }
 
   // Add to HNSW index
@@ -446,6 +479,18 @@ bool VectorDatabase::DeleteVector(const std::string& id) {
 
   if (sqlite3_changes(db_) == 0) {
     return false;
+  }
+
+  // Sync FTS5 deletion (ignore errors — FTS5 may not be available)
+  {
+    const char* fts_sql = "DELETE FROM chunks_fts WHERE id = ?";
+    sqlite3_stmt* fts_stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, fts_sql, -1, &fts_stmt, nullptr) ==
+        SQLITE_OK) {
+      sqlite3_bind_text(fts_stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+      sqlite3_step(fts_stmt);
+      sqlite3_finalize(fts_stmt);
+    }
   }
 
   // Mark deleted in HNSW index
@@ -782,4 +827,135 @@ nlohmann::json VectorDatabase::GetIndexStats() {
   return stats;
 }
 
-}  // namespace quantclaw
+// ── SearchFTS: FTS5 BM25 full-text search ───────────────────────────────────
+// Returns results sorted by BM25 relevance (most relevant first).
+// Requires FTS5 to be compiled into SQLite; returns empty on failure.
+std::vector<VectorSearchResult> VectorDatabase::SearchFTS(
+    const std::string& query, int limit) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::vector<VectorSearchResult> results;
+
+  if (!db_ || query.empty() || limit <= 0) {
+    return results;
+  }
+
+  // FTS5 BM25 query: ORDER BY bm25() ASC (bm25 returns negative values)
+  const char* sql =
+      "SELECT v.id, v.text, v.metadata, bm25(chunks_fts) AS score "
+      "FROM chunks_fts "
+      "JOIN vectors v ON chunks_fts.id = v.id "
+      "WHERE chunks_fts MATCH ? "
+      "ORDER BY score ASC "
+      "LIMIT ?";
+
+  sqlite3_stmt* stmt = nullptr;
+  int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
+  if (rc != SQLITE_OK) {
+    // FTS5 not available or table doesn't exist — not an error
+    return results;
+  }
+
+  sqlite3_bind_text(stmt, 1, query.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_int(stmt, 2, limit);
+
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    VectorSearchResult result;
+    const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+    const char* text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+    const char* meta = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+    double bm25_score = sqlite3_column_double(stmt, 3);
+
+    result.id = id ? id : "";
+    result.text = text ? text : "";
+    // Convert BM25 score (negative, lower = better) to a pseudo-distance
+    // (positive, lower = more relevant) for consistent comparison with HNSW.
+    result.distance = static_cast<float>(-bm25_score);
+    result.metadata = nlohmann::json::object();
+    if (meta) {
+      try {
+        result.metadata = nlohmann::json::parse(meta);
+      } catch (...) {}
+    }
+    results.push_back(std::move(result));
+  }
+
+  sqlite3_finalize(stmt);
+  return results;
+}
+
+// ── HybridSearch: HNSW vector + FTS5 BM25 fused via RRF ────────────────────
+// Runs vector search and FTS5 search concurrently, then fuses results using
+// Reciprocal Rank Fusion (RRF) with k=60.
+// score(item) = Σ 1/(k + rank_in_list)
+// Returns deduplicated results sorted by descending RRF score.
+std::vector<VectorSearchResult> VectorDatabase::HybridSearch(
+    const std::vector<float>& query_vector,
+    const std::string& query_text,
+    int limit,
+    float threshold) {
+  if (!db_) {
+    logger_->error("Vector database not initialized");
+    return {};
+  }
+
+  // Fetch more candidates per source so RRF has enough to fuse
+  const int candidate_limit = std::max(limit * 3, 30);
+
+  // Run both searches in parallel
+  auto vector_future = std::async(std::launch::async, [&]() {
+    return query_vector.empty()
+               ? std::vector<VectorSearchResult>{}
+               : SearchVectors(query_vector, candidate_limit, threshold);
+  });
+
+  auto fts_future = std::async(std::launch::async, [&]() {
+    return query_text.empty()
+               ? std::vector<VectorSearchResult>{}
+               : SearchFTS(query_text, candidate_limit);
+  });
+
+  auto vector_results = vector_future.get();
+  auto fts_results = fts_future.get();
+
+  // RRF fusion (k=60, standard default)
+  constexpr float kRRF_K = 60.0f;
+  std::unordered_map<std::string, float> rrf_scores;
+  std::unordered_map<std::string, VectorSearchResult> result_map;
+
+  auto apply_rrf = [&](const std::vector<VectorSearchResult>& list) {
+    for (int rank = 0; rank < static_cast<int>(list.size()); ++rank) {
+      const auto& item = list[static_cast<size_t>(rank)];
+      rrf_scores[item.id] += 1.0f / (kRRF_K + static_cast<float>(rank + 1));
+      // Store result data (prefer vector result for metadata completeness)
+      if (result_map.find(item.id) == result_map.end()) {
+        result_map[item.id] = item;
+      }
+    }
+  };
+
+  apply_rrf(vector_results);
+  apply_rrf(fts_results);
+
+  // Collect and sort by RRF score (descending)
+  std::vector<std::pair<float, std::string>> ranked;
+  ranked.reserve(rrf_scores.size());
+  for (const auto& [id, score] : rrf_scores) {
+    ranked.emplace_back(score, id);
+  }
+  std::sort(ranked.begin(), ranked.end(),
+            [](const auto& a, const auto& b) { return a.first > b.first; });
+
+  // Build final result list
+  std::vector<VectorSearchResult> final_results;
+  final_results.reserve(std::min(limit, static_cast<int>(ranked.size())));
+  for (int i = 0; i < limit && i < static_cast<int>(ranked.size()); ++i) {
+    auto& item = result_map[ranked[static_cast<size_t>(i)].second];
+    // Store RRF score as negative distance (lower distance = better)
+    item.distance = -ranked[static_cast<size_t>(i)].first;
+    final_results.push_back(std::move(item));
+  }
+
+  return final_results;
+}
+
+}  // namespace ravbot

@@ -89,11 +89,11 @@ for (auto& [req_id, pending] : conn.pending_requests) {
 ## 文件变更
 
 ### 修改的文件
-1. `include/quantclaw/gateway/protocol.hpp`
+1. `include/ravbot/gateway/protocol.hpp`
    - 添加 `PendingRequest` 结构体
    - 扩展 `ClientConnection` 结构体
 
-2. `include/quantclaw/gateway/gateway_server.hpp`
+2. `include/ravbot/gateway/gateway_server.hpp`
    - 添加超时配置方法
    - 添加 watchdog 相关方法
    - 添加私有成员变量
@@ -166,7 +166,7 @@ for (auto& [req_id, pending] : conn.pending_requests) {
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | 请求超时配置 | ✅ | ✅ | 完成 |
 | Watchdog 监控 | ✅ | ✅ | 完成 |

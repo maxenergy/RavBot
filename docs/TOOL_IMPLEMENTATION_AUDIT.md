@@ -1,10 +1,10 @@
-# QuantClaw 工具实现审核报告
+# RavBot 工具实现审核报告
 
 ## 审核时间
 2026-03-14
 
 ## 审核目标
-全面审核 QuantClaw 的基础工具实现，确保没有占位符、mock 或 stub，所有工具都是完整的生产级实现。
+全面审核 RavBot 的基础工具实现，确保没有占位符、mock 或 stub，所有工具都是完整的生产级实现。
 
 ## 审核方法
 1. 检查源代码中的 TODO/FIXME/STUB/MOCK 标记
@@ -36,7 +36,7 @@ grep -n "TODO\|FIXME\|XXX\|HACK\|STUB\|MOCK\|PLACEHOLDER\|NOT IMPLEMENTED" src/t
 std::string ToolRegistry::read_file_tool(const nlohmann::json& params) {
     if (!params.contains("path")) throw std::runtime_error("Missing required parameter: path");
     std::string path = params["path"].get<std::string>();
-    if (!quantclaw::SecuritySandbox::ValidateFilePath(path, "~/.quantclaw/workspace"))
+    if (!ravbot::SecuritySandbox::ValidateFilePath(path, "~/.ravbot/workspace"))
         throw std::runtime_error("Access denied: path outside workspace: " + path);
     if (!std::filesystem::exists(path)) throw std::runtime_error("File not found: " + path);
     std::ifstream f(path);
@@ -67,7 +67,7 @@ std::string ToolRegistry::write_file_tool(const nlohmann::json& params) {
         throw std::runtime_error("Missing required parameters: path, content");
     std::string path    = params["path"].get<std::string>();
     std::string content = params["content"].get<std::string>();
-    if (!quantclaw::SecuritySandbox::ValidateFilePath(path, "~/.quantclaw/workspace"))
+    if (!ravbot::SecuritySandbox::ValidateFilePath(path, "~/.ravbot/workspace"))
         throw std::runtime_error("Access denied: path outside workspace: " + path);
     std::filesystem::create_directories(std::filesystem::path(path).parent_path());
     std::ofstream f(path);
@@ -100,7 +100,7 @@ std::string ToolRegistry::edit_file_tool(const nlohmann::json& params) {
     std::string path     = params["path"].get<std::string>();
     std::string old_text = params["oldText"].get<std::string>();
     std::string new_text = params["newText"].get<std::string>();
-    if (!quantclaw::SecuritySandbox::ValidateFilePath(path, "~/.quantclaw/workspace"))
+    if (!ravbot::SecuritySandbox::ValidateFilePath(path, "~/.ravbot/workspace"))
         throw std::runtime_error("Access denied: path outside workspace: " + path);
     std::ifstream f(path);
     if (!f) throw std::runtime_error("Failed to open: " + path);
@@ -137,7 +137,7 @@ std::string ToolRegistry::exec_tool(const nlohmann::json& params) {
     std::string command = params["command"].get<std::string>();
     int timeout = params.value("timeout", 30);
 
-    if (!quantclaw::SecuritySandbox::ValidateShellCommand(command))
+    if (!ravbot::SecuritySandbox::ValidateShellCommand(command))
         throw std::runtime_error("Command not allowed: " + command);
 
     if (approval_manager_) {
@@ -148,7 +148,7 @@ std::string ToolRegistry::exec_tool(const nlohmann::json& params) {
             throw std::runtime_error("Approval timed out: " + command);
     }
 
-    quantclaw::SecuritySandbox::ApplyResourceLimits();
+    ravbot::SecuritySandbox::ApplyResourceLimits();
     logger_->info("Executing command: {}", command);
 
     auto result = platform::exec_capture(command, timeout);
@@ -313,7 +313,7 @@ std::string ToolRegistry::memory_search_tool(const nlohmann::json& params) {
 
     const char* home = std::getenv("HOME");
     std::string home_str = home ? home : "/tmp";
-    auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+    auto workspace = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
 
     MemorySearch search(logger_);
     search.IndexDirectory(workspace);
@@ -355,7 +355,7 @@ std::string ToolRegistry::memory_get_tool(const nlohmann::json& params) {
 
     const char* home = std::getenv("HOME");
     std::string home_str = home ? home : "/tmp";
-    auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+    auto workspace = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
     auto full_path = workspace / rel_path;
 
     // Security: must remain inside workspace
@@ -591,7 +591,7 @@ std::string ToolRegistry::memory_get_tool(const nlohmann::json& params) {
 
 ## 对比 OpenClaw
 
-### QuantClaw 优势
+### RavBot 优势
 
 1. **web_search_tool**: 支持 6 个搜索引擎，OpenClaw 可能只支持 1-2 个
 2. **安全机制**: 完整的沙箱、审计、信任模型
@@ -600,7 +600,7 @@ std::string ToolRegistry::memory_get_tool(const nlohmann::json& params) {
 
 ### 功能对等
 
-| 工具 | QuantClaw | OpenClaw | 状态 |
+| 工具 | RavBot | OpenClaw | 状态 |
 |------|-----------|----------|------|
 | read_file | ✅ | ✅ | 对等 |
 | write_file | ✅ | ✅ | 对等 |

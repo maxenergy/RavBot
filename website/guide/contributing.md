@@ -1,16 +1,16 @@
-# Contributing to QuantClaw
+# Contributing to RavBot
 
-Thank you for your interest in contributing to QuantClaw! This guide will help you get started.
+Thank you for your interest in contributing to RavBot! This guide will help you get started.
 
 ## Code of Conduct
 
-Please note that this project is released with a [Contributor Code of Conduct](https://github.com/QuantClaw/quantclaw/blob/main/CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms.
+Please note that this project is released with a [Contributor Code of Conduct](https://github.com/RavBot/ravbot/blob/main/CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms.
 
 ## Ways to Contribute
 
 ### 1. Report Bugs
 
-Found a bug? Please open an issue on [GitHub](https://github.com/QuantClaw/quantclaw/issues).
+Found a bug? Please open an issue on [GitHub](https://github.com/RavBot/ravbot/issues).
 
 **Include:**
 - Clear description of the problem
@@ -20,7 +20,7 @@ Found a bug? Please open an issue on [GitHub](https://github.com/QuantClaw/quant
 
 ### 2. Request Features
 
-Have an idea for improvement? Open a [feature request](https://github.com/QuantClaw/quantclaw/discussions).
+Have an idea for improvement? Open a [feature request](https://github.com/RavBot/ravbot/discussions).
 
 **Describe:**
 - The problem you're trying to solve
@@ -41,7 +41,7 @@ Documentation improvements are always welcome:
 
 ### 5. Help Others
 
-- Answer questions in [Discussions](https://github.com/QuantClaw/quantclaw/discussions)
+- Answer questions in [Discussions](https://github.com/RavBot/ravbot/discussions)
 - Review pull requests
 - Share your use cases
 
@@ -52,11 +52,11 @@ Documentation improvements are always welcome:
 ```bash
 # Fork the repository on GitHub
 # Then clone your fork
-git clone https://github.com/YOUR_USERNAME/quantclaw.git
-cd quantclaw
+git clone https://github.com/YOUR_USERNAME/ravbot.git
+cd ravbot
 
 # Add upstream
-git remote add upstream https://github.com/QuantClaw/quantclaw.git
+git remote add upstream https://github.com/RavBot/ravbot.git
 ```
 
 ### Build and Test
@@ -68,10 +68,10 @@ cmake ..
 cmake --build . -j$(nproc)
 
 # Run tests
-./quantclaw_tests
+./ravbot_tests
 
 # Test locally
-quantclaw --version
+ravbot --version
 ```
 
 ## Making Changes
@@ -95,7 +95,7 @@ git checkout -b feature/my-feature
 ```bash
 # Format your code
 clang-format -i src/my_file.cpp
-clang-format -i include/quantclaw/my_file.hpp
+clang-format -i include/ravbot/my_file.hpp
 
 # Check style
 clang-tidy src/my_file.cpp
@@ -115,7 +115,7 @@ Add tests for your changes:
 ```cpp
 // tests/test_my_feature.cpp
 #include <gtest/gtest.h>
-#include "quantclaw/my_feature.hpp"
+#include "ravbot/my_feature.hpp"
 
 class MyFeatureTest : public ::testing::Test {
 protected:
@@ -142,7 +142,7 @@ Run tests:
 
 ```bash
 cd build
-cmake --build . && ./quantclaw_tests
+cmake --build . && ./ravbot_tests
 ctest -V
 ```
 
@@ -245,13 +245,13 @@ cmake --build .
 
 ```bash
 # Run specific test
-./quantclaw_tests --gtest_filter="MyTest*"
+./ravbot_tests --gtest_filter="MyTest*"
 
 # Run with verbose output
-./quantclaw_tests -v
+./ravbot_tests -v
 
 # Check test logs
-tail -f /var/log/quantclaw.log
+tail -f /var/log/ravbot.log
 ```
 
 ### Style Check Fails
@@ -306,7 +306,7 @@ Contributing a plugin or skill:
 
 **Plugin template:**
 ```bash
-quantclaw skill create my-plugin
+ravbot skill create my-plugin
 cd my-plugin
 # Implement and test
 npm test
@@ -338,14 +338,14 @@ Contributors will be recognized in:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](https://github.com/QuantClaw/quantclaw/blob/main/LICENSE).
+By contributing, you agree that your contributions will be licensed under the [MIT License](https://github.com/RavBot/ravbot/blob/main/LICENSE).
 
 ## Questions?
 
-- **GitHub Issues**: [Ask a question](https://github.com/QuantClaw/quantclaw/issues/new?labels=question)
-- **Discussions**: [Community forum](https://github.com/QuantClaw/quantclaw/discussions)
-- **Email**: contact@quantclaw.io (if applicable)
+- **GitHub Issues**: [Ask a question](https://github.com/RavBot/ravbot/issues/new?labels=question)
+- **Discussions**: [Community forum](https://github.com/RavBot/ravbot/discussions)
+- **Email**: contact@ravbot.io (if applicable)
 
 ---
 
-**Thank you for helping make QuantClaw better! 🎉**
+**Thank you for helping make RavBot better! 🎉**

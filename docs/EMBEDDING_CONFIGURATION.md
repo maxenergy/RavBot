@@ -2,7 +2,7 @@
 
 ## 概述
 
-QuantClaw 支持通过 JSON 配置文件管理多个 embedding providers，支持环境变量替换和灵活的配置选项。
+RavBot 支持通过 JSON 配置文件管理多个 embedding providers，支持环境变量替换和灵活的配置选项。
 
 ## 配置文件格式
 
@@ -132,9 +132,9 @@ QuantClaw 支持通过 JSON 配置文件管理多个 embedding providers，支�
 ### C++ 代码
 
 ```cpp
-#include "quantclaw/core/embedding_config.hpp"
-#include "quantclaw/core/embedding_manager.hpp"
-#include "quantclaw/core/vector_database.hpp"
+#include "ravbot/core/embedding_config.hpp"
+#include "ravbot/core/embedding_manager.hpp"
+#include "ravbot/core/vector_database.hpp"
 
 // 从配置文件加载
 auto registry = EmbeddingConfig::LoadFromFile("config/embedding.json");
@@ -374,4 +374,4 @@ manager->SetMaxCacheSize(10000);  // 调整缓存大小
 
 - [OpenAI Embeddings API](https://platform.openai.com/docs/guides/embeddings)
 - [Voyage AI Documentation](https://docs.voyageai.com/)
-- [QuantClaw Embedding Provider API](../include/quantclaw/core/embedding_provider.hpp)
+- [RavBot Embedding Provider API](../include/ravbot/core/embedding_provider.hpp)

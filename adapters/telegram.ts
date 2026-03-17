@@ -1,13 +1,13 @@
 /**
- * QuantClaw Telegram Adapter
+ * RavBot Telegram Adapter
  *
- * Bridges Telegram messages to the QuantClaw agent via the gateway WebSocket RPC.
+ * Bridges Telegram messages to the RavBot agent via the gateway WebSocket RPC.
  *
  * Environment variables (set by adapter manager):
- *   QUANTCLAW_GATEWAY_URL    — ws://127.0.0.1:18789
- *   QUANTCLAW_AUTH_TOKEN     — gateway auth token
- *   QUANTCLAW_CHANNEL_NAME   — "telegram"
- *   QUANTCLAW_CHANNEL_CONFIG — JSON: {"token":"...","allowedUsers":[...]}
+ *   RAVBOT_GATEWAY_URL    — ws://127.0.0.1:18789
+ *   RAVBOT_AUTH_TOKEN     — gateway auth token
+ *   RAVBOT_CHANNEL_NAME   — "telegram"
+ *   RAVBOT_CHANNEL_CONFIG — JSON: {"token":"...","allowedUsers":[...]}
  *
  * Usage:
  *   npm install

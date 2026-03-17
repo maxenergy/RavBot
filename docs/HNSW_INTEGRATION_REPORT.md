@@ -11,7 +11,7 @@
 
 ## 实施概述
 
-成功将 HNSWlib (Hierarchical Navigable Small World) 集成到 QuantClaw 的向量搜索系统中,实现了高性能的近似最近邻搜索功能,相比暴力搜索提升 **100-500倍** 性能。
+成功将 HNSWlib (Hierarchical Navigable Small World) 集成到 RavBot 的向量搜索系统中,实现了高性能的近似最近邻搜索功能,相比暴力搜索提升 **100-500倍** 性能。
 
 ## 技术背景
 
@@ -37,7 +37,7 @@ HNSW 算法优势:
 #### 1.1 下载 HNSWlib
 
 ```bash
-cd /home/rogers/source/develop/QuantClaw
+cd /home/rogers/source/develop/RavBot
 mkdir -p third_party
 cd third_party
 git clone --depth 1 https://github.com/nmslib/hnswlib.git
@@ -50,7 +50,7 @@ git clone --depth 1 https://github.com/nmslib/hnswlib.git
 
 #### 1.2 创建 HNSWIndex 包装器
 
-**文件**: `include/quantclaw/core/hnsw_index.hpp`
+**文件**: `include/ravbot/core/hnsw_index.hpp`
 
 ```cpp
 struct HNSWConfig {
@@ -186,13 +186,13 @@ if(NOT EXISTS ${HNSWLIB_INCLUDE_DIR}/hnswlib/hnswlib.h)
 endif()
 
 # 添加源文件
-set(QUANTCLAW_CORE_SOURCES
+set(RAVBOT_CORE_SOURCES
     ...
     src/core/hnsw_index.cpp
 )
 
 # 添加包含目录
-target_include_directories(quantclaw_core
+target_include_directories(ravbot_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${HNSWLIB_INCLUDE_DIR}>
@@ -288,7 +288,7 @@ Recall@1: 100%
 
 ### 新增文件
 
-1. `include/quantclaw/core/hnsw_index.hpp` (+100 行)
+1. `include/ravbot/core/hnsw_index.hpp` (+100 行)
    - HNSWConfig 结构
    - HNSWIndex 类声明
 
@@ -348,7 +348,7 @@ Recall@1: 100%
 ### 基本使用
 
 ```cpp
-#include "quantclaw/core/hnsw_index.hpp"
+#include "ravbot/core/hnsw_index.hpp"
 
 // 创建配置
 HNSWConfig config;
@@ -414,7 +414,7 @@ index2.LoadIndex("/path/to/index.bin");
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | HNSW 索引 | ✅ | ✅ | 完成 |
 | 余弦相似度 | ✅ | ✅ | 完成 |
@@ -554,7 +554,7 @@ config.M = 8;  // 减少连接数
 6. ✅ 性能提升 100-500x
 7. ✅ Recall@1 = 100%
 
-该功能使 QuantClaw 具备了生产级的向量搜索能力,为后续的 Embedding 提供商集成和 ONNX Runtime 集成奠定了基础。
+该功能使 RavBot 具备了生产级的向量搜索能力,为后续的 Embedding 提供商集成和 ONNX Runtime 集成奠定了基础。
 
 ---
 

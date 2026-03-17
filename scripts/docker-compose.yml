@@ -1,33 +1,33 @@
 version: '3.8'
 
 x-build-args: &build-args
-  VERSION: ${QUANTCLAW_VERSION:-0.3.0-alpha}
+  VERSION: ${RAVBOT_VERSION:-0.3.0-alpha}
   BUILD_DATE: ${BUILD_DATE:-}
   VCS_REF: ${VCS_REF:-}
 
 services:
-  quantclaw:
+  ravbot:
     build:
       context: ..
       dockerfile: scripts/Dockerfile
       args:
         <<: *build-args
-    image: quantclaw:${QUANTCLAW_VERSION:-0.3.0-alpha}
-    container_name: quantclaw
+    image: ravbot:${RAVBOT_VERSION:-0.3.0-alpha}
+    container_name: ravbot
     restart: unless-stopped
     ports:
       - "18800:18800"   # Gateway WebSocket
       - "18801:18801"   # Dashboard/REST API
     volumes:
-      - quantclaw_data:/home/quantclaw/.quantclaw
+      - ravbot_data:/home/ravbot/.ravbot
     environment:
-      - QUANTCLAW_LOG_LEVEL=${QUANTCLAW_LOG_LEVEL:-info}
+      - RAVBOT_LOG_LEVEL=${RAVBOT_LOG_LEVEL:-info}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     networks:
-      - quantclaw_network
+      - ravbot_network
     healthcheck:
-      test: ["CMD", "quantclaw", "health"]
+      test: ["CMD", "ravbot", "health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -41,35 +41,35 @@ services:
           cpus: '0.5'
           memory: 128M
 
-  quantclaw-test:
+  ravbot-test:
     build:
       context: ..
       dockerfile: scripts/Dockerfile.test
-    image: quantclaw-test:${QUANTCLAW_VERSION:-0.3.0-alpha}
-    container_name: quantclaw-test
+    image: ravbot-test:${RAVBOT_VERSION:-0.3.0-alpha}
+    container_name: ravbot-test
 
-  quantclaw-dev:
+  ravbot-dev:
     profiles: ["dev"]
     build:
       context: ..
       dockerfile: scripts/Dockerfile.dev
-    image: quantclaw-dev:${QUANTCLAW_VERSION:-0.3.0-alpha}
-    container_name: quantclaw-dev
+    image: ravbot-dev:${RAVBOT_VERSION:-0.3.0-alpha}
+    container_name: ravbot-dev
     ports:
       - "18802:18800"
       - "18803:18801"
     volumes:
       - ..:/app            # live source mount for development
-      - quantclaw_dev_data:/root/.quantclaw
+      - ravbot_dev_data:/root/.ravbot
     stdin_open: true
     tty: true
 
 volumes:
-  quantclaw_data:
+  ravbot_data:
     driver: local
-  quantclaw_dev_data:
+  ravbot_dev_data:
     driver: local
 
 networks:
-  quantclaw_network:
+  ravbot_network:
     driver: bridge

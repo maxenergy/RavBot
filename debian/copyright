@@ -1,10 +1,10 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: quantclaw
-Upstream-Contact: QuantClaw Team <team@quantclaw.io>
-Source: https://github.com/QuantClaw/QuantClaw
+Upstream-Name: ravbot
+Upstream-Contact: RavBot Team <team@ravbot.io>
+Source: https://github.com/RavBot/RavBot
 
 Files: *
-Copyright: 2026 QuantClaw Team
+Copyright: 2026 RavBot Team
 License: Apache-2.0
 
 License: Apache-2.0

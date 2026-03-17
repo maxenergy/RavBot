@@ -1,8 +1,8 @@
 {
-  "name": "quantclaw-website",
+  "name": "ravbot-website",
   "version": "1.0.0",
   "type": "module",
-  "description": "Official website for QuantClaw - High-performance C++ implementation of OpenClaw",
+  "description": "Official website for RavBot - High-performance C++ implementation of OpenClaw",
   "scripts": {
     "docs:dev": "vitepress dev .",
     "docs:build": "vitepress build .",

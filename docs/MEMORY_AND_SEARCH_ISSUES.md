@@ -21,7 +21,7 @@
 ### 症状
 
 ```bash
-$ sqlite3 ~/.quantclaw/data/vectors.db "SELECT COUNT(*) FROM vectors;"
+$ sqlite3 ~/.ravbot/data/vectors.db "SELECT COUNT(*) FROM vectors;"
 0
 ```
 
@@ -48,7 +48,7 @@ $ sqlite3 ~/.quantclaw/data/vectors.db "SELECT COUNT(*) FROM vectors;"
 ### 症状
 
 ```bash
-$ cat ~/.quantclaw/agents/main/workspace/MEMORY.md
+$ cat ~/.ravbot/agents/main/workspace/MEMORY.md
 # Memory
 
 This file is used to store persistent memory across conversations.
@@ -71,7 +71,7 @@ The agent will read and update this file to remember important information.
 
 ### 当前记忆系统
 
-QuantClaw 有两套记忆系统：
+RavBot 有两套记忆系统：
 
 1. **BM25 搜索** (`MemorySearch`) - 基于关键词的全文搜索
    - ✅ 已实现
@@ -97,11 +97,11 @@ $ grep -r "memory_write\|memory_update\|memory_add" src/tools/tool_registry.cpp
 ### 对比 OpenClaw
 
 OpenClaw 有以下记忆相关工具：
-- `memory_search` - 搜索记忆 ✅ QuantClaw 有
-- `memory_get` - 获取记忆文件 ✅ QuantClaw 有
-- `memory_write` - 写入记忆 ❌ QuantClaw 缺失
-- `memory_update` - 更新记忆 ❌ QuantClaw 缺失
-- `memory_append` - 追加记忆 ❌ QuantClaw 缺失
+- `memory_search` - 搜索记忆 ✅ RavBot 有
+- `memory_get` - 获取记忆文件 ✅ RavBot 有
+- `memory_write` - 写入记忆 ❌ RavBot 缺失
+- `memory_update` - 更新记忆 ❌ RavBot 缺失
+- `memory_append` - 追加记忆 ❌ RavBot 缺失
 
 ### 解决方案
 
@@ -136,7 +136,7 @@ std::string ToolRegistry::memory_write_tool(const nlohmann::json& params) {
 
     const char* home = std::getenv("HOME");
     std::string home_str = home ? home : "/tmp";
-    auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+    auto workspace = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
     auto full_path = workspace / rel_path;
 
     // Security: must remain inside workspace

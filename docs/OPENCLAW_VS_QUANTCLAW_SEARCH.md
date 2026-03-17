@@ -1,4 +1,4 @@
-# OpenClaw vs QuantClaw 搜索结果对比分析
+# OpenClaw vs RavBot 搜索结果对比分析
 
 ## 问题描述
 
@@ -14,9 +14,9 @@
 - 显示 37,157+ stars（正确）
 - 返回了 20 个技能列表
 
-### QuantClaw 结果 ❌
+### RavBot 结果 ❌
 
-用户报告 QuantClaw 返回：
+用户报告 RavBot 返回：
 ```
 1. **VoltAgent/awesome-openclaw-skills** ⭐ 0
    - A curated list of awesome OpenClaw skills
@@ -40,7 +40,7 @@
 - 支持多个搜索引擎：Brave, Perplexity, Grok, Gemini, Kimi
 - 没有专门的 `github_search_repos` 工具
 
-**QuantClaw**:
+**RavBot**:
 - 使用 `github_search_repos` 工具
 - 直接调用 `gh CLI`
 - 也有 `web_search` 工具作为备选
@@ -58,7 +58,7 @@ LLM 决定: 使用 web_search
 返回: 网页搜索结果（包含 GitHub 页面）
 ```
 
-**QuantClaw 当前策略**:
+**RavBot 当前策略**:
 ```
 用户: "搜索github找openclaw的技能"
 ↓
@@ -76,7 +76,7 @@ gh CLI: gh search repos "awesome-openclaw-skills"
 - 可能包含更丰富的上下文信息
 - Star 数来自网页内容
 
-**QuantClaw (github_search_repos)**:
+**RavBot (github_search_repos)**:
 - GitHub API 官方数据
 - 结构化的 JSON 数据
 - Star 数来自 API 的 `stargazersCount` 字段
@@ -96,7 +96,7 @@ gh search repos "awesome-openclaw-skills" --json name,stargazersCount
 
 ### 可能性 2: JSON 解析错误
 
-QuantClaw 代码：
+RavBot 代码：
 ```cpp
 output << "   ⭐ " << repo.value("stargazersCount", 0) << " stars";
 ```
@@ -114,7 +114,7 @@ output << "   ⭐ " << repo.value("stargazersCount", 0) << " stars";
 ```
 gh CLI 返回: {"stargazersCount": 37262}
 ↓
-QuantClaw 格式化: "⭐ 37262 stars"
+RavBot 格式化: "⭐ 37262 stars"
 ↓
 返回给 LLM
 ↓
@@ -141,7 +141,7 @@ logger_->info("github_search_repos: repo[{}]: name={}, stars={}", i, name, stars
 
 发送消息后查看日志：
 ```bash
-tail -100 /tmp/quantclaw_gateway.log | grep github_search_repos
+tail -100 /tmp/ravbot_gateway.log | grep github_search_repos
 ```
 
 ### 步骤 3: 对比 OpenClaw 的实现

@@ -1,10 +1,10 @@
 #!/bin/bash
-# QuantClaw 工具权限诊断和修复脚本
+# RavBot 工具权限诊断和修复脚本
 
-CONFIG_FILE="$HOME/.quantclaw/quantclaw.json"
+CONFIG_FILE="$HOME/.ravbot/ravbot.json"
 
 echo "=========================================="
-echo "QuantClaw 工具权限诊断"
+echo "RavBot 工具权限诊断"
 echo "=========================================="
 echo ""
 
@@ -87,6 +87,6 @@ echo ""
 
 # 测试建议
 echo "测试建议:"
-echo "1. 重启 QuantClaw: systemctl --user restart quantclaw"
+echo "1. 重启 RavBot: systemctl --user restart ravbot"
 echo "2. 测试命令: 在 Telegram 中发送 '请执行 uptime'"
-echo "3. 查看日志: journalctl --user -u quantclaw -f"
+echo "3. 查看日志: journalctl --user -u ravbot -f"

@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/signal_handler.hpp"
+#include "ravbot/core/signal_handler.hpp"
 #include <csignal>
 #include <thread>
 #include <chrono>
 
-namespace quantclaw {
+namespace ravbot {
 
 std::atomic<bool> SignalHandler::shutdown_requested_{false};
 SignalHandler::ShutdownCallback SignalHandler::shutdown_callback_;
@@ -51,4 +51,4 @@ void SignalHandler::signal_handler(int signum) {
 #endif
 }
 
-} // namespace quantclaw
+} // namespace ravbot

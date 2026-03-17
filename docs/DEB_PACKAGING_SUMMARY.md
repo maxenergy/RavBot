@@ -1,4 +1,4 @@
-# QuantClaw DEB 打包完成总结
+# RavBot DEB 打包完成总结
 
 ## 已创建的文件
 
@@ -13,7 +13,7 @@
 7. **debian/postinst** - 安装后脚本(创建用户、初始化)
 8. **debian/prerm** - 卸载前脚本(停止服务)
 9. **debian/postrm** - 卸载后脚本(清理)
-10. **debian/quantclaw.service** - Systemd 服务文件
+10. **debian/ravbot.service** - Systemd 服务文件
 11. **debian/source/format** - 源码包格式
 
 ### 构建脚本 (scripts/)
@@ -46,22 +46,22 @@
 ### 安装包
 
 ```bash
-sudo dpkg -i dist/quantclaw_0.3.0-1_amd64.deb
+sudo dpkg -i dist/ravbot_0.3.0-1_amd64.deb
 sudo apt-get install -f  # 如果有依赖问题
 ```
 
 ### 测试包
 
 ```bash
-./scripts/test-deb.sh dist/quantclaw_0.3.0-1_amd64.deb
+./scripts/test-deb.sh dist/ravbot_0.3.0-1_amd64.deb
 ```
 
 ## 包特性
 
 ### 自动化功能
 
-- ✅ 自动创建系统用户 `quantclaw`
-- ✅ 自动创建配置目录 `/home/quantclaw/.quantclaw`
+- ✅ 自动创建系统用户 `ravbot`
+- ✅ 自动创建配置目录 `/home/ravbot/.ravbot`
 - ✅ 自动安装 Systemd 服务
 - ✅ 自动安装 Node.js Sidecar 依赖(如果有 npm)
 - ✅ 卸载时自动停止服务
@@ -70,12 +70,12 @@ sudo apt-get install -f  # 如果有依赖问题
 ### 安装位置
 
 ```
-/usr/bin/quantclaw                          # 主程序
-/usr/share/quantclaw/skills/                # 内置技能
-/usr/share/quantclaw/sidecar/               # Node.js Sidecar
-/lib/systemd/system/quantclaw.service       # Systemd 服务
-/usr/share/doc/quantclaw/                   # 文档
-/home/quantclaw/.quantclaw/                 # 配置和数据
+/usr/bin/ravbot                          # 主程序
+/usr/share/ravbot/skills/                # 内置技能
+/usr/share/ravbot/sidecar/               # Node.js Sidecar
+/lib/systemd/system/ravbot.service       # Systemd 服务
+/usr/share/doc/ravbot/                   # 文档
+/home/ravbot/.ravbot/                 # 配置和数据
 ```
 
 ### 依赖关系
@@ -94,77 +94,77 @@ sudo apt-get install -f  # 如果有依赖问题
 ### 1. 安装包
 
 ```bash
-sudo dpkg -i dist/quantclaw_0.3.0-1_amd64.deb
+sudo dpkg -i dist/ravbot_0.3.0-1_amd64.deb
 ```
 
 ### 2. 运行初始化
 
 ```bash
-sudo -u quantclaw quantclaw onboard
+sudo -u ravbot ravbot onboard
 ```
 
 ### 3. 启动服务
 
 ```bash
-sudo systemctl start quantclaw
-sudo systemctl enable quantclaw
+sudo systemctl start ravbot
+sudo systemctl enable ravbot
 ```
 
 ### 4. 验证安装
 
 ```bash
-quantclaw --version
-quantclaw health
-sudo systemctl status quantclaw
+ravbot --version
+ravbot health
+sudo systemctl status ravbot
 ```
 
 ## 服务管理
 
 ```bash
 # 启动
-sudo systemctl start quantclaw
+sudo systemctl start ravbot
 
 # 停止
-sudo systemctl stop quantclaw
+sudo systemctl stop ravbot
 
 # 重启
-sudo systemctl restart quantclaw
+sudo systemctl restart ravbot
 
 # 查看状态
-sudo systemctl status quantclaw
+sudo systemctl status ravbot
 
 # 查看日志
-sudo journalctl -u quantclaw -f
+sudo journalctl -u ravbot -f
 
 # 开机自启
-sudo systemctl enable quantclaw
+sudo systemctl enable ravbot
 
 # 禁用自启
-sudo systemctl disable quantclaw
+sudo systemctl disable ravbot
 ```
 
 ## 配置管理
 
 ```bash
 # 查看配置
-sudo -u quantclaw quantclaw config get
+sudo -u ravbot ravbot config get
 
 # 设置 API 密钥
-sudo -u quantclaw quantclaw config set providers.openai.apiKey "sk-..."
-sudo -u quantclaw quantclaw config set providers.anthropic.apiKey "sk-ant-..."
+sudo -u ravbot ravbot config set providers.openai.apiKey "sk-..."
+sudo -u ravbot ravbot config set providers.anthropic.apiKey "sk-ant-..."
 
 # 重新加载配置(无需重启)
-sudo -u quantclaw quantclaw config reload
+sudo -u ravbot ravbot config reload
 ```
 
 ## 卸载
 
 ```bash
 # 保留配置
-sudo apt-get remove quantclaw
+sudo apt-get remove ravbot
 
 # 完全删除(包括配置和用户)
-sudo apt-get purge quantclaw
+sudo apt-get purge ravbot
 ```
 
 ## CI/CD 集成
@@ -192,7 +192,7 @@ GitHub Actions 工作流已配置,会在以下情况自动构建:
 1. 需要 Ubuntu 24.04 LTS (Noble Numbat)
 2. 仅支持 amd64 和 arm64 架构
 3. Node.js Sidecar 依赖需要手动安装 Node.js >= 18
-4. 首次运行需要执行 `quantclaw onboard` 初始化
+4. 首次运行需要执行 `ravbot onboard` 初始化
 
 ## 后续改进
 
@@ -212,5 +212,5 @@ GitHub Actions 工作流已配置,会在以下情况自动构建:
 ## 支持
 
 如有问题,请访问:
-- GitHub Issues: https://github.com/QuantClaw/QuantClaw/issues
-- 文档: https://quantclaw.github.io
+- GitHub Issues: https://github.com/RavBot/RavBot/issues
+- 文档: https://ravbot.github.io

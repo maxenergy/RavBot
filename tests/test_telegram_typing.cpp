@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
 #include <atomic>
-#include "quantclaw/channels/telegram_typing_manager.hpp"
+#include "ravbot/channels/telegram_typing_manager.hpp"
 
-using namespace quantclaw::channels;
+using namespace ravbot::channels;
 
 class TelegramTypingTest : public ::testing::Test {
 protected:

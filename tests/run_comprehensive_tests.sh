@@ -1,11 +1,11 @@
 #!/bin/bash
-# QuantClaw 综合功能测试脚本
+# RavBot 综合功能测试脚本
 # 专注于上下文管理、对话递归传递和工具续轮
 
 set -e
 
 echo "=========================================="
-echo "QuantClaw 综合功能测试"
+echo "RavBot 综合功能测试"
 echo "=========================================="
 echo ""
 
@@ -30,7 +30,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
 
 echo ""
 echo -e "${BLUE}[2/4] 编译测试...${NC}"
-cmake --build . --target quantclaw_tests -j$(nproc)
+cmake --build . --target ravbot_tests -j$(nproc)
 
 echo ""
 echo -e "${BLUE}[3/4] 运行核心上下文和对话测试...${NC}"
@@ -59,7 +59,7 @@ declare -a LOGIC_TESTS=(
 echo -e "${GREEN}=== 上下文管理和工具续轮测试 ===${NC}"
 for test in "${CONTEXT_TESTS[@]}"; do
     echo -e "${YELLOW}运行: $test${NC}"
-    ./quantclaw_tests --gtest_filter="$test" --gtest_color=yes || {
+    ./ravbot_tests --gtest_filter="$test" --gtest_color=yes || {
         echo -e "${RED}测试失败: $test${NC}"
         exit 1
     }
@@ -69,7 +69,7 @@ echo ""
 echo -e "${GREEN}=== 逻辑处理和递归传递测试 ===${NC}"
 for test in "${LOGIC_TESTS[@]}"; do
     echo -e "${YELLOW}运行: $test${NC}"
-    ./quantclaw_tests --gtest_filter="$test" --gtest_color=yes || {
+    ./ravbot_tests --gtest_filter="$test" --gtest_color=yes || {
         echo -e "${RED}测试失败: $test${NC}"
         exit 1
     }
@@ -77,7 +77,7 @@ done
 
 echo ""
 echo -e "${BLUE}[4/4] 运行完整测试套件...${NC}"
-./quantclaw_tests --gtest_color=yes
+./ravbot_tests --gtest_color=yes
 
 echo ""
 echo -e "${GREEN}=========================================="

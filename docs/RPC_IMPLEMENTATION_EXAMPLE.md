@@ -1,8 +1,8 @@
-# QuantClaw RPC 方法实现示例
+# RavBot RPC 方法实现示例
 
 ## 示例：models.list 实现
 
-这是一个完整的 RPC 方法实现示例，展示了如何在 QuantClaw 中添加新的 RPC 方法。
+这是一个完整的 RPC 方法实现示例，展示了如何在 RavBot 中添加新的 RPC 方法。
 
 ### 1. 参考 OpenClaw 实现
 
@@ -28,9 +28,9 @@ export const modelsHandlers: GatewayRequestHandlers = {
 };
 ```
 
-### 2. QuantClaw C++ 实现
+### 2. RavBot C++ 实现
 
-**文件**: `/home/rogers/source/develop/QuantClaw/src/gateway/rpc_handlers.cpp`
+**文件**: `/home/rogers/source/develop/RavBot/src/gateway/rpc_handlers.cpp`
 
 ```cpp
 // --- models.list ---
@@ -61,7 +61,7 @@ server.RegisterHandler(methods::kOcModelsList,
    - 在 `/home/rogers/develop/openclaw/src/gateway/server-methods/` 中查找对应方法
    - 理解方法的输入参数和返回值
 
-2. **检查 QuantClaw 基础设施**
+2. **检查 RavBot 基础设施**
    - 确认 ProviderRegistry 是否有 `GetModelCatalog()` 方法
    - 确认 protocol.hpp 中是否定义了方法常量（如 `kOcModelsList`）
 
@@ -77,7 +77,7 @@ server.RegisterHandler(methods::kOcModelsList,
 
 5. **编译验证**
    ```bash
-   cd /home/rogers/source/develop/QuantClaw/build
+   cd /home/rogers/source/develop/RavBot/build
    make -j$(nproc)
    ```
 
@@ -96,7 +96,7 @@ server.RegisterHandler(methods::kOcModelsList,
 
 ```bash
 # 启动 gateway
-./quantclaw gateway
+./ravbot gateway
 
 # 测试 RPC 方法
 curl -X POST http://localhost:18801/api/rpc \
@@ -115,7 +115,7 @@ server.RegisterHandler(methods::kOcSkillsStatus,
         try {
             const char* home = std::getenv("HOME");
             std::string home_str = home ? home : "/tmp";
-            auto workspace_path = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+            auto workspace_path = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
 
             auto skills = skill_loader->LoadSkills(config.skills, workspace_path);
             nlohmann::json skills_array = nlohmann::json::array();
@@ -153,7 +153,7 @@ server.RegisterHandler(methods::kOcSkillsBins,
         try {
             const char* home = std::getenv("HOME");
             std::string home_str = home ? home : "/tmp";
-            auto workspace_path = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+            auto workspace_path = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
 
             auto skills = skill_loader->LoadSkills(config.skills, workspace_path);
             std::set<std::string> bins_set;

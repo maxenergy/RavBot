@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# QuantClaw build script
+# RavBot build script
 # Borrowed patterns from pikiwidb/build.sh: color output, CPU detection,
 # option parsing, PM detection.
 #
@@ -140,7 +140,7 @@ if [[ $BUILD_SIDECAR -eq 1 ]]; then
 fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
-BINARY="$BUILD_DIR/quantclaw"
+BINARY="$BUILD_DIR/ravbot"
 if [[ -f "$BINARY" ]]; then
     SIZE=$(du -sh "$BINARY" | cut -f1)
     success "Build complete → $BINARY ($SIZE)"

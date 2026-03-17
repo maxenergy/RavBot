@@ -1,9 +1,9 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/security/rate_limiter.hpp"
+#include "ravbot/security/rate_limiter.hpp"
 
-namespace quantclaw {
+namespace ravbot {
 
 RateLimiter::RateLimiter()
     : config_() {}
@@ -112,4 +112,4 @@ void RateLimiter::purge_old(std::deque<TimePoint>& timestamps, TimePoint now) co
     }
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

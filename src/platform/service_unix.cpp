@@ -1,23 +1,23 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #ifndef _WIN32
 
-#include "quantclaw/platform/service.hpp"
-#include "quantclaw/platform/process.hpp"
+#include "ravbot/platform/service.hpp"
+#include "ravbot/platform/process.hpp"
 
 #include <cstdlib>
 #include <fstream>
 #include <filesystem>
 #include <csignal>
 
-namespace quantclaw::platform {
+namespace ravbot::platform {
 
-static const char* kServiceName = "quantclaw-gateway";
+static const char* kServiceName = "ravbot-gateway";
 
 ServiceManager::ServiceManager(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {
-  state_dir_ = home_directory() + "/.quantclaw";
+  state_dir_ = home_directory() + "/.ravbot";
   pid_file_ = state_dir_ + "/gateway.pid";
   log_file_ = state_dir_ + "/logs/gateway.log";
   std::filesystem::create_directories(state_dir_ + "/logs");
@@ -25,7 +25,7 @@ ServiceManager::ServiceManager(std::shared_ptr<spdlog::logger> logger)
 
 std::string ServiceManager::service_path() const {
   return home_directory() +
-         "/.config/systemd/user/quantclaw-gateway.service";
+         "/.config/systemd/user/ravbot-gateway.service";
 }
 
 int ServiceManager::install(int port) {
@@ -41,7 +41,7 @@ int ServiceManager::install(int port) {
   }
 
   out << "[Unit]\n"
-      << "Description=QuantClaw Gateway\n"
+      << "Description=RavBot Gateway\n"
       << "After=network.target\n\n"
       << "[Service]\n"
       << "Type=simple\n"
@@ -51,7 +51,7 @@ int ServiceManager::install(int port) {
       << "RestartSec=5\n"
       << "StandardOutput=append:" << log_file_ << "\n"
       << "StandardError=append:" << log_file_ << "\n"
-      << "Environment=QUANTCLAW_LOG_LEVEL=info\n\n"
+      << "Environment=RAVBOT_LOG_LEVEL=info\n\n"
       << "[Install]\n"
       << "WantedBy=default.target\n";
   out.close();
@@ -144,6 +144,6 @@ void ServiceManager::remove_pid() {
   std::filesystem::remove(pid_file_);
 }
 
-}  // namespace quantclaw::platform
+}  // namespace ravbot::platform
 
 #endif  // !_WIN32

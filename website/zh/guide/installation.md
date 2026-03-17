@@ -37,8 +37,8 @@ sudo apt-get install -y \
   zlib1g-dev
 
 # 克隆仓库
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 
 # 编译
 mkdir build && cd build
@@ -49,7 +49,7 @@ make -j$(nproc)
 sudo make install
 
 # 运行测试
-./quantclaw_tests
+./ravbot_tests
 ```
 
 #### 使用 Docker
@@ -57,19 +57,19 @@ sudo make install
 ```bash
 # 先构建镜像（参见 scripts/ 目录）
 VERSION=$(cat scripts/DOCKER_VERSION)
-docker build -f scripts/Dockerfile -t quantclaw:$VERSION -t quantclaw:latest .
+docker build -f scripts/Dockerfile -t ravbot:$VERSION -t ravbot:latest .
 
 # 运行容器
 docker run -d \
-  --name quantclaw \
+  --name ravbot \
   -p 18800:18800 \
   -p 18801:18801 \
   -e OPENAI_API_KEY=sk-... \
-  -v quantclaw_data:/home/quantclaw/.quantclaw \
-  quantclaw:latest
+  -v ravbot_data:/home/ravbot/.ravbot \
+  ravbot:latest
 
 # 查看日志
-docker logs quantclaw
+docker logs ravbot
 ```
 
 ### Fedora / CentOS / RHEL
@@ -80,8 +80,8 @@ sudo dnf groupinstall "Development Tools" -y
 sudo dnf install cmake openssl-devel spdlog-devel -y
 
 # 从源码编译
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 mkdir build && cd build
 cmake ..
 make -j$(nproc)
@@ -92,8 +92,8 @@ sudo make install
 
 ```bash
 # 从源码编译
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 mkdir build && cd build
 cmake ..
 make -j$(nproc)
@@ -118,7 +118,7 @@ wsl --install
 ```bash
 wsl
 cd ~
-git clone https://github.com/QuantClaw/QuantClaw.git
+git clone https://github.com/RavBot/RavBot.git
 # ... 按照 Linux 编译步骤继续
 ```
 
@@ -133,8 +133,8 @@ git clone https://github.com/QuantClaw/QuantClaw.git
 
 ```batch
 REM 克隆仓库
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 
 REM 创建构建目录
 mkdir build
@@ -147,7 +147,7 @@ REM 编译
 cmake --build . --config Release -j %NUMBER_OF_PROCESSORS%
 
 REM 测试
-Release\quantclaw_tests.exe
+Release\ravbot_tests.exe
 ```
 
 **依赖（vcpkg）：**
@@ -166,14 +166,14 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\path\to\vcpkg\scripts\buildsystems\vcpkg.cmak
 brew install cmake openssl nlohmann-json spdlog
 
 # 编译
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 mkdir build && cd build
 cmake -DOPENSSL_DIR=$(brew --prefix openssl) ..
 cmake --build . -j $(sysctl -n hw.ncpu)
 
 # 运行测试
-./quantclaw_tests
+./ravbot_tests
 
 # 安装
 sudo cmake --install .
@@ -185,10 +185,10 @@ sudo cmake --install .
 
 ```bash
 # 交互式设置（推荐）
-quantclaw onboard
+ravbot onboard
 
 # 快速设置（使用默认值）
-quantclaw onboard --quick
+ravbot onboard --quick
 ```
 
 设置过程中需要配置：
@@ -200,29 +200,29 @@ quantclaw onboard --quick
 
 ```bash
 # 检查版本
-quantclaw --version
+ravbot --version
 
 # 运行诊断
-quantclaw doctor
+ravbot doctor
 
 # 测试基本功能（需先启动网关）
-quantclaw gateway &
-quantclaw agent "你好，你是谁？"
+ravbot gateway &
+ravbot agent "你好，你是谁？"
 ```
 
 ### 配置环境变量（可选）
 
 ```bash
-export QUANTCLAW_LOG_LEVEL=debug
-export QUANTCLAW_GATEWAY_PORT=18800
+export RAVBOT_LOG_LEVEL=debug
+export RAVBOT_GATEWAY_PORT=18800
 ```
 
-## 更新 QuantClaw
+## 更新 RavBot
 
 ### 从源码更新
 
 ```bash
-cd QuantClaw
+cd RavBot
 git pull origin main
 cd build
 make -j$(nproc)
@@ -233,17 +233,17 @@ sudo make install
 
 ```bash
 # 重新构建镜像
-docker build -f scripts/Dockerfile -t quantclaw:latest .
-docker stop quantclaw && docker rm quantclaw
+docker build -f scripts/Dockerfile -t ravbot:latest .
+docker stop ravbot && docker rm ravbot
 
 # 使用新镜像重新运行
 docker run -d \
-  --name quantclaw \
+  --name ravbot \
   -p 18800:18800 \
   -p 18801:18801 \
   -e OPENAI_API_KEY=sk-... \
-  -v quantclaw_data:/home/quantclaw/.quantclaw \
-  quantclaw:latest
+  -v ravbot_data:/home/ravbot/.ravbot \
+  ravbot:latest
 ```
 
 ## 故障排除
@@ -277,21 +277,21 @@ lsof -i :18800
 kill -9 <PID>
 
 # 或修改配置文件中的端口
-quantclaw config set gateway.port 18810
+ravbot config set gateway.port 18810
 ```
 
 **权限拒绝**
 
 ```bash
-# 确保 ~/.quantclaw 可写
-chmod 700 ~/.quantclaw
+# 确保 ~/.ravbot 可写
+chmod 700 ~/.ravbot
 ```
 
 **配置问题**
 
 ```bash
-quantclaw config validate
-quantclaw config schema
+ravbot config validate
+ravbot config schema
 ```
 
 ## 卸载
@@ -299,19 +299,19 @@ quantclaw config schema
 ### 二进制安装
 
 ```bash
-sudo rm /usr/local/bin/quantclaw
+sudo rm /usr/local/bin/ravbot
 
 # 可选：删除配置和数据
-rm -rf ~/.quantclaw
+rm -rf ~/.ravbot
 ```
 
 ### Docker
 
 ```bash
-docker stop quantclaw
-docker rm quantclaw
-docker rmi quantclaw:latest
-docker volume rm quantclaw_data
+docker stop ravbot
+docker rm ravbot
+docker rmi ravbot:latest
+docker volume rm ravbot_data
 ```
 
 ---

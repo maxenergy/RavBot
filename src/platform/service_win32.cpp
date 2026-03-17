@@ -1,19 +1,19 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #ifdef _WIN32
 
-#include "quantclaw/platform/service.hpp"
-#include "quantclaw/platform/process.hpp"
+#include "ravbot/platform/service.hpp"
+#include "ravbot/platform/process.hpp"
 
 #include <fstream>
 #include <filesystem>
 
-namespace quantclaw::platform {
+namespace ravbot::platform {
 
 ServiceManager::ServiceManager(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {
-  state_dir_ = home_directory() + "\\.quantclaw";
+  state_dir_ = home_directory() + "\\.ravbot";
   pid_file_ = state_dir_ + "\\gateway.pid";
   log_file_ = state_dir_ + "\\logs\\gateway.log";
   std::filesystem::create_directories(state_dir_ + "\\logs");
@@ -125,6 +125,6 @@ void ServiceManager::remove_pid() {
   std::filesystem::remove(pid_file_);
 }
 
-}  // namespace quantclaw::platform
+}  // namespace ravbot::platform
 
 #endif  // _WIN32

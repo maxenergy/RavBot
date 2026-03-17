@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/embedding_config.hpp"
+#include "ravbot/core/embedding_config.hpp"
 
 #include <gtest/gtest.h>
 #include <fstream>
 #include <cstdlib>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 TEST(EmbeddingConfigTest, ExpandEnvVars) {
   // Set test environment variable

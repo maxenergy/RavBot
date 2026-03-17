@@ -1,0 +1,41 @@
+// Copyright 2025 RavBot Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include <string>
+#include <vector>
+#include <functional>
+#include <memory>
+
+namespace ravbot {
+
+struct ChannelMessage {
+    std::string id;
+    std::string sender_id;
+    std::string content;
+    std::string channel_id;
+    bool is_group_chat;
+};
+
+class Channel {
+public:
+    using MessageHandler = std::function<void(const ChannelMessage&)>;
+
+    virtual ~Channel() = default;
+
+    virtual void Start() = 0;
+    virtual void Stop() = 0;
+    virtual void SendMessage(const std::string& channel_id, const std::string& message) = 0;
+    virtual bool IsAllowed(const std::string& sender_id) const = 0;
+    virtual std::string GetChannelName() const = 0;
+
+    void SetMessageHandler(MessageHandler handler) {
+        message_handler_ = std::move(handler);
+    }
+
+protected:
+    MessageHandler message_handler_;
+};
+
+} // namespace ravbot

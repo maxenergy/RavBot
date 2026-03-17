@@ -1,5 +1,5 @@
 ---
-# QuantClaw C++ Code Style Configuration
+# RavBot C++ Code Style Configuration
 # Strictly follows Google C++ Style Guide
 # Reference: https://google.github.io/styleguide/cppguide.html
 
@@ -97,7 +97,7 @@ IncludeCategories:
   - Regex:           '^<(nlohmann|spdlog|curl|ixwebsocket|httplib)'
     Priority:        3
   # Project headers
-  - Regex:           '^"quantclaw/'
+  - Regex:           '^"ravbot/'
     Priority:        4
   - Regex:           '.*'
     Priority:        5

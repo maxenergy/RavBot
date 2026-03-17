@@ -1,8 +1,8 @@
-# QuantClaw Migration Guide
+# RavBot Migration Guide
 
 ## 概述
 
-本指南帮助您从旧版本的 QuantClaw 迁移到最新版本 (v0.3.0)。
+本指南帮助您从旧版本的 RavBot 迁移到最新版本 (v0.3.0)。
 
 ## 版本兼容性
 
@@ -40,7 +40,7 @@ v0.3.0 引入了以下新配置项:
     // 新增: 安全审计
     "audit": {
       "enabled": true,
-      "log_dir": "~/.quantclaw/logs/audit"
+      "log_dir": "~/.ravbot/logs/audit"
     }
   }
 }
@@ -50,14 +50,14 @@ v0.3.0 引入了以下新配置项:
 
 1. 备份现有配置文件:
    ```bash
-   cp ~/.quantclaw/config.json ~/.quantclaw/config.json.backup
+   cp ~/.ravbot/config.json ~/.ravbot/config.json.backup
    ```
 
 2. 添加新配置项到您的配置文件
 
 3. 验证配置:
    ```bash
-   quantclaw config validate ~/.quantclaw/config.json
+   ravbot config validate ~/.ravbot/config.json
    ```
 
 #### 1.2 配置项重命名
@@ -73,7 +73,7 @@ v0.3.0 引入了以下新配置项:
 #!/bin/bash
 # migrate_config.sh
 
-CONFIG_FILE="$HOME/.quantclaw/config.json"
+CONFIG_FILE="$HOME/.ravbot/config.json"
 
 # 备份
 cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
@@ -142,7 +142,7 @@ std::cout << "Failover count: " << stats.failover_count << std::endl;
 v0.3.0 引入了安全审计日志系统:
 
 ```cpp
-#include "quantclaw/security/audit_logger.hpp"
+#include "ravbot/security/audit_logger.hpp"
 
 auto audit_logger = std::make_shared<SecurityAuditLogger>(log_dir, logger);
 
@@ -204,7 +204,7 @@ def migrate_session(session_file):
         json.dump(data, f, indent=2)
 
 def main():
-    sessions_dir = Path.home() / '.quantclaw' / 'sessions'
+    sessions_dir = Path.home() / '.ravbot' / 'sessions'
     for session_file in sessions_dir.glob('*.json'):
         print(f"Migrating {session_file}")
         migrate_session(session_file)
@@ -302,13 +302,13 @@ v0.2.x 和 v0.3.0 引入了多项重大架构变更:
 
 ```bash
 # 1. 导出 v0.1.x 数据
-quantclaw-v0.1 export --output data.json
+ravbot-v0.1 export --output data.json
 
 # 2. 转换数据格式
 python3 convert_data.py data.json data_v0.3.json
 
 # 3. 导入到 v0.3.0
-quantclaw import --input data_v0.3.json
+ravbot import --input data_v0.3.json
 ```
 
 #### 2.3 代码重写
@@ -337,23 +337,23 @@ v0.1.x 的代码需要大量重写。参考 [API Reference](API_REFERENCE.md) �
 ### 1. 恢复配置文件
 
 ```bash
-cp ~/.quantclaw/config.json.backup ~/.quantclaw/config.json
+cp ~/.ravbot/config.json.backup ~/.ravbot/config.json
 ```
 
 ### 2. 恢复 session 数据
 
 ```bash
-cp -r ~/.quantclaw/sessions.backup ~/.quantclaw/sessions
+cp -r ~/.ravbot/sessions.backup ~/.ravbot/sessions
 ```
 
 ### 3. 重新安装旧版本
 
 ```bash
 # 卸载新版本
-sudo rm /usr/local/bin/quantclaw
+sudo rm /usr/local/bin/ravbot
 
 # 安装旧版本
-cd quantclaw-v0.2.x
+cd ravbot-v0.2.x
 cmake --build build --target install
 ```
 
@@ -364,19 +364,19 @@ cmake --build build --target install
 ### 1. 配置验证
 
 ```bash
-quantclaw config validate
+ravbot config validate
 ```
 
 ### 2. 连接测试
 
 ```bash
-quantclaw gateway test
+ravbot gateway test
 ```
 
 ### 3. Agent 测试
 
 ```bash
-quantclaw agent test --message "Hello"
+ravbot agent test --message "Hello"
 ```
 
 ### 4. 运行测试套件
@@ -393,8 +393,8 @@ ctest --output-on-failure
 **问题**: `Connection refused: localhost:8765`
 
 **解决方案**:
-1. 检查 Gateway 是否启动: `quantclaw gateway status`
-2. 检查端口配置: `cat ~/.quantclaw/config.json | grep port`
+1. 检查 Gateway 是否启动: `ravbot gateway status`
+2. 检查端口配置: `cat ~/.ravbot/config.json | grep port`
 3. 检查防火墙设置
 
 ### Q2: Session 数据丢失
@@ -404,7 +404,7 @@ ctest --output-on-failure
 **解决方案**:
 1. 运行 session 迁移脚本: `python3 migrate_sessions.py`
 2. 检查 session 文件格式
-3. 查看日志: `tail -f ~/.quantclaw/logs/quantclaw.log`
+3. 查看日志: `tail -f ~/.ravbot/logs/ravbot.log`
 
 ### Q3: Plugin 加载失败
 
@@ -413,7 +413,7 @@ ctest --output-on-failure
 **解决方案**:
 1. 更新 plugin manifest 格式
 2. 添加必填字段: `version`, `entryPoint`
-3. 验证 manifest: `quantclaw plugin validate plugin.json`
+3. 验证 manifest: `ravbot plugin validate plugin.json`
 
 ### Q4: API 调用失败
 
@@ -429,9 +429,9 @@ ctest --output-on-failure
 如果遇到迁移问题:
 
 1. **查看文档**: [API Reference](API_REFERENCE.md), [Configuration Guide](CONFIGURATION_GUIDE.md)
-2. **查看日志**: `~/.quantclaw/logs/quantclaw.log`
-3. **运行诊断**: `quantclaw diagnose`
-4. **提交 Issue**: [GitHub Issues](https://github.com/yourusername/quantclaw/issues)
+2. **查看日志**: `~/.ravbot/logs/ravbot.log`
+3. **运行诊断**: `ravbot diagnose`
+4. **提交 Issue**: [GitHub Issues](https://github.com/yourusername/ravbot/issues)
 
 ## 迁移检查清单
 
@@ -457,4 +457,4 @@ ctest --output-on-failure
 - [Release Notes](RELEASE_NOTES_v0.3.0.md)
 - [API Reference](API_REFERENCE.md)
 - [Configuration Guide](CONFIGURATION_GUIDE.md)
-- [GitHub Repository](https://github.com/yourusername/quantclaw)
+- [GitHub Repository](https://github.com/yourusername/ravbot)

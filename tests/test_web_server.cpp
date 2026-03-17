@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <memory>
 #include <thread>
 #include <chrono>
-#include "quantclaw/web/web_server.hpp"
+#include "ravbot/web/web_server.hpp"
 #include "test_helpers.hpp"
 #include <httplib.h>
 #include <spdlog/spdlog.h>
@@ -26,16 +26,16 @@ protected:
     }
 
     int find_free_port() {
-        return quantclaw::test::FindFreePort();
+        return ravbot::test::FindFreePort();
     }
 
     std::shared_ptr<spdlog::logger> logger_;
-    std::unique_ptr<quantclaw::web::WebServer> server_;
+    std::unique_ptr<ravbot::web::WebServer> server_;
 };
 
 TEST_F(WebServerTest, HealthEndpoint) {
     int port = find_free_port();
-    server_ = std::make_unique<quantclaw::web::WebServer>(port, logger_);
+    server_ = std::make_unique<ravbot::web::WebServer>(port, logger_);
     server_->Start();
 
     // Wait for server to be ready
@@ -53,7 +53,7 @@ TEST_F(WebServerTest, HealthEndpoint) {
 
 TEST_F(WebServerTest, CustomGetRoute) {
     int port = find_free_port();
-    server_ = std::make_unique<quantclaw::web::WebServer>(port, logger_);
+    server_ = std::make_unique<ravbot::web::WebServer>(port, logger_);
 
     server_->AddRoute("/api/test", "GET",
         [](const std::string& /*method*/, const std::string& /*body*/) -> std::string {
@@ -75,7 +75,7 @@ TEST_F(WebServerTest, CustomGetRoute) {
 
 TEST_F(WebServerTest, CustomPostRoute) {
     int port = find_free_port();
-    server_ = std::make_unique<quantclaw::web::WebServer>(port, logger_);
+    server_ = std::make_unique<ravbot::web::WebServer>(port, logger_);
 
     server_->AddRoute("/api/echo", "POST",
         [](const std::string& /*method*/, const std::string& body) -> std::string {
@@ -98,7 +98,7 @@ TEST_F(WebServerTest, CustomPostRoute) {
 
 TEST_F(WebServerTest, StartAndStop) {
     int port = find_free_port();
-    server_ = std::make_unique<quantclaw::web::WebServer>(port, logger_);
+    server_ = std::make_unique<ravbot::web::WebServer>(port, logger_);
 
     server_->Start();
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -123,7 +123,7 @@ TEST_F(WebServerTest, StartAndStop) {
 
 TEST_F(WebServerTest, ResponseContentType) {
     int port = find_free_port();
-    server_ = std::make_unique<quantclaw::web::WebServer>(port, logger_);
+    server_ = std::make_unique<ravbot::web::WebServer>(port, logger_);
     server_->Start();
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 

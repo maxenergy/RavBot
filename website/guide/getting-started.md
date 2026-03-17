@@ -1,10 +1,10 @@
-# Getting Started with QuantClaw
+# Getting Started with RavBot
 
-Welcome to QuantClaw! This guide will help you get up and running in just a few minutes.
+Welcome to RavBot! This guide will help you get up and running in just a few minutes.
 
-## What is QuantClaw?
+## What is RavBot?
 
-QuantClaw is a high-performance C++17 implementation of OpenClaw, an AI agent framework designed to run locally on your machine. It can execute commands, control browsers, manage files, and integrate with various chat platforms — with minimal memory footprint and no runtime dependencies.
+RavBot is a high-performance C++17 implementation of OpenClaw, an AI agent framework designed to run locally on your machine. It can execute commands, control browsers, manage files, and integrate with various chat platforms — with minimal memory footprint and no runtime dependencies.
 
 ## Prerequisites
 
@@ -24,22 +24,22 @@ The fastest way to get started:
 
 ```bash
 docker run -d \
-  --name quantclaw \
+  --name ravbot \
   -p 18800:18800 \
   -p 18801:18801 \
   -e OPENAI_API_KEY=sk-... \
-  -v quantclaw_data:/home/quantclaw/.quantclaw \
-  quantclaw:latest
+  -v ravbot_data:/home/ravbot/.ravbot \
+  ravbot:latest
 ```
 
 ### Method 2: Build from Source
 
-Clone and build QuantClaw:
+Clone and build RavBot:
 
 ```bash
 # Clone the repository
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 
 # Install system dependencies (Ubuntu/Debian)
 sudo apt install build-essential cmake libssl-dev \
@@ -53,7 +53,7 @@ cmake ..
 make -j$(nproc)
 
 # Verify the build
-./quantclaw_tests
+./ravbot_tests
 
 # Install (optional)
 sudo make install
@@ -73,15 +73,15 @@ Once installed, run the onboarding wizard:
 
 ```bash
 # Interactive setup wizard (recommended)
-quantclaw onboard
+ravbot onboard
 
 # Or quick setup with defaults (no prompts)
-quantclaw onboard --quick
+ravbot onboard --quick
 ```
 
 The wizard will:
-- Create `~/.quantclaw/quantclaw.json` (configuration)
-- Create `~/.quantclaw/agents/main/workspace/` with all 8 workspace files
+- Create `~/.ravbot/ravbot.json` (configuration)
+- Create `~/.ravbot/agents/main/workspace/` with all 8 workspace files
 - Prompt for your LLM provider and API key
 - Optionally install as a system daemon
 
@@ -91,23 +91,23 @@ The wizard will:
 
 ```bash
 # Run in foreground
-quantclaw gateway
+ravbot gateway
 
 # Or install and start as a background service
-quantclaw gateway install
-quantclaw gateway start
+ravbot gateway install
+ravbot gateway start
 ```
 
 ### Send a Message
 
 ```bash
-quantclaw agent "Hello! Introduce yourself."
+ravbot agent "Hello! Introduce yourself."
 ```
 
 ### Open the Web Dashboard
 
 ```bash
-quantclaw dashboard
+ravbot dashboard
 ```
 
 This opens `http://127.0.0.1:18801` in your browser — a full web interface for chatting, managing sessions, and viewing configuration.
@@ -116,22 +116,22 @@ This opens `http://127.0.0.1:18801` in your browser — a full web interface for
 
 ```bash
 # Send a message (creates a new session automatically)
-quantclaw agent "What is the weather today?"
+ravbot agent "What is the weather today?"
 
 # Use a specific session
-quantclaw agent --session my:project "Continue our discussion"
+ravbot agent --session my:project "Continue our discussion"
 
 # One-shot query without session history
-quantclaw eval "What is 2 + 2?"
+ravbot eval "What is 2 + 2?"
 
 # Check gateway status
-quantclaw health
-quantclaw status
+ravbot health
+ravbot status
 ```
 
 ## Configuration
 
-The main configuration file is `~/.quantclaw/quantclaw.json`:
+The main configuration file is `~/.ravbot/ravbot.json`:
 
 ```json
 {
@@ -165,8 +165,8 @@ See the [Configuration Guide](/guide/configuration) for all options.
 ## Getting Help
 
 - **Documentation**: [Full docs](/guide/documentation)
-- **GitHub Issues**: [Report bugs](https://github.com/QuantClaw/QuantClaw/issues)
-- **Discussions**: [Community support](https://github.com/QuantClaw/QuantClaw/discussions)
+- **GitHub Issues**: [Report bugs](https://github.com/RavBot/RavBot/issues)
+- **Discussions**: [Community support](https://github.com/RavBot/RavBot/discussions)
 
 ## Troubleshooting
 
@@ -186,15 +186,15 @@ make -j$(nproc)
 ### Gateway Won't Start
 
 ```bash
-quantclaw config get gateway.port   # Check configured port
-quantclaw doctor                    # Run full diagnostics
+ravbot config get gateway.port   # Check configured port
+ravbot doctor                    # Run full diagnostics
 ```
 
 ### API Key Problems
 
 ```bash
-quantclaw health                    # Check gateway connectivity
-quantclaw config get llm.model      # Verify model/provider config
+ravbot health                    # Check gateway connectivity
+ravbot config get llm.model      # Verify model/provider config
 ```
 
 ---

@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/cli/onboard_commands.hpp"
-#include "quantclaw/builtin_skills.hpp"
-#include "quantclaw/config.hpp"
-#include "quantclaw/gateway/gateway_client.hpp"
-#include "quantclaw/platform/service.hpp"
+#include "ravbot/cli/onboard_commands.hpp"
+#include "ravbot/builtin_skills.hpp"
+#include "ravbot/config.hpp"
+#include "ravbot/gateway/gateway_client.hpp"
+#include "ravbot/platform/service.hpp"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -14,7 +14,7 @@
 #include <thread>
 #include <chrono>
 
-namespace quantclaw::cli {
+namespace ravbot::cli {
 
 // Token generation (OpenClaw-compatible: 48-char hex string)
 std::string OnboardCommands::GenerateToken() {
@@ -54,8 +54,8 @@ int OnboardCommands::OnboardCommand(const std::vector<std::string>& args) {
     // Load port for later steps
     int port = 18800;
     try {
-        auto cfg = QuantClawConfig::LoadFromFile(
-            QuantClawConfig::DefaultConfigPath());
+        auto cfg = RavBotConfig::LoadFromFile(
+            RavBotConfig::DefaultConfigPath());
         if (cfg.gateway.port > 0) port = cfg.gateway.port;
     } catch (...) {}
 
@@ -70,7 +70,7 @@ int OnboardCommands::OnboardCommand(const std::vector<std::string>& args) {
     PrintStep(3, 5, "Daemon Setup");
     if (!skip_daemon) {
         if (install_daemon ||
-            PromptYesNo("Install QuantClaw as user service (systemd)?", true)) {
+            PromptYesNo("Install RavBot as user service (systemd)?", true)) {
             if (SetupDaemon() != 0) {
                 logger_->warn("Daemon setup failed, continuing");
             }
@@ -91,11 +91,11 @@ int OnboardCommands::OnboardCommand(const std::vector<std::string>& args) {
 
     std::cout << "\n✓ Onboarding complete!" << std::endl;
     std::cout << "\nNext steps:" << std::endl;
-    std::cout << "  1. Start the gateway:  quantclaw gateway start" << std::endl;
-    std::cout << "  2. Check status:       quantclaw status" << std::endl;
-    std::cout << "  3. Send a message:     quantclaw agent -m \"Hello\"" << std::endl;
+    std::cout << "  1. Start the gateway:  ravbot gateway start" << std::endl;
+    std::cout << "  2. Check status:       ravbot status" << std::endl;
+    std::cout << "  3. Send a message:     ravbot agent -m \"Hello\"" << std::endl;
     std::cout << "  4. Open the dashboard: http://127.0.0.1:" << port + 1 << std::endl;
-    std::cout << "\nFor help: quantclaw --help" << std::endl;
+    std::cout << "\nFor help: ravbot --help" << std::endl;
 
     return 0;
 }
@@ -104,8 +104,8 @@ int OnboardCommands::InstallDaemonCommand(const std::vector<std::string>& /*args
     // Load or create config first (daemon needs port + token)
     int port = 18800;
     try {
-        auto cfg = QuantClawConfig::LoadFromFile(
-            QuantClawConfig::DefaultConfigPath());
+        auto cfg = RavBotConfig::LoadFromFile(
+            RavBotConfig::DefaultConfigPath());
         if (cfg.gateway.port > 0) port = cfg.gateway.port;
     } catch (...) {
         // No config yet — run quick setup so config exists
@@ -113,13 +113,13 @@ int OnboardCommands::InstallDaemonCommand(const std::vector<std::string>& /*args
         if (QuickSetupCommand({}) != 0) return 1;
     }
 
-    std::cout << "Installing QuantClaw as user service..." << std::endl;
+    std::cout << "Installing RavBot as user service..." << std::endl;
     if (InstallDaemon(port)) {
         std::cout << "✓ Daemon installed successfully" << std::endl;
         std::cout << "\nManage the service:" << std::endl;
-        std::cout << "  quantclaw gateway start" << std::endl;
-        std::cout << "  quantclaw gateway stop" << std::endl;
-        std::cout << "  quantclaw gateway status" << std::endl;
+        std::cout << "  ravbot gateway start" << std::endl;
+        std::cout << "  ravbot gateway stop" << std::endl;
+        std::cout << "  ravbot gateway status" << std::endl;
         return 0;
     }
     std::cerr << "✗ Failed to install daemon" << std::endl;
@@ -165,10 +165,10 @@ void OnboardCommands::PrintWelcome() {
     std::cout << "\n";
     std::cout << "╔════════════════════════════════════════════════════════════╗" << std::endl;
     std::cout << "║                                                            ║" << std::endl;
-    std::cout << "║          Welcome to QuantClaw Onboarding Wizard            ║" << std::endl;
+    std::cout << "║          Welcome to RavBot Onboarding Wizard            ║" << std::endl;
     std::cout << "║                                                            ║" << std::endl;
     std::cout << "║  This wizard will guide you through the initial setup of   ║" << std::endl;
-    std::cout << "║  QuantClaw, including configuration, workspace creation,   ║" << std::endl;
+    std::cout << "║  RavBot, including configuration, workspace creation,   ║" << std::endl;
     std::cout << "║  and optional daemon installation.                         ║" << std::endl;
     std::cout << "║                                                            ║" << std::endl;
     std::cout << "╚════════════════════════════════════════════════════════════╝" << std::endl;
@@ -240,7 +240,7 @@ std::string OnboardCommands::PromptChoice(const std::string& prompt, const std::
 }
 
 int OnboardCommands::SetupConfig() {
-    std::string config_path = QuantClawConfig::DefaultConfigPath();
+    std::string config_path = RavBotConfig::DefaultConfigPath();
 
     if (std::filesystem::exists(config_path)) {
         std::cout << "Config file already exists at: " << config_path << std::endl;
@@ -249,7 +249,7 @@ int OnboardCommands::SetupConfig() {
         }
     }
 
-    std::cout << "\nLet's configure QuantClaw:" << std::endl;
+    std::cout << "\nLet's configure RavBot:" << std::endl;
 
     std::string model = PromptString("Default AI model", "anthropic/claude-sonnet-4-6");
     std::string port_str = PromptString("Gateway port", std::to_string(kDefaultGatewayPort));
@@ -290,27 +290,27 @@ int OnboardCommands::SetupWorkspace() {
 int OnboardCommands::SetupDaemon() {
     int port = 18800;
     try {
-        auto cfg = QuantClawConfig::LoadFromFile(
-            QuantClawConfig::DefaultConfigPath());
+        auto cfg = RavBotConfig::LoadFromFile(
+            RavBotConfig::DefaultConfigPath());
         if (cfg.gateway.port > 0) port = cfg.gateway.port;
     } catch (...) {}
 
-    std::cout << "\nSetting up QuantClaw as a user service (systemd --user)..." << std::endl;
+    std::cout << "\nSetting up RavBot as a user service (systemd --user)..." << std::endl;
 
     if (InstallDaemon(port)) {
         std::cout << "✓ Daemon installed successfully" << std::endl;
         std::cout << "\nManage the service:" << std::endl;
-        std::cout << "  quantclaw gateway start" << std::endl;
-        std::cout << "  quantclaw gateway stop" << std::endl;
-        std::cout << "  quantclaw gateway status" << std::endl;
+        std::cout << "  ravbot gateway start" << std::endl;
+        std::cout << "  ravbot gateway stop" << std::endl;
+        std::cout << "  ravbot gateway status" << std::endl;
         return 0;
     }
     std::cerr << "✗ Failed to install daemon" << std::endl;
-    std::cerr << "You can still run QuantClaw manually: quantclaw gateway" << std::endl;
+    std::cerr << "You can still run RavBot manually: ravbot gateway" << std::endl;
     return 1;
 }
 
-// Installs built-in skills into ~/.quantclaw/skills/.
+// Installs built-in skills into ~/.ravbot/skills/.
 // Each skill is represented by a subdirectory containing a SKILL.md manifest.
 // Already-installed skills (directory + SKILL.md exist) are skipped silently.
 // Returns 0 if at least one skill was installed or all were already present,
@@ -318,7 +318,7 @@ int OnboardCommands::SetupDaemon() {
 int OnboardCommands::SetupSkills() {
     const char* home = std::getenv("HOME");
     std::string home_str = home ? home : "/tmp";
-    auto skills_dir = std::filesystem::path(home_str) / ".quantclaw" / "skills";
+    auto skills_dir = std::filesystem::path(home_str) / ".ravbot" / "skills";
 
     try {
         std::filesystem::create_directories(skills_dir);
@@ -379,12 +379,12 @@ int OnboardCommands::VerifySetup() {
     std::string home_str = home ? home : "/tmp";
 
     // Check config
-    std::string config_path = QuantClawConfig::DefaultConfigPath();
+    std::string config_path = RavBotConfig::DefaultConfigPath();
     bool config_ok = std::filesystem::exists(config_path);
     std::cout << "  [" << (config_ok ? "✓" : "✗") << "] Config file" << std::endl;
 
     // Check workspace
-    auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+    auto workspace = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
     bool ws_ok = std::filesystem::exists(workspace);
     std::cout << "  [" << (ws_ok ? "✓" : "✗") << "] Workspace directory" << std::endl;
 
@@ -419,13 +419,13 @@ int OnboardCommands::VerifySetup() {
     // Try gateway connection
     int port = 18800;
     try {
-        auto cfg = QuantClawConfig::LoadFromFile(config_path);
+        auto cfg = RavBotConfig::LoadFromFile(config_path);
         if (cfg.gateway.port > 0) port = cfg.gateway.port;
     } catch (...) {}
 
     bool gw_ok = TestGatewayConnection(port);
     std::cout << "  [" << (gw_ok ? "✓" : "-") << "] Gateway connection"
-              << (gw_ok ? "" : " (not running — start with: quantclaw gateway start)")
+              << (gw_ok ? "" : " (not running — start with: ravbot gateway start)")
               << std::endl;
 
     return (config_ok && ws_ok && soul_ok && agents_ok && memory_ok && identity_ok &&
@@ -437,8 +437,8 @@ bool OnboardCommands::CreateWorkspaceDirectory() {
     std::string home_str = home ? home : "/tmp";
 
     try {
-        // QuantClaw agent ID: main
-        auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+        // RavBot agent ID: main
+        auto workspace = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
         std::filesystem::create_directories(workspace);
 
         // Create standard subdirectories
@@ -447,12 +447,12 @@ bool OnboardCommands::CreateWorkspaceDirectory() {
         std::filesystem::create_directories(workspace / "references");
 
         // Sessions directory
-        auto sessions = std::filesystem::path(home_str) / ".quantclaw/agents/main/sessions";
+        auto sessions = std::filesystem::path(home_str) / ".ravbot/agents/main/sessions";
         std::filesystem::create_directories(sessions);
 
         // Logs directory
         std::filesystem::create_directories(
-            std::filesystem::path(home_str) / ".quantclaw/logs");
+            std::filesystem::path(home_str) / ".ravbot/logs");
 
         return true;
     } catch (const std::exception& e) {
@@ -464,7 +464,7 @@ bool OnboardCommands::CreateWorkspaceDirectory() {
 bool OnboardCommands::CreateConfigFile(const std::string& model, int port,
                                         const std::string& bind,
                                         const std::string& token) {
-    std::string config_path = QuantClawConfig::DefaultConfigPath();
+    std::string config_path = RavBotConfig::DefaultConfigPath();
 
     try {
         std::filesystem::create_directories(
@@ -570,7 +570,7 @@ bool OnboardCommands::CreateWorkspaceFile(const std::string& filename,
     const char* home = std::getenv("HOME");
     std::string home_str = home ? home : "/tmp";
     auto path = std::filesystem::path(home_str) /
-                ".quantclaw/agents/main/workspace" / filename;
+                ".ravbot/agents/main/workspace" / filename;
 
     try {
         std::ofstream file(path);
@@ -585,10 +585,10 @@ bool OnboardCommands::CreateWorkspaceFile(const std::string& filename,
 
 bool OnboardCommands::CreateSOULFile() {
     return CreateWorkspaceFile("SOUL.md",
-        "# QuantClaw Agent Identity\n"
+        "# RavBot Agent Identity\n"
         "\n"
         "## Role\n"
-        "You are a helpful AI assistant powered by QuantClaw.\n"
+        "You are a helpful AI assistant powered by RavBot.\n"
         "\n"
         "## Capabilities\n"
         "- Answer questions and provide information\n"
@@ -630,7 +630,7 @@ bool OnboardCommands::CreateSkillFile() {
         "- **exec**: Execute shell commands\n"
         "\n"
         "## Custom Skills\n"
-        "<!-- Add custom skills installed via: quantclaw skills install <name> -->\n");
+        "<!-- Add custom skills installed via: ravbot skills install <name> -->\n");
 }
 
 bool OnboardCommands::CreateIdentityFile() {
@@ -638,7 +638,7 @@ bool OnboardCommands::CreateIdentityFile() {
         "# Identity\n"
         "\n"
         "## Agent Name\n"
-        "QuantClaw Assistant\n"
+        "RavBot Assistant\n"
         "\n"
         "## Persona\n"
         "A helpful, capable, and honest AI assistant.\n"
@@ -701,13 +701,13 @@ bool OnboardCommands::CreateToolsFile() {
         "# Tool Configuration\n"
         "\n"
         "## Built-in Tools\n"
-        "QuantClaw includes several built-in tools:\n"
+        "RavBot includes several built-in tools:\n"
         "- **exec**: Execute shell commands\n"
         "- **read_file / write_file**: File operations\n"
         "- **browser**: Web browsing and fetching\n"
         "\n"
         "## MCP Tools\n"
-        "Add MCP servers in quantclaw.json to extend tool capabilities.\n");
+        "Add MCP servers in ravbot.json to extend tool capabilities.\n");
 }
 
 bool OnboardCommands::InstallDaemon(int port) {
@@ -728,4 +728,4 @@ bool OnboardCommands::TestGatewayConnection(int port) {
     return false;
 }
 
-} // namespace quantclaw::cli
+} // namespace ravbot::cli

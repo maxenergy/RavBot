@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/security/trust_model.hpp"
+#include "ravbot/security/trust_model.hpp"
 #include <fstream>
 #include <stdexcept>
 
-namespace quantclaw {
+namespace ravbot {
 
 // SecurityPolicy 序列化
 nlohmann::json SecurityPolicy::ToJson() const {
@@ -264,4 +264,4 @@ TrustLevel StringToTrustLevel(const std::string& str) {
   }
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

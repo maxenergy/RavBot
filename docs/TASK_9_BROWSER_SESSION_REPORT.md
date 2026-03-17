@@ -271,7 +271,7 @@ std::string BrowserSessionManager::generate_session_id() {
 
 ### 修改文件
 
-1. `include/quantclaw/tools/browser_tool.hpp`
+1. `include/ravbot/tools/browser_tool.hpp`
    - 添加 SessionInfo 结构
    - 添加 BrowserSessionManager 类
    - 扩展 BrowserSession 元数据
@@ -322,7 +322,7 @@ std::string BrowserSessionManager::generate_session_id() {
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | 会话创建 | ✅ | ✅ | 完成 |
 | 会话列表 | ✅ | ✅ | 完成 |
@@ -556,7 +556,7 @@ if (session && !session->is_connected()) {
 4. ✅ 并发安全
 5. ✅ 100% 测试覆盖率
 
-该功能使 QuantClaw 能够管理多个浏览器会话,支持并行操作、资源隔离和灵活的会话控制,极大地增强了浏览器工具的能力。
+该功能使 RavBot 能够管理多个浏览器会话,支持并行操作、资源隔离和灵活的会话控制,极大地增强了浏览器工具的能力。
 
 ---
 

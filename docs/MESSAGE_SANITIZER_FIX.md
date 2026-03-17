@@ -196,17 +196,17 @@ Executing: df -h
 
 1. **重新编译**:
    ```bash
-   cmake --build build --target quantclaw -j$(nproc)
+   cmake --build build --target ravbot -j$(nproc)
    ```
 
 2. **运行测试**:
    ```bash
-   ./build/quantclaw_tests --gtest_filter="MessageSanitizerTest.*"
+   ./build/ravbot_tests --gtest_filter="MessageSanitizerTest.*"
    ```
 
 3. **重启服务**:
    ```bash
-   systemctl --user restart quantclaw
+   systemctl --user restart ravbot
    ```
 
 4. **验证修复**:
@@ -214,7 +214,7 @@ Executing: df -h
 
 ## 相关文件
 
-- **头文件**: `include/quantclaw/gateway/message_sanitizer.hpp`
+- **头文件**: `include/ravbot/gateway/message_sanitizer.hpp`
 - **实现**: `src/gateway/message_sanitizer.cpp` (+10 行)
 - **集成**: `src/channels/telegram_channel.cpp` (+12 行，4 个方法)
 - **测试**: `tests/test_message_sanitizer.cpp` (+90 行)

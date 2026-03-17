@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-成功修复了 QuantClaw 中的 `std::system_error: Resource temporarily unavailable` 错误。问题根源是 CommandQueue 中的 worker 线程管理缺陷,导致线程资源不断累积最终耗尽系统资源。
+成功修复了 RavBot 中的 `std::system_error: Resource temporarily unavailable` 错误。问题根源是 CommandQueue 中的 worker 线程管理缺陷,导致线程资源不断累积最终耗尽系统资源。
 
 ---
 
@@ -180,7 +180,7 @@ void CommandQueue::Stop() {
 
 ### 修改 4: 移除 workers_ 成员变量
 
-**文件**: `include/quantclaw/gateway/command_queue.hpp`
+**文件**: `include/ravbot/gateway/command_queue.hpp`
 
 **删除**:
 ```cpp
@@ -268,7 +268,7 @@ int main(int argc, char* argv[]) {
 
 ### 权衡
 
-对于 QuantClaw 的使用场景,这些权衡是可接受的:
+对于 RavBot 的使用场景,这些权衡是可接受的:
 - Worker 线程执行时间短 (通常 < 10 秒)
 - 不需要强制等待所有任务完成
 - 稳定性和资源效率更重要
@@ -328,9 +328,9 @@ OpenClaw 使用 Node.js,其线程模型完全不同:
 - 自动的资源管理
 - 不会出现线程累积问题
 
-### QuantClaw 的优势
+### RavBot 的优势
 
-修复后,QuantClaw 的线程管理更加高效:
+修复后,RavBot 的线程管理更加高效:
 - 更低的内存开销
 - 更快的线程创建
 - 更简单的代码逻辑

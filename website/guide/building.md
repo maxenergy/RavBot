@@ -1,6 +1,6 @@
 # Building from Source
 
-Complete guide to building QuantClaw from source code.
+Complete guide to building RavBot from source code.
 
 ## Prerequisites
 
@@ -43,8 +43,8 @@ sudo port install cmake openssl nlohmann_json spdlog
 ## Clone Repository
 
 ```bash
-git clone https://github.com/QuantClaw/quantclaw.git
-cd quantclaw
+git clone https://github.com/RavBot/ravbot.git
+cd ravbot
 
 # Optional: Check out specific version
 git checkout v1.0.0
@@ -101,13 +101,13 @@ cmake --build . --config Release -j $env:NUMBER_OF_PROCESSORS
 
 ```bash
 # Run tests
-./quantclaw_tests
+./ravbot_tests
 
 # Or on Windows
-.\Release\quantclaw_tests.exe
+.\Release\ravbot_tests.exe
 
 # Check installation
-quantclaw --version
+ravbot --version
 ```
 
 ## Build Options
@@ -259,7 +259,7 @@ cmake -DCMAKE_SYSTEM_NAME=Darwin \
 ### Using Official Docker Image
 
 ```bash
-docker run -v $(pwd):/workspace quantclaw:build-env \
+docker run -v $(pwd):/workspace ravbot:build-env \
   bash -c "cd /workspace && \
            mkdir build && cd build && \
            cmake .. && \
@@ -269,10 +269,10 @@ docker run -v $(pwd):/workspace quantclaw:build-env \
 ### Building Docker Image
 
 ```bash
-docker build -f Dockerfile -t quantclaw:latest .
+docker build -f Dockerfile -t ravbot:latest .
 
 # Run in container
-docker run -it quantclaw:latest quantclaw --version
+docker run -it ravbot:latest ravbot --version
 ```
 
 ## Troubleshooting Build Issues
@@ -362,7 +362,7 @@ cmake --build . -j1
 
 ```bash
 cd build
-./quantclaw_tests
+./ravbot_tests
 
 # Or with cmake
 cmake --build . --target test
@@ -372,10 +372,10 @@ ctest --verbose
 ### Specific Test
 
 ```bash
-./quantclaw_tests --gtest_filter="TestName*"
+./ravbot_tests --gtest_filter="TestName*"
 
 # List available tests
-./quantclaw_tests --gtest_list_tests
+./ravbot_tests --gtest_list_tests
 ```
 
 ### Coverage Report
@@ -396,7 +396,7 @@ cmake -DENABLE_PROFILING=ON ..
 cmake --build .
 
 # Run and profile
-perf record ./quantclaw agent
+perf record ./ravbot agent
 perf report
 ```
 
@@ -404,7 +404,7 @@ perf report
 
 ```bash
 # Valgrind
-valgrind --leak-check=full ./quantclaw agent
+valgrind --leak-check=full ./ravbot agent
 
 # Google Perftools
 cmake -WITH_PERFTOOLS=ON ..
@@ -441,11 +441,11 @@ cmake --build . -j$(nproc)
 ```bash
 # Edit code
 # Build and test
-cmake --build . && ./quantclaw_tests
+cmake --build . && ./ravbot_tests
 
 # Or use a file watcher
 find src include -name "*.cpp" -o -name "*.hpp" | \
-  entr bash -c "cmake --build build && ./build/quantclaw_tests"
+  entr bash -c "cmake --build build && ./build/ravbot_tests"
 ```
 
 ### Git Workflow
@@ -492,7 +492,7 @@ When contributing code:
 
 1. **Follow style guide**: See `.clang-format`
 2. **Write tests**: Add tests for new features
-3. **Run full build**: `cmake --build . && ./quantclaw_tests`
+3. **Run full build**: `cmake --build . && ./ravbot_tests`
 4. **Format code**: `clang-format -i file.cpp`
 5. **Check compliance**: `cmake --build . --target clang-tidy`
 

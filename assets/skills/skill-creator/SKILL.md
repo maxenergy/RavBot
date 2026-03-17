@@ -1,7 +1,7 @@
 ---
 name: skill-creator
 emoji: "\U0001F3A8"
-description: Guide for creating new QuantClaw skills
+description: Guide for creating new RavBot skills
 always: true
 commands:
   - name: create-skill
@@ -10,11 +10,11 @@ commands:
     argMode: freeform
 ---
 
-You help create new skills for QuantClaw. A skill is a directory containing a `SKILL.md` file with YAML frontmatter and markdown instructions.
+You help create new skills for RavBot. A skill is a directory containing a `SKILL.md` file with YAML frontmatter and markdown instructions.
 
 **Skill structure:**
 ```
-~/.quantclaw/agents/main/workspace/skills/{skill-name}/
+~/.ravbot/agents/main/workspace/skills/{skill-name}/
 ├── SKILL.md          # Required: frontmatter + instructions
 ├── scripts/          # Optional: helper scripts
 ├── references/       # Optional: reference documents

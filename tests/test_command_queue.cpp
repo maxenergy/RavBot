@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -8,12 +8,12 @@
 #include <thread>
 #include <atomic>
 
-#include "quantclaw/gateway/command_queue.hpp"
-#include "quantclaw/config.hpp"
+#include "ravbot/gateway/command_queue.hpp"
+#include "ravbot/config.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
-using namespace quantclaw::gateway;
+using namespace ravbot::gateway;
 
 // ================================================================
 // QueueMode / DropPolicy enum conversion tests
@@ -741,7 +741,7 @@ TEST(QueueConfigIntegration, ConfigParsesQueueSection) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
     ASSERT_FALSE(config.queue_config.is_null());
     EXPECT_EQ(config.queue_config["maxConcurrent"], 8);
 
@@ -754,6 +754,6 @@ TEST(QueueConfigIntegration, ConfigParsesQueueSection) {
 }
 
 TEST(QueueConfigIntegration, EmptyConfigNoQueueSection) {
-    auto config = quantclaw::QuantClawConfig::FromJson({});
+    auto config = ravbot::RavBotConfig::FromJson({});
     EXPECT_TRUE(config.queue_config.is_null());
 }

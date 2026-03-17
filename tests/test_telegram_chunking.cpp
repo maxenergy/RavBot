@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
 #include <atomic>
-#include "quantclaw/channels/telegram_channel.hpp"
+#include "ravbot/channels/telegram_channel.hpp"
 
-using namespace quantclaw;
+using namespace ravbot;
 
 // 测试辅助函数：模拟分块逻辑
 namespace {

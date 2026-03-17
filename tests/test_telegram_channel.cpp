@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -8,7 +8,7 @@
 #include <chrono>
 #include <thread>
 
-#include "quantclaw/channels/telegram_channel.hpp"
+#include "ravbot/channels/telegram_channel.hpp"
 
 namespace {
 
@@ -17,10 +17,10 @@ std::shared_ptr<spdlog::logger> make_null_logger() {
     return std::make_shared<spdlog::logger>("telegram-channel-test", sink);
 }
 
-class StubTelegramChannel : public quantclaw::TelegramChannel {
+class StubTelegramChannel : public ravbot::TelegramChannel {
 public:
     explicit StubTelegramChannel(std::shared_ptr<spdlog::logger> logger)
-        : TelegramChannel(quantclaw::TelegramConfig{.bot_token = "test-token"}, logger) {}
+        : TelegramChannel(ravbot::TelegramConfig{.bot_token = "test-token"}, logger) {}
 
     mutable std::vector<nlohmann::json> calls;
 
@@ -33,10 +33,10 @@ protected:
     }
 };
 
-class StartupStubTelegramChannel : public quantclaw::TelegramChannel {
+class StartupStubTelegramChannel : public ravbot::TelegramChannel {
 public:
     explicit StartupStubTelegramChannel(std::shared_ptr<spdlog::logger> logger)
-        : TelegramChannel(quantclaw::TelegramConfig{.bot_token = "test-token"}, logger) {}
+        : TelegramChannel(ravbot::TelegramConfig{.bot_token = "test-token"}, logger) {}
 
     std::atomic<int> get_me_calls{0};
     std::atomic<int> get_updates_calls{0};

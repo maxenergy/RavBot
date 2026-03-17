@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
-#include "quantclaw/providers/google_provider.hpp"
+#include "ravbot/providers/google_provider.hpp"
 #include <nlohmann/json.hpp>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 class GoogleProviderTest : public ::testing::Test {
 protected:

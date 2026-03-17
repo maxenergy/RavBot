@@ -1,4 +1,4 @@
-# QuantClaw 搜索结果差异分析
+# RavBot 搜索结果差异分析
 
 ## 测试结果对比
 
@@ -12,7 +12,7 @@
 ... 共 20 个技能
 ```
 
-### QuantClaw 结果 ⚠️
+### RavBot 结果 ⚠️
 ```
 找到：
 - openchatai/OpenCopilot (6,254 stars)
@@ -34,7 +34,7 @@
           with explicit tool-use instruction
 ```
 
-**说明**: 我们的修复生效了！QuantClaw 检测到了"没有找到"的响应，并强制重试。
+**说明**: 我们的修复生效了！RavBot 检测到了"没有找到"的响应，并强制重试。
 
 ### 2. 工具实际执行
 ```
@@ -44,7 +44,7 @@
 **说明**: 第二次尝试时，LLM 确实调用了工具（虽然日志中没有明确显示，但从响应内容可以看出）。
 
 ### 3. 返回了真实数据
-QuantClaw 返回的是真实的 GitHub 搜索结果，包含：
+RavBot 返回的是真实的 GitHub 搜索结果，包含：
 - 仓库名
 - Star 数
 - 描述
@@ -61,15 +61,15 @@ QuantClaw 返回的是真实的 GitHub 搜索结果，包含：
 2. 第二次搜索：`"awesome-openclaw-skills"`
 3. 第三次搜索：可能是 `"openclaw skill repository"`
 
-**QuantClaw 的搜索策略**:
+**RavBot 的搜索策略**:
 1. 搜索：`"openclaw"` （太宽泛）
-2. 第二次搜索：可能是 `"openclaw quantclaw"` （仍然不够精确）
+2. 第二次搜索：可能是 `"openclaw ravbot"` （仍然不够精确）
 
 ### 根本原因
 
 **LLM 的搜索关键词选择不够精确**。
 
-QuantClaw 搜索了 "openclaw"，这会匹配到所有包含 "open" 和类似词的项目：
+RavBot 搜索了 "openclaw"，这会匹配到所有包含 "open" 和类似词的项目：
 - Open**Copilot**
 - Open**Chat**
 - Open**BMB**
@@ -162,7 +162,7 @@ Result: Found VoltAgent/awesome-openclaw-skills (37,157 stars)
 
 **方案 1**: 修改 AGENTS.md，添加搜索策略指导
 
-**文件**: `/home/rogers/.quantclaw/agents/main/workspace/AGENTS.md`
+**文件**: `/home/rogers/.ravbot/agents/main/workspace/AGENTS.md`
 
 **添加内容**:
 ```markdown
@@ -232,7 +232,7 @@ You should search:
 ## 结论
 
 ### 主要成就 🎉
-✅ **Lookup Guard 修复成功** - QuantClaw 现在会实际执行工具调用
+✅ **Lookup Guard 修复成功** - RavBot 现在会实际执行工具调用
 
 ### 剩余问题 📝
 ⚠️ **搜索关键词优化** - 需要指导 LLM 使用更精确的搜索词
@@ -247,7 +247,7 @@ You should search:
 
 ## 对比总结
 
-| 方面 | OpenClaw | QuantClaw (修复后) | 状态 |
+| 方面 | OpenClaw | RavBot (修复后) | 状态 |
 |------|----------|-------------------|------|
 | 工具执行 | ✅ 执行 | ✅ 执行 | **已解决** |
 | 搜索关键词 | ✅ 精确 | ⚠️ 宽泛 | **需优化** |

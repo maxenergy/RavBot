@@ -35,9 +35,9 @@ jobs:
         working-directory: website
         run: npm run docs:build
 
-      - name: Trigger quantclaw.github.io deployment
+      - name: Trigger ravbot.github.io deployment
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
-          repository: QuantClaw/quantclaw.github.io
+          repository: RavBot/ravbot.github.io
           event-type: website-updated

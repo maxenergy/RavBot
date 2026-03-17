@@ -1,5 +1,5 @@
 {
-  "name": "quantclaw-control-ui",
+  "name": "ravbot-control-ui",
   "private": true,
   "type": "module",
   "scripts": {

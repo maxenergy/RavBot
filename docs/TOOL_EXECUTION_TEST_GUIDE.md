@@ -1,4 +1,4 @@
-# QuantClaw 工具执行测试指南
+# RavBot 工具执行测试指南
 
 ## 测试时间
 2026-03-14 22:24
@@ -11,7 +11,7 @@
 - **内容**: 明确指示 "Execute, Don't Show"
 
 ### 2. 工作区指令修复 ✅
-- **文件**: `/home/rogers/.quantclaw/agents/main/workspace/AGENTS.md`
+- **文件**: `/home/rogers/.ravbot/agents/main/workspace/AGENTS.md`
 - **修改**: 完全重写，添加详细的工具使用指令
 - **内容**:
   - 核心原则：EXECUTE, DON'T SHOW
@@ -36,7 +36,7 @@
 
 **检查日志**:
 ```bash
-tail -f /tmp/quantclaw_gateway.log | grep -E "tool|Tool|Executing"
+tail -f /tmp/ravbot_gateway.log | grep -E "tool|Tool|Executing"
 ```
 
 应该看到：
@@ -57,7 +57,7 @@ tail -f /tmp/quantclaw_gateway.log | grep -E "tool|Tool|Executing"
 
 **检查日志**:
 ```bash
-tail -f /tmp/quantclaw_gateway.log | grep -E "github|Tool"
+tail -f /tmp/ravbot_gateway.log | grep -E "github|Tool"
 ```
 
 ---
@@ -98,19 +98,19 @@ tail -f /tmp/quantclaw_gateway.log | grep -E "github|Tool"
 #### 步骤 1: 验证 AGENTS.md 是否加载
 ```bash
 # 检查日志中是否有 "Agent Behavior" 相关内容
-grep -i "agent behavior\|execute.*don't show" /tmp/quantclaw_gateway.log
+grep -i "agent behavior\|execute.*don't show" /tmp/ravbot_gateway.log
 ```
 
 #### 步骤 2: 检查 LLM 响应格式
 在 Telegram 中发送测试消息后，立即查看日志：
 ```bash
-tail -100 /tmp/quantclaw_gateway.log | grep -A 10 "LLM response\|tool_calls"
+tail -100 /tmp/ravbot_gateway.log | grep -A 10 "LLM response\|tool_calls"
 ```
 
 如果看到 `"tool_calls": []`，说明 LLM 没有返回工具调用。
 
 #### 步骤 3: 测试不同的模型
-编辑 `/home/rogers/.quantclaw/quantclaw.json`，尝试切换模型：
+编辑 `/home/rogers/.ravbot/ravbot.json`，尝试切换模型：
 ```json
 {
   "agent": {
@@ -144,17 +144,17 @@ logger_->info("LLM tool_calls count: {}", response.tool_calls.size());
 
 ### 实时日志
 ```bash
-tail -f /tmp/quantclaw_gateway.log
+tail -f /tmp/ravbot_gateway.log
 ```
 
 ### 过滤工具相关日志
 ```bash
-tail -f /tmp/quantclaw_gateway.log | grep -E "tool|Tool|Executing"
+tail -f /tmp/ravbot_gateway.log | grep -E "tool|Tool|Executing"
 ```
 
 ### 检查进程
 ```bash
-ps aux | grep "quantclaw gateway" | grep -v grep
+ps aux | grep "ravbot gateway" | grep -v grep
 ```
 
 ### 检查 Telegram 连接
@@ -179,7 +179,7 @@ curl -s https://api.telegram.org/bot8208097744:AAFZ9qFR5wJjaxQPVt5BI4LDKNQ6ZXTLy
 
 ## 联系信息
 
-- **Gateway 日志**: `/tmp/quantclaw_gateway.log`
-- **配置文件**: `/home/rogers/.quantclaw/quantclaw.json`
-- **工作区**: `/home/rogers/.quantclaw/agents/main/workspace/`
+- **Gateway 日志**: `/tmp/ravbot_gateway.log`
+- **配置文件**: `/home/rogers/.ravbot/ravbot.json`
+- **工作区**: `/home/rogers/.ravbot/agents/main/workspace/`
 - **Bot**: @cppclawbot

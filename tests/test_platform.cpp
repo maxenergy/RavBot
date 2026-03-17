@@ -1,14 +1,14 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
-#include "quantclaw/platform/process.hpp"
-#include "quantclaw/platform/ipc.hpp"
-#include "quantclaw/platform/service.hpp"
+#include "ravbot/platform/process.hpp"
+#include "ravbot/platform/ipc.hpp"
+#include "ravbot/platform/service.hpp"
 #include <filesystem>
 #include <thread>
 
-using namespace quantclaw::platform;
+using namespace ravbot::platform;
 
 // --- Process tests ---
 

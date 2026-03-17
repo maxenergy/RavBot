@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 
 import { describe, expect, it, vi } from "vitest";
-import { CONTROL_UI_BOOTSTRAP_CONFIG_PATH } from "../../../../src/gateway/control-ui-contract.js";
+import { CONTROL_UI_BOOTSTRAP_CONFIG_PATH } from "../../shared/control-ui-contract.js";
 import { loadControlUiBootstrapConfig } from "./control-ui-bootstrap.ts";
 
 describe("loadControlUiBootstrapConfig", () => {
@@ -9,7 +9,7 @@ describe("loadControlUiBootstrapConfig", () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        basePath: "/quantclaw",
+        basePath: "/ravbot",
         assistantName: "Ops",
         assistantAvatar: "O",
         assistantAgentId: "main",
@@ -18,7 +18,7 @@ describe("loadControlUiBootstrapConfig", () => {
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
 
     const state = {
-      basePath: "/quantclaw",
+      basePath: "/ravbot",
       assistantName: "Assistant",
       assistantAvatar: null,
       assistantAgentId: null,
@@ -27,7 +27,7 @@ describe("loadControlUiBootstrapConfig", () => {
     await loadControlUiBootstrapConfig(state);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `/quantclaw${CONTROL_UI_BOOTSTRAP_CONFIG_PATH}`,
+      `/ravbot${CONTROL_UI_BOOTSTRAP_CONFIG_PATH}`,
       expect.objectContaining({ method: "GET" }),
     );
     expect(state.assistantName).toBe("Ops");
@@ -64,7 +64,7 @@ describe("loadControlUiBootstrapConfig", () => {
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
 
     const state = {
-      basePath: "/quantclaw/",
+      basePath: "/ravbot/",
       assistantName: "Assistant",
       assistantAvatar: null,
       assistantAgentId: null,
@@ -73,7 +73,7 @@ describe("loadControlUiBootstrapConfig", () => {
     await loadControlUiBootstrapConfig(state);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `/quantclaw${CONTROL_UI_BOOTSTRAP_CONFIG_PATH}`,
+      `/ravbot${CONTROL_UI_BOOTSTRAP_CONFIG_PATH}`,
       expect.objectContaining({ method: "GET" }),
     );
 

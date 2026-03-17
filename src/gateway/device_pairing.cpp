@@ -1,14 +1,14 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/gateway/device_pairing.hpp"
+#include "ravbot/gateway/device_pairing.hpp"
 #include <random>
 #include <sstream>
 #include <iomanip>
 #include <chrono>
 #include <algorithm>
 
-namespace quantclaw::gateway {
+namespace ravbot::gateway {
 
 DevicePairingManager::DevicePairingManager() = default;
 DevicePairingManager::~DevicePairingManager() = default;
@@ -174,4 +174,4 @@ void DevicePairingManager::AddPairingRequest(const PairingRequest& request) {
     pending_requests_.push_back(request);
 }
 
-} // namespace quantclaw::gateway
+} // namespace ravbot::gateway

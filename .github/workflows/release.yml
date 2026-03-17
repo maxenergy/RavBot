@@ -64,7 +64,7 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache \
           -DBUILD_TESTS=OFF
         cmake --build build --parallel
-        strip build/quantclaw
+        strip build/ravbot
 
     - name: Build Node.js sidecar
       working-directory: sidecar
@@ -76,11 +76,11 @@ jobs:
     - name: Package tarball
       run: |
         VERSION="${{ github.ref_name }}"
-        NAME="quantclaw-${VERSION}-linux-${{ matrix.arch }}"
+        NAME="ravbot-${VERSION}-linux-${{ matrix.arch }}"
         STAGE="dist/${NAME}"
 
         mkdir -p "${STAGE}/bin" "${STAGE}/sidecar"
-        cp build/quantclaw "${STAGE}/bin/"
+        cp build/ravbot "${STAGE}/bin/"
         cp -r sidecar/dist "${STAGE}/sidecar/dist"
         cp -r sidecar/node_modules "${STAGE}/sidecar/node_modules"
         [ -d skills ] && cp -r skills "${STAGE}/skills"
@@ -96,10 +96,10 @@ jobs:
     - name: Upload tarball
       uses: actions/upload-artifact@v4
       with:
-        name: quantclaw-linux-${{ matrix.arch }}
+        name: ravbot-linux-${{ matrix.arch }}
         path: |
-          dist/quantclaw-*.tar.gz
-          dist/quantclaw-*.tar.gz.sha256
+          dist/ravbot-*.tar.gz
+          dist/ravbot-*.tar.gz.sha256
 
   # ── Publish GitHub Release ────────────────────────────────────────────────
   release:
@@ -117,8 +117,8 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        name: "QuantClaw ${{ github.ref_name }}"
+        name: "RavBot ${{ github.ref_name }}"
         generate_release_notes: true
         files: |
-          quantclaw-*.tar.gz
-          quantclaw-*.tar.gz.sha256
+          ravbot-*.tar.gz
+          ravbot-*.tar.gz.sha256

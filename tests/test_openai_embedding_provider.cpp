@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/openai_embedding_provider.hpp"
+#include "ravbot/core/openai_embedding_provider.hpp"
 
 #include <gtest/gtest.h>
 #include <cmath>
 #include <cstdlib>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 // Test OpenAIEmbeddingProvider basic functionality
 // Note: These tests require OPENAI_API_KEY environment variable to be set

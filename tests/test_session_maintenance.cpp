@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -6,10 +6,10 @@
 #include <spdlog/sinks/null_sink.h>
 #include <fstream>
 #include <filesystem>
-#include "quantclaw/session/session_maintenance.hpp"
+#include "ravbot/session/session_maintenance.hpp"
 #include "test_helpers.hpp"
 
-namespace quantclaw {
+namespace ravbot {
 
 static std::shared_ptr<spdlog::logger> make_logger(const std::string& name) {
   auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
@@ -21,7 +21,7 @@ class SessionMaintenanceTest : public ::testing::Test {
   std::filesystem::path test_dir_;
 
   void SetUp() override {
-    test_dir_ = quantclaw::test::MakeTestDir("qc_maint_test");
+    test_dir_ = ravbot::test::MakeTestDir("qc_maint_test");
   }
 
   void TearDown() override {
@@ -246,4 +246,4 @@ TEST_F(SessionMaintenanceTest, DiskLimitEnforced) {
   EXPECT_GT(result.pruned_count, 0);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

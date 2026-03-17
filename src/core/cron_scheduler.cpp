@@ -1,14 +1,14 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/cron_scheduler.hpp"
+#include "ravbot/core/cron_scheduler.hpp"
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <random>
 #include <sstream>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- CronJob ---
 
@@ -341,4 +341,4 @@ std::string CronScheduler::generate_id() const {
   return ss.str().substr(0, 12);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

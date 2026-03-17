@@ -1,6 +1,6 @@
 # 参与贡献
 
-欢迎贡献！本指南介绍如何向 QuantClaw 提交代码。
+欢迎贡献！本指南介绍如何向 RavBot 提交代码。
 
 ## 工作流程
 
@@ -13,7 +13,7 @@
 
 ## 代码规范
 
-QuantClaw 遵循 [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)，用 `clang-format` 强制执行。
+RavBot 遵循 [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)，用 `clang-format` 强制执行。
 
 ### VS Code 配置
 
@@ -41,12 +41,12 @@ chmod +x .git/hooks/pre-commit
 
 ```bash
 cd build
-./quantclaw_tests
+./ravbot_tests
 # 或
 ctest --output-on-failure
 
 # 运行指定测试套件
-./quantclaw_tests --gtest_filter=AgentLoopTest.*
+./ravbot_tests --gtest_filter=AgentLoopTest.*
 ```
 
 ## 编写测试
@@ -55,7 +55,7 @@ ctest --output-on-failure
 
 ```cpp
 #include <gtest/gtest.h>
-#include "quantclaw/my_module.hpp"
+#include "ravbot/my_module.hpp"
 
 TEST(MyModuleTest, BasicFunctionality) {
     MyModule module;
@@ -98,7 +98,7 @@ docs: update CLI reference with correct gateway commands
 ## 项目结构
 
 ```
-QuantClaw/
+RavBot/
 ├── src/                    # C++ 源码
 │   ├── cli/                # CLI 命令
 │   ├── core/               # Agent 核心
@@ -106,7 +106,7 @@ QuantClaw/
 │   ├── providers/          # LLM Provider
 │   ├── tools/              # 工具实现
 │   └── ...
-├── include/quantclaw/      # 公共头文件
+├── include/ravbot/      # 公共头文件
 ├── tests/                  # C++ 测试（37 个文件）
 ├── sidecar/                # Node.js Sidecar
 │   ├── src/                # TypeScript 源码（11 个文件）
@@ -144,4 +144,4 @@ git add -u && git commit --amend
 
 ---
 
-有问题？欢迎提 [Issue](https://github.com/QuantClaw/QuantClaw/issues) 或发起 [Discussion](https://github.com/QuantClaw/QuantClaw/discussions)。
+有问题？欢迎提 [Issue](https://github.com/RavBot/RavBot/issues) 或发起 [Discussion](https://github.com/RavBot/RavBot/discussions)。

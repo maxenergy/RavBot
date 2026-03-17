@@ -22,21 +22,21 @@ override_dh_auto_build:
 override_dh_auto_install:
 	dh_auto_install
 	# Install assets
-	install -d debian/quantclaw/usr/share/quantclaw/skills
-	cp -r assets/skills/* debian/quantclaw/usr/share/quantclaw/skills/
+	install -d debian/ravbot/usr/share/ravbot/skills
+	cp -r assets/skills/* debian/ravbot/usr/share/ravbot/skills/
 	# Install sidecar (compiled JS + dependencies)
-	install -d debian/quantclaw/usr/share/quantclaw/sidecar
-	cp -r sidecar/dist debian/quantclaw/usr/share/quantclaw/sidecar/
-	cp -r sidecar/node_modules debian/quantclaw/usr/share/quantclaw/sidecar/
-	cp sidecar/package.json debian/quantclaw/usr/share/quantclaw/sidecar/
-	cp sidecar/package-lock.json debian/quantclaw/usr/share/quantclaw/sidecar/
+	install -d debian/ravbot/usr/share/ravbot/sidecar
+	cp -r sidecar/dist debian/ravbot/usr/share/ravbot/sidecar/
+	cp -r sidecar/node_modules debian/ravbot/usr/share/ravbot/sidecar/
+	cp sidecar/package.json debian/ravbot/usr/share/ravbot/sidecar/
+	cp sidecar/package-lock.json debian/ravbot/usr/share/ravbot/sidecar/
 	# Install documentation
-	install -d debian/quantclaw/usr/share/doc/quantclaw
-	install -m 644 README.md debian/quantclaw/usr/share/doc/quantclaw/
-	install -m 644 README_CN.md debian/quantclaw/usr/share/doc/quantclaw/
+	install -d debian/ravbot/usr/share/doc/ravbot
+	install -m 644 README.md debian/ravbot/usr/share/doc/ravbot/
+	install -m 644 README_CN.md debian/ravbot/usr/share/doc/ravbot/
 
 override_dh_auto_test:
 	# Skip tests during package build (already tested in CI)
 
 override_dh_installsystemd:
-	dh_installsystemd --name=quantclaw --no-enable --no-start
+	dh_installsystemd --name=ravbot --no-enable --no-start

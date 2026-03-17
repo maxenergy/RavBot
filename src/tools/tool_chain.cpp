@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/tools/tool_chain.hpp"
+#include "ravbot/tools/tool_chain.hpp"
 #include <regex>
 #include <sstream>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- ChainTemplateEngine ---
 
@@ -197,4 +197,4 @@ nlohmann::json ToolChainExecutor::ResultToJson(const ChainResult& result) {
     return j;
 }
 
-} // namespace quantclaw
+} // namespace ravbot

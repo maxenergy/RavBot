@@ -1,4 +1,4 @@
-# QuantClaw 问题修复报告
+# RavBot 问题修复报告
 
 ## 修复日期
 2026-03-14
@@ -12,7 +12,7 @@
 - 错误消息: "当前环境中命令执行功能被限制了"
 
 **根本原因**:
-- 配置文件 `~/.quantclaw/quantclaw.json` 中工具白名单为空: `"allow": []`
+- 配置文件 `~/.ravbot/ravbot.json` 中工具白名单为空: `"allow": []`
 - 空白名单阻止所有工具执行
 
 **解决方案**:
@@ -74,7 +74,7 @@
 4. `tests/test_message_sanitizer.cpp` - MessageSanitizer 测试
 
 ### 修改文件
-1. `include/quantclaw/gateway/message_sanitizer.hpp`
+1. `include/ravbot/gateway/message_sanitizer.hpp`
    - 添加 `SanitizeOutput()` 方法
    - 添加 `RemoveSystemTags()` 方法
 
@@ -82,7 +82,7 @@
    - 实现系统标签清理逻辑
    - 支持正则表达式匹配
 
-3. `include/quantclaw/channels/telegram_channel.hpp`
+3. `include/ravbot/channels/telegram_channel.hpp`
    - 添加 MessageSanitizer 成员变量
 
 4. `src/channels/telegram_channel.cpp`
@@ -91,7 +91,7 @@
 5. `CMakeLists.txt`
    - 添加 `test_message_sanitizer.cpp` 到测试列表
 
-6. `~/.quantclaw/quantclaw.json`
+6. `~/.ravbot/ravbot.json`
    - 修复工具白名单配置
 
 ## 测试结果
@@ -104,22 +104,22 @@
 
 ### 编译状态
 ```
-✅ quantclaw_core 编译成功
-✅ quantclaw 编译成功
-✅ quantclaw_tests 编译成功
+✅ ravbot_core 编译成功
+✅ ravbot 编译成功
+✅ ravbot_tests 编译成功
 ```
 
 ## 部署步骤
 
 ### 1. 重新编译
 ```bash
-cd /home/rogers/source/develop/QuantClaw
-cmake --build build --target quantclaw -j$(nproc)
+cd /home/rogers/source/develop/RavBot
+cmake --build build --target ravbot -j$(nproc)
 ```
 
 ### 2. 重启服务
 ```bash
-systemctl --user restart quantclaw
+systemctl --user restart ravbot
 ```
 
 ### 3. 验证修复
@@ -202,7 +202,7 @@ systemctl --user restart quantclaw
 - **修复版本**: v0.3.1
 - **基础版本**: v0.3.0
 - **修复日期**: 2026-03-14
-- **修复人员**: QuantClaw Team
+- **修复人员**: RavBot Team
 
 ## 总结
 

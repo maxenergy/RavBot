@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -9,11 +9,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include "quantclaw/mcp/mcp_client.hpp"
+#include "ravbot/mcp/mcp_client.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
-using namespace quantclaw::mcp;
+using namespace ravbot::mcp;
 
 // Minimal HTTP server that returns a canned JSON-RPC response
 class MiniHTTPServer {

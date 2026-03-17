@@ -2,7 +2,7 @@
 
 ## 配置文件
 
-QuantClaw 的配置存储在 `~/.quantclaw/quantclaw.json`（JSON5 格式，支持注释和尾逗号）。
+RavBot 的配置存储在 `~/.ravbot/ravbot.json`（JSON5 格式，支持注释和尾逗号）。
 
 完整带注释示例见仓库根目录的 `config.example.json`。
 
@@ -48,7 +48,7 @@ QuantClaw 的配置存储在 `~/.quantclaw/quantclaw.json`（JSON5 格式，支�
   "security": {
     "sandbox": {
       "enabled": true,
-      "allowedPaths": ["~/.quantclaw/agents/main/workspace"],
+      "allowedPaths": ["~/.ravbot/agents/main/workspace"],
       "deniedPaths": ["/etc", "/sys", "/proc"]
     }
   },
@@ -115,7 +115,7 @@ QuantClaw 的配置存储在 `~/.quantclaw/quantclaw.json`（JSON5 格式，支�
 | `controlUi.enabled` | `true` | 启用 Web 仪表板 |
 | `controlUi.port` | `18801` | 仪表板和 REST API 的 HTTP 端口 |
 
-**注意**：QuantClaw 使用 `18800-18801` 端口（不同于 OpenClaw 的 `18789-18790`），两者可同时运行。
+**注意**：RavBot 使用 `18800-18801` 端口（不同于 OpenClaw 的 `18789-18790`），两者可同时运行。
 
 ## 频道配置（`channels`）
 
@@ -163,7 +163,7 @@ QuantClaw 的配置存储在 `~/.quantclaw/quantclaw.json`（JSON5 格式，支�
   "security": {
     "sandbox": {
       "enabled": true,
-      "allowedPaths": ["~/.quantclaw/agents/main/workspace"],
+      "allowedPaths": ["~/.ravbot/agents/main/workspace"],
       "deniedPaths": ["/etc", "/sys", "/proc"]
     }
   }
@@ -198,7 +198,7 @@ QuantClaw 的配置存储在 `~/.quantclaw/quantclaw.json`（JSON5 格式，支�
 
 **日志级别：** `trace`、`debug`、`info`、`warn`、`error`
 
-日志文件存储在 `~/.quantclaw/logs/`。
+日志文件存储在 `~/.ravbot/logs/`。
 
 ## 环境变量替换
 
@@ -216,13 +216,13 @@ QuantClaw 的配置存储在 `~/.quantclaw/quantclaw.json`（JSON5 格式，支�
 ## 配置命令
 
 ```bash
-quantclaw config get                    # 查看完整配置
-quantclaw config get llm.model         # 查看指定配置项（点路径）
-quantclaw config set llm.model "anthropic/claude-sonnet-4-6"
-quantclaw config unset llm.temperature
-quantclaw config validate              # 验证语法和结构
-quantclaw config schema                # 查看配置 Schema
-quantclaw config reload                # 热重载（无需重启网关）
+ravbot config get                    # 查看完整配置
+ravbot config get llm.model         # 查看指定配置项（点路径）
+ravbot config set llm.model "anthropic/claude-sonnet-4-6"
+ravbot config unset llm.temperature
+ravbot config validate              # 验证语法和结构
+ravbot config schema                # 查看配置 Schema
+ravbot config reload                # 热重载（无需重启网关）
 ```
 
 ## 常见配置示例

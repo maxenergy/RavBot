@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/gateway/route_manager.hpp"
+#include "ravbot/gateway/route_manager.hpp"
 
 #include <iomanip>
 #include <sstream>
 
-namespace quantclaw {
+namespace ravbot {
 
 RouteManager::RouteManager(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {}
@@ -186,4 +186,4 @@ std::string RouteManager::generate_message_id() {
   return oss.str();
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

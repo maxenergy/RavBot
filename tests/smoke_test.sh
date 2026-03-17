@@ -1,5 +1,5 @@
 #!/bin/bash
-# QuantClaw Smoke Test Suite
+# RavBot Smoke Test Suite
 # Tests gateway lifecycle, WebSocket RPC, HTTP API, and concurrent connections.
 # Runs without an API key (agent tests are skipped); set OPENAI_API_KEY to enable them.
 #
@@ -9,10 +9,10 @@ set -uo pipefail
 # ---------- Configuration ----------
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BINARY="${REPO_ROOT}/build/quantclaw"
+BINARY="${REPO_ROOT}/build/ravbot"
 WS_RPC="${REPO_ROOT}/scripts/smoke-tests/ws-rpc.js"
 WS_CONCURRENT="${REPO_ROOT}/scripts/smoke-tests/ws-concurrent.js"
-LOG_DIR="/tmp/quantclaw-smoke-ci"
+LOG_DIR="/tmp/ravbot-smoke-ci"
 SMOKE_HOME="${LOG_DIR}/home"
 WS_PORT=18850
 HTTP_PORT=18851
@@ -83,7 +83,7 @@ wait_for_gateway() {
 
 # ---------- Pre-checks ----------
 
-echo "=== QuantClaw Smoke Tests ==="
+echo "=== RavBot Smoke Tests ==="
 echo ""
 
 if [ ! -x "$BINARY" ]; then
@@ -109,9 +109,9 @@ fi
 
 # ---------- Setup ----------
 
-mkdir -p "$LOG_DIR" "${SMOKE_HOME}/.quantclaw"
+mkdir -p "$LOG_DIR" "${SMOKE_HOME}/.ravbot"
 
-cat > "${SMOKE_HOME}/.quantclaw/quantclaw.json" <<EOFCFG
+cat > "${SMOKE_HOME}/.ravbot/ravbot.json" <<EOFCFG
 {
     "agent": {
         "model": "openai/test-model",

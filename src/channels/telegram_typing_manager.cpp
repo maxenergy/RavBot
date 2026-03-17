@@ -1,10 +1,10 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/telegram_typing_manager.hpp"
+#include "ravbot/channels/telegram_typing_manager.hpp"
 #include <spdlog/spdlog.h>
 
-namespace quantclaw::channels {
+namespace ravbot::channels {
 
 TypingStateManager::TypingStateManager(const std::string& chat_id,
                                        SendActionCallback send_action_callback,
@@ -102,4 +102,4 @@ void TypingStateManager::refresh_loop() {
     }
 }
 
-} // namespace quantclaw::channels
+} // namespace ravbot::channels

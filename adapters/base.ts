@@ -1,14 +1,14 @@
 /**
- * QuantClaw Channel Adapter Base
+ * RavBot Channel Adapter Base
  *
- * Generic bridge between any messaging platform and the QuantClaw gateway.
+ * Generic bridge between any messaging platform and the RavBot gateway.
  * Each platform adapter extends ChannelAdapter and implements:
  *   - startPlatform()    — connect to the platform, start listening
  *   - stopPlatform()     — disconnect from the platform
  *   - sendToPlatform()   — send a message back to the platform
  *
  * The base class handles:
- *   - WebSocket connection to QuantClaw gateway
+ *   - WebSocket connection to RavBot gateway
  *   - Authentication handshake (connect.hello)
  *   - Sending chat.send RPC and collecting the response
  */
@@ -65,13 +65,13 @@ export abstract class ChannelAdapter {
 
   constructor() {
     this.gatewayUrl =
-      process.env.QUANTCLAW_GATEWAY_URL ?? "ws://127.0.0.1:18789";
-    this.authToken = process.env.QUANTCLAW_AUTH_TOKEN ?? "";
-    this.channelName = process.env.QUANTCLAW_CHANNEL_NAME ?? "unknown";
+      process.env.RAVBOT_GATEWAY_URL ?? "ws://127.0.0.1:18789";
+    this.authToken = process.env.RAVBOT_AUTH_TOKEN ?? "";
+    this.channelName = process.env.RAVBOT_CHANNEL_NAME ?? "unknown";
 
     try {
       this.channelConfig = JSON.parse(
-        process.env.QUANTCLAW_CHANNEL_CONFIG ?? "{}"
+        process.env.RAVBOT_CHANNEL_CONFIG ?? "{}"
       );
     } catch {
       this.channelConfig = { token: "" };
@@ -121,7 +121,7 @@ export abstract class ChannelAdapter {
               params: {
                 minProtocol: 1,
                 maxProtocol: 1,
-                clientName: `quantclaw-adapter-${this.channelName}`,
+                clientName: `ravbot-adapter-${this.channelName}`,
                 clientVersion: "0.2.0",
                 role: "operator",
                 scopes: ["operator.read", "operator.write"],

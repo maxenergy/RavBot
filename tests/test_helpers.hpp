@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -21,7 +21,7 @@
 #include <unistd.h>
 #endif
 
-namespace quantclaw::test {
+namespace ravbot::test {
 
 /// Allocates an ephemeral TCP port that is unique within this process.
 ///
@@ -107,4 +107,4 @@ inline std::filesystem::path MakeTestDir(const std::string& base_name) {
     return path;
 }
 
-}  // namespace quantclaw::test
+}  // namespace ravbot::test

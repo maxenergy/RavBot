@@ -1,4 +1,4 @@
-# QuantClaw Embedding 提供商 - Phase 3 进展报告
+# RavBot Embedding 提供商 - Phase 3 进展报告
 
 ## 完成时间
 2026-03-14
@@ -90,7 +90,7 @@ for (int i = 0; i < dimension_; ++i) {
 
 #### 新增文件 (6 个)
 
-1. **include/quantclaw/core/embedding_provider.hpp** (75 行)
+1. **include/ravbot/core/embedding_provider.hpp** (75 行)
    - EmbeddingProvider 基类定义
    - EmbeddingProviderRegistry 类定义
 
@@ -98,7 +98,7 @@ for (int i = 0; i < dimension_; ++i) {
    - EmbeddingProviderRegistry 实现
    - 线程安全的提供商管理
 
-3. **include/quantclaw/core/mock_embedding_provider.hpp** (35 行)
+3. **include/ravbot/core/mock_embedding_provider.hpp** (35 行)
    - MockEmbeddingProvider 类定义
 
 4. **src/core/mock_embedding_provider.cpp** (55 行)

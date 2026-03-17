@@ -2,11 +2,11 @@
 
 ## 问题描述
 
-QuantClaw 在处理 Telegram 消息时,工具注册表返回 0 个工具,导致 LLM 无法调用任何工具(如 github_search_repos)。
+RavBot 在处理 Telegram 消息时,工具注册表返回 0 个工具,导致 LLM 无法调用任何工具(如 github_search_repos)。
 
 ## 根本原因
 
-配置文件 `~/.quantclaw/quantclaw.json` 中设置了:
+配置文件 `~/.ravbot/ravbot.json` 中设置了:
 ```json
 {
   "tools": {

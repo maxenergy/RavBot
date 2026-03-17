@@ -235,7 +235,7 @@ void TelegramChannel::SendTextChunks(const std::string& chat_id,
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | 智能分块 | ✅ | ✅ | 完成 |
 | 线程化发送 | ✅ | ✅ | 完成 |

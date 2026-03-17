@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/embedding_provider.hpp"
-#include "quantclaw/core/mock_embedding_provider.hpp"
+#include "ravbot/core/embedding_provider.hpp"
+#include "ravbot/core/mock_embedding_provider.hpp"
 
 #include <gtest/gtest.h>
 #include <cmath>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 // Test MockEmbeddingProvider
 TEST(MockEmbeddingProviderTest, BasicEmbedding) {

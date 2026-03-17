@@ -33,22 +33,22 @@ describe("control UI routing", () => {
   });
 
   it("infers nested base paths", async () => {
-    const app = mountApp("/apps/quantclaw/cron");
+    const app = mountApp("/apps/ravbot/cron");
     await app.updateComplete;
 
-    expect(app.basePath).toBe("/apps/quantclaw");
+    expect(app.basePath).toBe("/apps/ravbot");
     expect(app.tab).toBe("cron");
-    expect(window.location.pathname).toBe("/apps/quantclaw/cron");
+    expect(window.location.pathname).toBe("/apps/ravbot/cron");
   });
 
   it("honors explicit base path overrides", async () => {
-    window.__QUANTCLAW_CONTROL_UI_BASE_PATH__ = "/quantclaw";
-    const app = mountApp("/quantclaw/sessions");
+    window.__RAVBOT_CONTROL_UI_BASE_PATH__ = "/ravbot";
+    const app = mountApp("/ravbot/sessions");
     await app.updateComplete;
 
-    expect(app.basePath).toBe("/quantclaw");
+    expect(app.basePath).toBe("/ravbot");
     expect(app.tab).toBe("sessions");
-    expect(window.location.pathname).toBe("/quantclaw/sessions");
+    expect(window.location.pathname).toBe("/ravbot/sessions");
   });
 
   it("updates the URL when clicking nav items", async () => {
@@ -166,7 +166,7 @@ describe("control UI routing", () => {
 
   it("hydrates token from URL params even when settings already set", async () => {
     localStorage.setItem(
-      "quantclaw.control.settings.v1",
+      "ravbot.control.settings.v1",
       JSON.stringify({ token: "existing-token" }),
     );
     const app = mountApp("/ui/overview?token=abc123");

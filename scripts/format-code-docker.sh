@@ -1,5 +1,5 @@
 #!/bin/bash
-# QuantClaw Code Formatting Script (Docker-based)
+# RavBot Code Formatting Script (Docker-based)
 # Formats C++ code using clang-format in a Docker container
 # No local installation of clang-format required!
 
@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 # Get project root directory
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo -e "${GREEN}QuantClaw Code Formatter (Docker)${NC}"
+echo -e "${GREEN}RavBot Code Formatter (Docker)${NC}"
 echo "===================================="
 echo "Project root: $PROJECT_ROOT"
 echo ""

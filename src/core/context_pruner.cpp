@@ -1,14 +1,15 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/context_pruner.hpp"
+#include "ravbot/core/context_pruner.hpp"
 
 #include <algorithm>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <vector>
 
-namespace quantclaw {
+namespace ravbot {
 
 int ContextPruner::EstimateTokens(const Message& msg) {
   int chars = static_cast<int>(msg.role.size());
@@ -244,18 +245,104 @@ std::vector<Message> ContextPruner::CompressWithStats(
   return result;
 }
 
+// Returns true if the last 2000 chars of content contain error traces,
+// stack traces, exception messages, or JSON endings — content worth keeping.
+// Requirements: P1.3 content-aware truncation (aligns with OpenClaw
+// contextPruner tail importance detection).
+// static
+bool ContextPruner::has_important_tail(const std::string& content) {
+  if (content.empty()) return false;
+
+  // Examine up to the last 2000 characters
+  const size_t tail_window = 2000;
+  const size_t tail_start =
+      content.size() > tail_window ? content.size() - tail_window : 0;
+  const std::string tail = content.substr(tail_start);
+
+  // 8 patterns that indicate important tail content
+  static const std::vector<std::regex> kTailPatterns = {
+      std::regex(R"(\berror\b)", std::regex::icase),
+      std::regex(R"(\bexception\b)", std::regex::icase),
+      std::regex(R"(Traceback\s*\(most recent call last\))",
+                 std::regex::icase),
+      std::regex(R"(\bstack\s+trace\b)", std::regex::icase),
+      std::regex(R"(Error:)", std::regex::icase),
+      std::regex(R"(\bfailed\b)", std::regex::icase),
+      std::regex(R"(\bfatal\b)", std::regex::icase),
+      std::regex(R"(\bpanic\b)", std::regex::icase),
+  };
+
+  for (const auto& pat : kTailPatterns) {
+    if (std::regex_search(tail, pat)) return true;
+  }
+
+  // JSON ending: ends with } or ] (possibly with trailing whitespace/newline)
+  static const std::regex kJsonEnd(R"([\}\]]\s*$)");
+  if (std::regex_search(tail, kJsonEnd)) return true;
+
+  return false;
+}
+
 std::string ContextPruner::TruncateToolResult(
     const std::string& result,
     int max_chars) {
+  // 1. Absolute hard limit (400,000 chars) applied first
+  if (static_cast<int>(result.size()) > kHardMaxToolResultChars) {
+    // For absolute-limit truncation always use head+tail strategy
+    int keep_each = kHardMaxToolResultChars / 4;  // keep 25% head, 25% tail
+    std::string truncated;
+    truncated.reserve(static_cast<size_t>(kHardMaxToolResultChars) + 128);
+    truncated += result.substr(0, static_cast<size_t>(keep_each));
+    truncated += "\n\n⚠ [Content truncated — original was " +
+                 std::to_string(result.size()) +
+                 " chars. Use offset/limit params to read specific sections."
+                 "]\n\n";
+    truncated +=
+        result.substr(result.size() - static_cast<size_t>(keep_each));
+    return truncated;
+  }
+
+  // 2. Normal max_chars truncation
   if (static_cast<int>(result.size()) <= max_chars) {
     return result;
   }
 
-  // Use soft_prune to create a truncated version
-  // Calculate how many lines to keep based on max_chars
-  int estimated_lines = max_chars / 80;  // Assume ~80 chars per line
-  int keep_lines = std::max(3, estimated_lines / 2);  // Keep lines at start and end
+  // 3. Content-aware: if tail has important content, use head+tail strategy
+  if (has_important_tail(result)) {
+    // Split lines, keep first N and last N
+    std::vector<std::string> lines;
+    std::istringstream stream(result);
+    std::string line;
+    while (std::getline(stream, line)) {
+      lines.push_back(line);
+    }
+    const int total = static_cast<int>(lines.size());
+    int estimated_lines = max_chars / 80;
+    int keep_lines = std::max(3, estimated_lines / 2);
 
+    if (total <= keep_lines * 2) {
+      // Fits within head+tail budget — keep as-is
+      return result;
+    }
+
+    std::string out;
+    for (int i = 0; i < keep_lines; ++i) out += lines[i] + "\n";
+    int omitted = total - keep_lines * 2;
+    out += "\n⚠ [Content truncated — original was " +
+           std::to_string(result.size()) +
+           " chars. Use offset/limit params to read specific sections.]\n"
+           "... [" +
+           std::to_string(omitted) + " lines omitted] ...\n\n";
+    for (int i = total - keep_lines; i < total; ++i) {
+      out += lines[i];
+      if (i < total - 1) out += "\n";
+    }
+    return out;
+  }
+
+  // 4. Standard path: soft_prune without tail preservation
+  int estimated_lines = max_chars / 80;
+  int keep_lines = std::max(3, estimated_lines / 2);
   return soft_prune(result, keep_lines);
 }
 
@@ -280,7 +367,11 @@ std::string ContextPruner::soft_prune(const std::string& content,
     result += lines[i] + "\n";
   }
   int omitted = total - keep_lines * 2;
-  result += "\n... [" + std::to_string(omitted) + " lines omitted] ...\n\n";
+  result += "\n⚠ [Content truncated — original was " +
+            std::to_string(content.size()) +
+            " chars. Use offset/limit params to read specific sections.]\n"
+            "... [" +
+            std::to_string(omitted) + " lines omitted] ...\n\n";
   for (int i = total - keep_lines; i < total; ++i) {
     result += lines[i];
     if (i < total - 1) result += "\n";
@@ -289,4 +380,4 @@ std::string ContextPruner::soft_prune(const std::string& content,
   return result;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -1,9 +1,9 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/lane_processor.hpp"
+#include "ravbot/channels/lane_processor.hpp"
 
-namespace quantclaw {
+namespace ravbot {
 
 LaneProcessor::LaneProcessor(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {}
@@ -132,4 +132,4 @@ void LaneProcessor::worker_thread(const std::string& lane_id, Lane* lane) {
   logger_->debug("Lane worker stopped: {}", lane_id);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

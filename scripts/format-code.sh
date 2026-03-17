@@ -1,5 +1,5 @@
 #!/bin/bash
-# QuantClaw Code Formatting Script
+# RavBot Code Formatting Script
 # This script formats all C++ source files using clang-format
 
 set -e
@@ -10,7 +10,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}QuantClaw Code Formatter${NC}"
+echo -e "${GREEN}RavBot Code Formatter${NC}"
 echo "================================"
 
 # Check if clang-format is installed

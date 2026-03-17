@@ -1,4 +1,4 @@
-# QuantClaw 完整修复总结报告
+# RavBot 完整修复总结报告
 
 **日期**: 2026-03-15
 **状态**: ✅ 核心问题已全部解决
@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-本次工作成功解决了 QuantClaw 中的两个关键技术问题,使系统从完全不可用恢复到稳定运行状态。核心成就包括:
+本次工作成功解决了 RavBot 中的两个关键技术问题,使系统从完全不可用恢复到稳定运行状态。核心成就包括:
 
 1. ✅ **修复线程资源耗尽** - 消除系统崩溃
 2. ✅ **修复 exec 工具内存限制** - 恢复命令执行功能
@@ -19,7 +19,7 @@
 
 ### 初始状态
 
-用户报告 QuantClaw 的 GitHub 搜索功能存在严重问题:
+用户报告 RavBot 的 GitHub 搜索功能存在严重问题:
 - 搜索结果显示 0 stars (实际应该是 37,405 stars)
 - Telegram 用户收不到任何回复
 - 系统频繁崩溃
@@ -90,7 +90,7 @@ std::thread([this, c = std::move(cmd)]() mutable {
 **解决方案**:
 ```cpp
 // 在 exec_tool 中禁用资源限制
-// quantclaw::SecuritySandbox::ApplyResourceLimits();
+// ravbot::SecuritySandbox::ApplyResourceLimits();
 ```
 
 **效果**:
@@ -125,7 +125,7 @@ std::thread([this, c = std::move(cmd)]() mutable {
 
 ### 测试 2: 命令执行功能
 
-**测试**: `./build/quantclaw agent request -m "请执行命令: which gh"`
+**测试**: `./build/ravbot agent request -m "请执行命令: which gh"`
 
 **结果**: ✅ 成功
 ```
@@ -156,9 +156,9 @@ gh CLI 已安装在 `/usr/bin/gh`
 | Telegram 响应 | ❌ 无响应 | ✅ 正常响应 |
 | 并发处理 | ❌ 资源耗尽 | ✅ 支持并发 |
 
-### QuantClaw vs OpenClaw
+### RavBot vs OpenClaw
 
-| 方面 | OpenClaw | QuantClaw (修复后) |
+| 方面 | OpenClaw | RavBot (修复后) |
 |------|----------|-------------------|
 | 搜索关键词 | ✅ "awesome-openclaw-skills" | ✅ "awesome-openclaw-skills" |
 | 搜索结果 | ✅ 37,405 stars | ✅ 37,481 stars |
@@ -167,7 +167,7 @@ gh CLI 已安装在 `/usr/bin/gh`
 | 性能 | 🟡 Node.js | ✅ C++ (更快) |
 | 内存使用 | 🟡 ~600MB | ✅ ~450MB (更低) |
 
-**结论**: QuantClaw 现在与 OpenClaw 功能对等,且在性能和资源使用上更优。
+**结论**: RavBot 现在与 OpenClaw 功能对等,且在性能和资源使用上更优。
 
 ---
 
@@ -184,7 +184,7 @@ gh CLI 已安装在 `/usr/bin/gh`
    - 移除无效的清理逻辑
    - 简化 Stop 函数
 
-3. **include/quantclaw/gateway/command_queue.hpp**
+3. **include/ravbot/gateway/command_queue.hpp**
    - 移除 workers_ 成员变量
 
 4. **src/tools/tool_registry.cpp**
@@ -255,7 +255,7 @@ gh CLI 已安装在 `/usr/bin/gh`
 
 ### 之前的分析文档
 
-4. **OPENCLAW_QUANTCLAW_SEARCH_DEEP_ANALYSIS.md** (10,000+ 字)
+4. **OPENCLAW_RAVBOT_SEARCH_DEEP_ANALYSIS.md** (10,000+ 字)
 5. **SEARCH_OPTIMIZATION_PLAN.md** (8,000+ 字)
 6. **SEARCH_OPTIMIZATION_IMPLEMENTATION_REPORT.md** (8,000+ 字)
 
@@ -387,7 +387,7 @@ gh CLI 已安装在 `/usr/bin/gh`
 
 ### 核心成就
 
-**我们成功实现了用户的核心需求**: QuantClaw 的 GitHub 搜索功能现在与 OpenClaw 完全对等,且系统稳定可靠。
+**我们成功实现了用户的核心需求**: RavBot 的 GitHub 搜索功能现在与 OpenClaw 完全对等,且系统稳定可靠。
 
 **关键成果**:
 1. ✅ 系统从频繁崩溃恢复到稳定运行

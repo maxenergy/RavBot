@@ -1,20 +1,20 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <chrono>
 #include <thread>
 
-#include "quantclaw/providers/provider_error.hpp"
-#include "quantclaw/providers/cooldown_tracker.hpp"
-#include "quantclaw/providers/failover_resolver.hpp"
-#include "quantclaw/providers/provider_registry.hpp"
-#include "quantclaw/config.hpp"
+#include "ravbot/providers/provider_error.hpp"
+#include "ravbot/providers/cooldown_tracker.hpp"
+#include "ravbot/providers/failover_resolver.hpp"
+#include "ravbot/providers/provider_registry.hpp"
+#include "ravbot/config.hpp"
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 // ================================================================
 // ProviderError tests
@@ -355,14 +355,14 @@ TEST(FailoverConfigTest, ParseFallbacks) {
             {"fallbacks", {"openai/gpt-4o", "ollama/llama3"}}
         }}
     };
-    auto config = QuantClawConfig::FromJson(j);
+    auto config = RavBotConfig::FromJson(j);
     ASSERT_EQ(config.agent.fallbacks.size(), 2u);
     EXPECT_EQ(config.agent.fallbacks[0], "openai/gpt-4o");
     EXPECT_EQ(config.agent.fallbacks[1], "ollama/llama3");
 }
 
 TEST(FailoverConfigTest, EmptyFallbacks) {
-    auto config = QuantClawConfig::FromJson({});
+    auto config = RavBotConfig::FromJson({});
     EXPECT_TRUE(config.agent.fallbacks.empty());
 }
 

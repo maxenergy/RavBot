@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/gateway/gateway_client.hpp"
+#include "ravbot/gateway/gateway_client.hpp"
 #include <chrono>
 #include <sstream>
 
-namespace quantclaw::gateway {
+namespace ravbot::gateway {
 
 GatewayClient::GatewayClient(const std::string& url,
                                const std::string& token,
@@ -18,6 +18,24 @@ GatewayClient::~GatewayClient() {
 }
 
 bool GatewayClient::Connect(int timeout_ms) {
+    // Security: block plaintext ws:// connections to non-loopback addresses.
+    // Corresponds to CWE-319 and OpenClaw isSecureWebSocketUrl() check.
+    if (url_.rfind("ws://", 0) == 0) {
+        // Extract host from URL (ws://host/... or ws://host:port/...)
+        const std::string host_part = url_.substr(5);  // after "ws://"
+        const std::string host = host_part.substr(
+            0, host_part.find_first_of("/:"));
+        const bool is_loopback =
+            host == "localhost" || host == "127.0.0.1" || host == "::1";
+        if (!is_loopback) {
+            logger_->error(
+                "SECURITY: Refusing plaintext ws:// connection to non-loopback "
+                "host '{}'. Use wss:// instead (CWE-319).",
+                host);
+            return false;
+        }
+    }
+
     ws_.setUrl(url_);
 
     ws_.setOnMessageCallback([this](const ix::WebSocketMessagePtr& msg) {
@@ -191,7 +209,7 @@ void GatewayClient::handle_frame(const nlohmann::json& frame) {
             hello.params = {
                 {"minProtocol", 1},
                 {"maxProtocol", 3},
-                {"clientName", "quantclaw-cli"},
+                {"clientName", "ravbot-cli"},
                 {"clientVersion", "0.2.0"},
                 {"role", "operator"},
                 {"scopes", {"operator.read", "operator.write"}},
@@ -248,4 +266,4 @@ std::string GatewayClient::next_request_id() {
     return std::to_string(++request_counter_);
 }
 
-} // namespace quantclaw::gateway
+} // namespace ravbot::gateway

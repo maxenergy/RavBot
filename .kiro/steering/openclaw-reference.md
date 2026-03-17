@@ -8,7 +8,7 @@
 
 ### 1. 任务开始前的准备工作
 
-在开始实现任何 QuantClaw 核心对齐项目的任务之前，必须：
+在开始实现任何 RavBot 核心对齐项目的任务之前，必须：
 
 1. **定位 OpenClaw 对应代码**
    - 根据任务描述，在 `/home/rogers/develop/openclaw` 中找到对应的 TypeScript 源文件
@@ -23,7 +23,7 @@
    - 识别 TypeScript 特有的模式和 C++ 的对应实现方式
 
 3. **比较分析**
-   - 对比 OpenClaw 和当前 QuantClaw 的实现差距
+   - 对比 OpenClaw 和当前 RavBot 的实现差距
    - 识别需要新增的功能
    - 识别需要修改的现有代码
    - 评估向后兼容性影响
@@ -67,7 +67,7 @@
 
 根据 `func_logic_diff.md`，以下是主要模块的映射关系：
 
-| QuantClaw 模块 | OpenClaw 对应模块 |
+| RavBot 模块 | OpenClaw 对应模块 |
 |---------------|------------------|
 | `src/core/prompt_builder.cpp` | `src/agents/system-prompt.ts` |
 | `src/core/agent_loop.cpp` | `src/agents/pi-embedded-runner/run.ts` |
@@ -135,4 +135,4 @@
 
 ## 适用范围
 
-本规则适用于所有 QuantClaw 核心对齐项目（`.kiro/specs/quantclaw-core-alignment/`）的任务实施。
+本规则适用于所有 RavBot 核心对齐项目（`.kiro/specs/ravbot-core-alignment/`）的任务实施。

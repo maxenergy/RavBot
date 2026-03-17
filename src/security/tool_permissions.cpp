@@ -1,20 +1,21 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/security/tool_permissions.hpp"
+#include "ravbot/security/tool_permissions.hpp"
 #include <algorithm>
 #include <spdlog/spdlog.h>
 
-namespace quantclaw {
+namespace ravbot {
 
 // Group definitions
 static const std::unordered_map<std::string, std::vector<std::string>> kGroups = {
     {"fs",      {"read", "write", "edit"}},
     {"runtime", {"exec"}},
+    {"memory",  {"memory_search", "memory_get", "memory_write"}},
     {"all",     {"read", "write", "edit", "exec", "message",
                  "apply_patch", "process",
                  "web_search", "web_fetch",
-                 "memory_search", "memory_get",
+                 "memory_search", "memory_get", "memory_write",
                  "github_search_repos", "github_search_code", "github_get_repo"}},
 };
 
@@ -136,4 +137,4 @@ bool ToolPermissionChecker::IsMcpToolAllowed(const std::string& server_name,
     return false;
 }
 
-} // namespace quantclaw
+} // namespace ravbot

@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <string>
 #include <unordered_set>
-#include "quantclaw/builtin_skills.hpp"
+#include "ravbot/builtin_skills.hpp"
 
-namespace quantclaw {
+namespace ravbot {
 namespace {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -255,4 +255,4 @@ TEST_F(BuiltinSkillsTest, SkillCreatorDocumentsFrontmatterFormat) {
 }
 
 }  // namespace
-}  // namespace quantclaw
+}  // namespace ravbot

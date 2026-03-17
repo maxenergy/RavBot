@@ -2,7 +2,7 @@
 
 ## 概述
 
-基于 OpenClaw vs QuantClaw 深度对比分析，本文档提供具体的实施步骤来优化 QuantClaw 的 GitHub 搜索功能。
+基于 OpenClaw vs RavBot 深度对比分析，本文档提供具体的实施步骤来优化 RavBot 的 GitHub 搜索功能。
 
 ---
 
@@ -118,14 +118,14 @@ logger_->info("Final response (first 500 chars): {}",
 
 1. 编译修改后的代码:
 ```bash
-cd /home/rogers/source/develop/QuantClaw
-cmake --build build --target quantclaw_gateway
+cd /home/rogers/source/develop/RavBot
+cmake --build build --target ravbot_gateway
 ```
 
 2. 重启 gateway:
 ```bash
-pkill -f quantclaw_gateway
-./build/src/gateway/quantclaw_gateway --config config/config.json
+pkill -f ravbot_gateway
+./build/src/gateway/ravbot_gateway --config config/config.json
 ```
 
 3. 在 Telegram 中发送测试消息:
@@ -135,7 +135,7 @@ pkill -f quantclaw_gateway
 
 4. 查看日志:
 ```bash
-tail -200 /tmp/quantclaw_gateway.log | grep -A 10 "github_search_repos"
+tail -200 /tmp/ravbot_gateway.log | grep -A 10 "github_search_repos"
 ```
 
 5. 分析日志确定问题:
@@ -222,7 +222,7 @@ std::string PromptBuilder::BuildFull(const std::string& /*agent_id*/) const {
 ```
 3. 检查日志中的搜索关键词:
 ```bash
-tail -100 /tmp/quantclaw_gateway.log | grep "github_search_repos: executing command"
+tail -100 /tmp/ravbot_gateway.log | grep "github_search_repos: executing command"
 ```
 4. 验证是否使用了 "awesome-openclaw-skills" 而不是 "openclaw"
 
@@ -351,7 +351,7 @@ if (!forced_refined_search_retry &&
 3. 观察是否触发相关性验证并自动重试
 4. 检查日志:
 ```bash
-tail -100 /tmp/quantclaw_gateway.log | grep "Search refinement guard"
+tail -100 /tmp/ravbot_gateway.log | grep "Search refinement guard"
 ```
 
 ---
@@ -545,4 +545,4 @@ git checkout HEAD -- src/core/agent_loop.cpp
 
 **文档版本**: 1.0
 **创建时间**: 2026-03-15
-**负责人**: QuantClaw 开发团队
+**负责人**: RavBot 开发团队

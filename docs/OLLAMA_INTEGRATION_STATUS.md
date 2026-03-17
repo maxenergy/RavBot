@@ -2,7 +2,7 @@
 
 ## 概述
 
-QuantClaw 已成功集成 Ollama 本地嵌入服务，支持使用本地运行的开源嵌入模型。
+RavBot 已成功集成 Ollama 本地嵌入服务，支持使用本地运行的开源嵌入模型。
 
 ## Ollama 服务状态
 
@@ -100,7 +100,7 @@ $ curl -s http://localhost:11434/api/embeddings \
 ### C++ 代码
 
 ```cpp
-#include "quantclaw/core/ollama_embedding_provider.hpp"
+#include "ravbot/core/ollama_embedding_provider.hpp"
 
 // 创建 provider
 auto provider = std::make_shared<OllamaEmbeddingProvider>(

@@ -1,16 +1,16 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
 #include <cstdlib>
-#include "quantclaw/gateway/gateway_server.hpp"
-#include "quantclaw/gateway/protocol.hpp"
+#include "ravbot/gateway/gateway_server.hpp"
+#include "ravbot/gateway/protocol.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
-using namespace quantclaw::gateway;
+using namespace ravbot::gateway;
 
 class GatewayTimeoutTest : public ::testing::Test {
 protected:

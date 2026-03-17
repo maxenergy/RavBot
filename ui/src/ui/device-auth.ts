@@ -3,9 +3,9 @@ import {
   type DeviceAuthStore,
   normalizeDeviceAuthRole,
   normalizeDeviceAuthScopes,
-} from "../../../src/shared/device-auth.js";
+} from "../shared/device-auth.js";
 
-const STORAGE_KEY = "quantclaw.device.auth.v1";
+const STORAGE_KEY = "ravbot.device.auth.v1";
 
 function readStore(): DeviceAuthStore | null {
   try {

@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/ollama_embedding_provider.hpp"
+#include "ravbot/core/ollama_embedding_provider.hpp"
 
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
@@ -10,7 +10,7 @@
 
 using json = nlohmann::json;
 
-namespace quantclaw {
+namespace ravbot {
 
 namespace {
 
@@ -218,4 +218,4 @@ bool OllamaEmbeddingProvider::CheckAvailability() const {
   return false;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/quantclaw-logo-transparent.png" alt="QuantClaw" width="180" />
+  <img src="assets/ravbot-logo-transparent.png" alt="RavBot" width="180" />
 </p>
 
-<h1 align="center">QuantClaw</h1>
+<h1 align="center">RavBot</h1>
 
 <p align="center">
   <strong>C++17 高性能私人 AI 助手</strong>
@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/协议-Apache%202.0-blue.svg" alt="Apache 2.0 协议"></a>
-  <a href="https://github.com/QuantClaw/QuantClaw/actions/workflows/github-actions.yml"><img src="https://github.com/QuantClaw/QuantClaw/actions/workflows/github-actions.yml/badge.svg" alt="CI 构建"></a>
+  <a href="https://github.com/RavBot/RavBot/actions/workflows/github-actions.yml"><img src="https://github.com/RavBot/RavBot/actions/workflows/github-actions.yml/badge.svg" alt="CI 构建"></a>
   <img src="https://img.shields.io/badge/C%2B%2B-17-00599C.svg?logo=cplusplus&logoColor=white" alt="C++17">
   <img src="https://img.shields.io/badge/单测-886%20通过-brightgreen.svg" alt="886 项单测通过">
   <img src="https://img.shields.io/badge/平台-Linux%20%7C%20Windows-lightgrey.svg" alt="Linux | Windows">
@@ -23,7 +23,7 @@
 
 ---
 
-QuantClaw 是 [OpenClaw](https://github.com/openclaw/openclaw) 生态的 C++ 原生实现，专注于性能和低内存占用，同时完全兼容 OpenClaw 的工作空间文件、技能系统和 WebSocket RPC 协议。
+RavBot 是 [OpenClaw](https://github.com/openclaw/openclaw) 生态的 C++ 原生实现，专注于性能和低内存占用，同时完全兼容 OpenClaw 的工作空间文件、技能系统和 WebSocket RPC 协议。
 
 ## 特性
 
@@ -37,35 +37,35 @@ QuantClaw 是 [OpenClaw](https://github.com/openclaw/openclaw) 生态的 C++ 原
 - **上下文治理**：自动压缩、工具结果裁剪、BM25 记忆搜索
 - **频道适配器**：接入 Discord、Telegram 或自定义机器人
 - **会话持久化**：完整对话历史（含工具调用上下文）以 JSONL 格式保存
-- **技能系统**：兼容 OpenClaw SKILL.md 格式（同时支持 OpenClaw 和 QuantClaw 两种清单格式）
+- **技能系统**：兼容 OpenClaw SKILL.md 格式（同时支持 OpenClaw 和 RavBot 两种清单格式）
 - **插件生态**：通过 Node.js Sidecar 完全兼容 OpenClaw 插件——工具、钩子、服务、Provider、命令、HTTP 路由、网关方法
 - **MCP 支持**：Model Context Protocol，接入外部工具服务器
 - **文件系统优先**：无数据库依赖，所有数据存储在工作空间目录
 
 ## 📖 文档
 
-完整文档请访问：**[https://quantclaw.github.io/](https://quantclaw.github.io/)**
+完整文档请访问：**[https://ravbot.github.io/](https://ravbot.github.io/)**
 
 包含：
-- [快速开始指南](https://quantclaw.github.io/guide/getting-started)
-- [多平台安装说明](https://quantclaw.github.io/guide/installation)
-- [架构文档](https://quantclaw.github.io/guide/architecture)
-- [插件开发指南](https://quantclaw.github.io/guide/plugins)
-- [CLI 参考](https://quantclaw.github.io/guide/cli-reference)
+- [快速开始指南](https://ravbot.github.io/guide/getting-started)
+- [多平台安装说明](https://ravbot.github.io/guide/installation)
+- [架构文档](https://ravbot.github.io/guide/architecture)
+- [插件开发指南](https://ravbot.github.io/guide/plugins)
+- [CLI 参考](https://ravbot.github.io/guide/cli-reference)
 
 ## 快速开始
 
-### 1. 编译 QuantClaw
+### 1. 编译 RavBot
 
 ```bash
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 mkdir build && cd build
 cmake ..
 make -j$(nproc)
 
 # 运行测试
-./quantclaw_tests
+./ravbot_tests
 
 # 安装（可选）
 sudo make install
@@ -75,13 +75,13 @@ sudo make install
 
 ```bash
 # 交互式设置向导（推荐）
-quantclaw onboard
+ravbot onboard
 
 # 或自动安装守护进程
-quantclaw onboard --install-daemon
+ravbot onboard --install-daemon
 
 # 或快速设置（无提示）
-quantclaw onboard --quick
+ravbot onboard --quick
 ```
 
 Onboarding 向导会引导你完成：
@@ -95,23 +95,23 @@ Onboarding 向导会引导你完成：
 
 ```bash
 # 如果已安装为服务
-quantclaw gateway start
+ravbot gateway start
 
 # 或前台运行
-quantclaw gateway
+ravbot gateway
 ```
 
 ### 4. 打开仪表板
 
 ```bash
-quantclaw dashboard
+ravbot dashboard
 ```
 
 这会在 `http://127.0.0.1:18801` 打开 Web UI
 
 ## 端口配置
 
-QuantClaw 使用专属端口范围以避免与 OpenClaw 和其他服务冲突：
+RavBot 使用专属端口范围以避免与 OpenClaw 和其他服务冲突：
 
 | 服务 | 端口 | 用途 |
 |------|------|------|
@@ -119,9 +119,9 @@ QuantClaw 使用专属端口范围以避免与 OpenClaw 和其他服务冲突：
 | HTTP REST API / 仪表板 | `18801` | 控制面板和 REST API |
 | Sidecar IPC (TCP loopback) | `18802-18899` | Node.js Sidecar 进程通信 |
 
-**注意**：QuantClaw 使用端口 `18800-18801`（不同于 OpenClaw 的 `18789-18790`），允许两者同时运行。
+**注意**：RavBot 使用端口 `18800-18801`（不同于 OpenClaw 的 `18789-18790`），允许两者同时运行。
 
-要使用自定义端口，编辑 `~/.quantclaw/quantclaw.json`：
+要使用自定义端口，编辑 `~/.ravbot/ravbot.json`：
 
 ```json
 {
@@ -137,8 +137,8 @@ QuantClaw 使用专属端口范围以避免与 OpenClaw 和其他服务冲突：
 ## 架构
 
 ```
-~/.quantclaw/
-├── quantclaw.json              # 配置文件（OpenClaw 格式）
+~/.ravbot/
+├── ravbot.json              # 配置文件（OpenClaw 格式）
 ├── skills/                     # 已安装的技能（OpenClaw 兼容）
 │   └── weather/
 │       └── SKILL.md
@@ -159,7 +159,7 @@ QuantClaw 使用专属端口范围以避免与 OpenClaw 和其他服务冲突：
 
 ## 配置
 
-配置文件路径：`~/.quantclaw/quantclaw.json`
+配置文件路径：`~/.ravbot/ravbot.json`
 
 ```json
 {
@@ -201,7 +201,7 @@ QuantClaw 使用专属端口范围以避免与 OpenClaw 和其他服务冲突：
   "security": {
     "sandbox": {
       "enabled": true,
-      "allowedPaths": ["~/.quantclaw/agents/main/workspace"],
+      "allowedPaths": ["~/.ravbot/agents/main/workspace"],
       "deniedPaths": ["/etc", "/sys", "/proc"]
     }
   },
@@ -215,14 +215,14 @@ QuantClaw 使用专属端口范围以避免与 OpenClaw 和其他服务冲突：
 
 ### 日志保存策略
 
-QuantClaw 在每次网关启动时自动清理过期日志，防止磁盘被撑爆。
+RavBot 在每次网关启动时自动清理过期日志，防止磁盘被撑爆。
 
 | 配置项 | 键名 | 默认值 | 说明 |
 |--------|------|--------|------|
 | 保存天数 | `system.logRetentionDays` | `7` | 删除超过 N 天的 `.log` 文件。设为 `0` 表示永久保留。 |
 | 总容量上限 | `system.logMaxSizeMb` | `50` | 日志文件总占用上限（MiB），均分为 5 个轮转文件（每个约 10 MiB）。 |
 
-日志保存在 `~/.quantclaw/logs/`。主日志（`quantclaw.log`）由 spdlog 按大小自动轮转；网关服务日志（`gateway.log`，由 systemd 写入）则在每次启动时按时间清理。
+日志保存在 `~/.ravbot/logs/`。主日志（`ravbot.log`）由 spdlog 按大小自动轮转；网关服务日志（`gateway.log`，由 systemd 写入）则在每次启动时按时间清理。
 
 完整配置示例见 `config.example.json`。
 
@@ -255,18 +255,18 @@ sudo apt install build-essential cmake libssl-dev \
 
 ```bash
 # 运行完整向导
-quantclaw onboard
+ravbot onboard
 
 # 自动安装守护进程
-quantclaw onboard --install-daemon
+ravbot onboard --install-daemon
 
 # 快速设置（无交互）
-quantclaw onboard --quick
+ravbot onboard --quick
 ```
 
 向导会创建：
-- 配置文件（`~/.quantclaw/quantclaw.json`）
-- 工作空间目录（`~/.quantclaw/agents/main/workspace/`）
+- 配置文件（`~/.ravbot/ravbot.json`）
+- 工作空间目录（`~/.ravbot/agents/main/workspace/`）
 - SOUL.md（助手身份文件）
 - 可选的 systemd 服务用于守护进程模式
 
@@ -274,84 +274,84 @@ quantclaw onboard --quick
 
 ```bash
 # 前台运行
-quantclaw gateway
+ravbot gateway
 
 # 安装为系统服务（systemd / launchd）
-quantclaw gateway install
+ravbot gateway install
 
 # 卸载系统服务
-quantclaw gateway uninstall
+ravbot gateway uninstall
 
 # 启动 / 停止 / 重启
-quantclaw gateway start
-quantclaw gateway stop
-quantclaw gateway restart
+ravbot gateway start
+ravbot gateway stop
+ravbot gateway restart
 
 # 查看状态
-quantclaw gateway status
+ravbot gateway status
 
 # 直接调用任意 RPC 方法
-quantclaw gateway call gateway.health
+ravbot gateway call gateway.health
 ```
 
 ### 与 AI 对话
 
 ```bash
 # 发送消息
-quantclaw agent "你好，介绍一下你自己"
+ravbot agent "你好，介绍一下你自己"
 
 # 指定会话
-quantclaw agent --session my:session "今天天气怎么样？"
+ravbot agent --session my:session "今天天气怎么样？"
 ```
 
 ### 会话管理
 
 ```bash
-quantclaw sessions list
-quantclaw sessions history <session-key>
-quantclaw sessions delete <session-key>
-quantclaw sessions reset <session-key>
+ravbot sessions list
+ravbot sessions history <session-key>
+ravbot sessions delete <session-key>
+ravbot sessions reset <session-key>
 ```
 
 ### 配置管理
 
 ```bash
-quantclaw config get                    # 查看完整配置
-quantclaw config get llm.model          # 查看指定配置项（点路径）
-quantclaw config set llm.model "anthropic/claude-sonnet-4-6"    # 修改配置值
-quantclaw config unset llm.temperature                          # 删除某个配置键
-quantclaw config reload                 # 热重载配置（无需重启网关）
+ravbot config get                    # 查看完整配置
+ravbot config get llm.model          # 查看指定配置项（点路径）
+ravbot config set llm.model "anthropic/claude-sonnet-4-6"    # 修改配置值
+ravbot config unset llm.temperature                          # 删除某个配置键
+ravbot config reload                 # 热重载配置（无需重启网关）
 ```
 
 ### 技能管理
 
 ```bash
-quantclaw skills list              # 列出已加载技能
-quantclaw skills install <name>    # 安装技能依赖
+ravbot skills list              # 列出已加载技能
+ravbot skills install <name>    # 安装技能依赖
 ```
 
 ### 记忆搜索
 
 ```bash
-quantclaw memory search "<查询内容>"  # 在工作空间记忆文件中进行 BM25 搜索
-quantclaw memory status              # 显示记忆索引统计信息
+ravbot memory search "<查询内容>"  # 在工作空间记忆文件中进行 BM25 搜索
+ravbot memory status              # 显示记忆索引统计信息
 ```
 
 ### 定时任务
 
 ```bash
-quantclaw cron list                            # 列出定时任务
-quantclaw cron add <name> <schedule> <task>    # 添加定时任务（cron 表达式）
-quantclaw cron remove <id>                     # 按 ID 删除任务
+ravbot cron list                            # 列出定时任务
+ravbot cron add <name> <schedule> <task>    # 添加定时任务（cron 表达式）
+ravbot cron remove <id>                     # 按 ID 删除任务
 ```
 
 ### 其他命令
 
 ```bash
-quantclaw health          # 健康检查
-quantclaw logs            # 实时查看网关日志
-quantclaw doctor          # 诊断检查
-quantclaw dashboard       # 在浏览器中打开 Web UI
+ravbot health          # 健康检查
+ravbot logs            # 实时查看网关日志
+ravbot doctor          # 诊断检查
+ravbot dashboard       # 在浏览器中打开 Web UI
 ```
 
 ### 对话内消息指令
@@ -383,7 +383,7 @@ quantclaw dashboard       # 在浏览器中打开 Web UI
 
 ### 创建自定义技能
 
-将技能目录放在 `~/.quantclaw/skills/`（全局）或工作空间目录下：
+将技能目录放在 `~/.ravbot/skills/`（全局）或工作空间目录下：
 
 ```yaml
 # skills/my-skill/SKILL.md
@@ -411,7 +411,7 @@ metadata:
 
 ## 频道适配器
 
-QuantClaw 通过频道适配器接入外部消息平台。适配器是独立的 Node.js 进程，以标准 WebSocket RPC 客户端的方式连接网关。
+RavBot 通过频道适配器接入外部消息平台。适配器是独立的 Node.js 进程，以标准 WebSocket RPC 客户端的方式连接网关。
 
 **内置适配器**（`adapters/` 目录）：
 
@@ -505,11 +505,11 @@ curl http://localhost:18801/api/plugins/commands
 
 | 文件 | 用途 | 基础镜像 | 运行用户 |
 |------|------|----------|----------|
-| `scripts/Dockerfile` | **生产镜像** — 最小化运行时，含 C++ 二进制 + Sidecar | Ubuntu 22.04（可通过 `--build-arg UBUNTU_VERSION=` 覆盖）多阶段构建 | `quantclaw`（非 root）|
+| `scripts/Dockerfile` | **生产镜像** — 最小化运行时，含 C++ 二进制 + Sidecar | Ubuntu 22.04（可通过 `--build-arg UBUNTU_VERSION=` 覆盖）多阶段构建 | `ravbot`（非 root）|
 | `scripts/Dockerfile.test` | **CI / 测试镜像** — 运行 C++ 单元测试 + Sidecar 测试 + E2E 测试 | Ubuntu 22.04 | root |
 | `scripts/Dockerfile.dev` | **开发镜像** — 完整工具链 + 源码 + `gdb`/`valgrind`，交互式 Shell | Ubuntu 22.04 | root |
 
-生产镜像采用**三阶段构建**：`cpp-builder`（编译 C++）、`node-builder`（编译 TypeScript Sidecar）、`runtime`（仅复制最终产物）。以非 root 用户 `quantclaw` 运行。
+生产镜像采用**三阶段构建**：`cpp-builder`（编译 C++）、`node-builder`（编译 TypeScript Sidecar）、`runtime`（仅复制最终产物）。以非 root 用户 `ravbot` 运行。
 
 ### DOCKER_VERSION
 
@@ -520,31 +520,31 @@ VERSION=$(cat scripts/DOCKER_VERSION)
 # → 0.3.0-alpha
 ```
 
-三个 Compose 服务均通过 `QUANTCLAW_VERSION` 环境变量读取此版本号。
+三个 Compose 服务均通过 `RAVBOT_VERSION` 环境变量读取此版本号。
 
 ### 使用 Docker Compose 快速启动
 
 ```bash
 # 后台启动生产网关
-docker compose -f scripts/docker-compose.yml up -d quantclaw
+docker compose -f scripts/docker-compose.yml up -d ravbot
 
 # 查看日志
-docker compose -f scripts/docker-compose.yml logs -f quantclaw
+docker compose -f scripts/docker-compose.yml logs -f ravbot
 
 # 运行完整测试套件（一次性容器）
-docker compose -f scripts/docker-compose.yml run --rm quantclaw-test
+docker compose -f scripts/docker-compose.yml run --rm ravbot-test
 
 # 启动开发容器（挂载源码目录）
-docker compose -f scripts/docker-compose.yml run --rm quantclaw-dev
+docker compose -f scripts/docker-compose.yml run --rm ravbot-dev
 ```
 
 Compose 文件定义了三个服务：
 
 | 服务 | 镜像 | 说明 |
 |------|------|------|
-| `quantclaw` | `quantclaw:VERSION` | 生产网关，异常自动重启 |
-| `quantclaw-test` | `quantclaw-test:VERSION` | 一次性测试运行器 |
-| `quantclaw-dev` | `quantclaw-dev:VERSION` | 开发 Shell，挂载源码目录 |
+| `ravbot` | `ravbot:VERSION` | 生产网关，异常自动重启 |
+| `ravbot-test` | `ravbot-test:VERSION` | 一次性测试运行器 |
+| `ravbot-dev` | `ravbot-dev:VERSION` | 开发 Shell，挂载源码目录 |
 
 ### 手动构建
 
@@ -557,29 +557,29 @@ docker build \
   --build-arg VERSION=$VERSION \
   --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
   --build-arg VCS_REF=$(git rev-parse --short HEAD) \
-  -t quantclaw:$VERSION \
-  -t quantclaw:latest \
+  -t ravbot:$VERSION \
+  -t ravbot:latest \
   .
 
 # 测试镜像
-docker build -f scripts/Dockerfile.test -t quantclaw-test:$VERSION .
+docker build -f scripts/Dockerfile.test -t ravbot-test:$VERSION .
 
 # 开发镜像
-docker build -f scripts/Dockerfile.dev -t quantclaw-dev:$VERSION .
+docker build -f scripts/Dockerfile.dev -t ravbot-dev:$VERSION .
 ```
 
 ### 运行生产镜像
 
 ```bash
 docker run -d \
-  --name quantclaw \
+  --name ravbot \
   -p 18800:18800 \
   -p 18801:18801 \
   -e OPENAI_API_KEY=sk-... \
   -e ANTHROPIC_API_KEY=sk-ant-... \
-  -e QUANTCLAW_LOG_LEVEL=info \
-  -v quantclaw_data:/home/quantclaw/.quantclaw \
-  quantclaw:latest
+  -e RAVBOT_LOG_LEVEL=info \
+  -v ravbot_data:/home/ravbot/.ravbot \
+  ravbot:latest
 ```
 
 ### 构建参数与环境变量
@@ -599,13 +599,13 @@ docker run -d \
 |------|--------|------|
 | `OPENAI_API_KEY` | — | OpenAI / 兼容 Provider 的 API Key |
 | `ANTHROPIC_API_KEY` | — | Anthropic API Key |
-| `QUANTCLAW_LOG_LEVEL` | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
+| `RAVBOT_LOG_LEVEL` | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
 
 ### 挂载卷与端口
 
 | 挂载卷 | 说明 |
 |--------|------|
-| `/home/quantclaw/.quantclaw` | 配置、工作空间、会话记录、日志 — **务必持久化** |
+| `/home/ravbot/.ravbot` | 配置、工作空间、会话记录、日志 — **务必持久化** |
 
 | 端口 | 协议 | 说明 |
 |------|------|------|
@@ -632,7 +632,7 @@ docker run -d \
 
 ```bash
 cd build
-./quantclaw_tests
+./ravbot_tests
 # 或
 ctest --output-on-failure
 ```
@@ -651,13 +651,13 @@ bash tests/smoke_test.sh
 OPENAI_API_KEY=sk-... bash tests/smoke_test.sh
 ```
 
-测试覆盖：生命周期（健康检查/状态/认证）、配置 RPC、会话 RPC、插件 RPC、技能/定时任务/记忆/队列/频道状态、10 个并发 WebSocket 连接、优雅关闭。日志保存在 `/tmp/quantclaw-smoke-ci/gateway.log`。
+测试覆盖：生命周期（健康检查/状态/认证）、配置 RPC、会话 RPC、插件 RPC、技能/定时任务/记忆/队列/频道状态、10 个并发 WebSocket 连接、优雅关闭。日志保存在 `/tmp/ravbot-smoke-ci/gateway.log`。
 
 ### 手动 LLM 测试
 
 ```bash
 # 启动网关
-quantclaw gateway
+ravbot gateway
 
 # 非流式 Agent 请求
 curl -X POST http://localhost:18801/api/agent/request \
@@ -674,7 +674,7 @@ curl -X POST http://localhost:18801/v1/chat/completions \
 
 ## 插件生态
 
-QuantClaw 通过 Node.js Sidecar 进程运行 OpenClaw TypeScript 插件。C++ 主进程管理 Sidecar 生命周期，通过 **TCP 本地回环（127.0.0.1）** 以 JSON-RPC 2.0 协议通信。
+RavBot 通过 Node.js Sidecar 进程运行 OpenClaw TypeScript 插件。C++ 主进程管理 Sidecar 生命周期，通过 **TCP 本地回环（127.0.0.1）** 以 JSON-RPC 2.0 协议通信。
 
 **支持的插件能力**：
 - **工具（Tools）**：插件定义的工具，可被 Agent 调用
@@ -687,11 +687,11 @@ QuantClaw 通过 Node.js Sidecar 进程运行 OpenClaw TypeScript 插件。C++ �
 
 **插件发现**（按优先级排列）：
 1. 配置指定路径（`plugins.load.paths`）
-2. 工作空间插件（`.openclaw/plugins/` 或 `.quantclaw/plugins/`）
-3. 全局插件（`~/.quantclaw/plugins/`）
-4. 内置插件（`~/.quantclaw/bundled-plugins/`）
+2. 工作空间插件（`.openclaw/plugins/` 或 `.ravbot/plugins/`）
+3. 全局插件（`~/.ravbot/plugins/`）
+4. 内置插件（`~/.ravbot/bundled-plugins/`）
 
-插件使用 `openclaw.plugin.json` 或 `quantclaw.plugin.json` 清单文件，与 OpenClaw 插件格式兼容。
+插件使用 `openclaw.plugin.json` 或 `ravbot.plugin.json` 清单文件，与 OpenClaw 插件格式兼容。
 
 ```json
 {
@@ -711,7 +711,7 @@ C++ 主进程与 Sidecar 之间的进程间通信（IPC）采用 **TCP 本地回
 
 **连接建立**：
 1. C++ 主进程绑定 `127.0.0.1:0`，由操作系统分配空闲端口
-2. 实际端口号通过 `QUANTCLAW_PORT` 环境变量传递给 Sidecar 子进程
+2. 实际端口号通过 `RAVBOT_PORT` 环境变量传递给 Sidecar 子进程
 3. Sidecar 用 Node.js 内置 `net.createConnection(port, '127.0.0.1')` 发起连接——无需额外 npm 依赖
 
 **数据包格式（NDJSON）**：
@@ -735,7 +735,7 @@ JSON 规范（[RFC 8259 §7](https://www.rfc-editor.org/rfc/rfc8259#section-7)�
 
 ## OpenClaw 兼容性现状
 
-QuantClaw 目标是完全兼容 [OpenClaw](https://github.com/openclaw/openclaw)（v2026.2）。下表为当前对齐情况：
+RavBot 目标是完全兼容 [OpenClaw](https://github.com/openclaw/openclaw)（v2026.2）。下表为当前对齐情况：
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -758,7 +758,7 @@ QuantClaw 目标是完全兼容 [OpenClaw](https://github.com/openclaw/openclaw)
 
 ### 与 OpenClaw 的主要差异
 
-| 维度 | OpenClaw | QuantClaw |
+| 维度 | OpenClaw | RavBot |
 |------|----------|-----------|
 | 默认网关端口 | `18789`（WebSocket + HTTP） | `18800`（WebSocket）、`18801`（HTTP） |
 | 配置格式 | JSON5 + `${VAR}` + `$include` | JSON5 + `${VAR}`（暂无 `$include`） |
@@ -769,7 +769,7 @@ QuantClaw 目标是完全兼容 [OpenClaw](https://github.com/openclaw/openclaw)
 | 插件执行 | 进程内（Node.js VM） | 进程外（TCP sidecar） |
 | 频道适配器 | 38+ 内置（Discord、Slack、Teams、Telegram、Matrix、IRC 等） | 外部 subprocess 脚本（用户提供） |
 
-### QuantClaw 独有特性
+### RavBot 独有特性
 
 | 特性 | 说明 |
 |------|------|
@@ -800,25 +800,25 @@ QuantClaw 目标是完全兼容 [OpenClaw](https://github.com/openclaw/openclaw)
 
 **网关无法启动**
 ```bash
-quantclaw config get gateway.port   # 检查已配置的端口
-quantclaw doctor                    # 运行诊断
+ravbot config get gateway.port   # 检查已配置的端口
+ravbot doctor                    # 运行诊断
 ```
 
 **无法连接到网关**
 ```bash
-quantclaw health    # 检查网关是否运行
-quantclaw logs      # 实时查看日志定位错误
-quantclaw status    # 查看连接数和会话数
+ravbot health    # 检查网关是否运行
+ravbot logs      # 实时查看日志定位错误
+ravbot status    # 查看连接数和会话数
 ```
 
 **API 调用失败**
-- 检查 `~/.quantclaw/quantclaw.json` 中的 LLM API Key 是否有效
+- 检查 `~/.ravbot/ravbot.json` 中的 LLM API Key 是否有效
 - 如果使用自定义端点，检查 `providers.openai.baseUrl`
-- 运行 `quantclaw doctor` 获取完整诊断报告
+- 运行 `ravbot doctor` 获取完整诊断报告
 
 **配置修改未生效**
 ```bash
-quantclaw config reload   # 热重载配置，无需重启网关
+ravbot config reload   # 热重载配置，无需重启网关
 ```
 
 **编译失败**
@@ -845,7 +845,7 @@ Apache License 2.0 — 详见 [LICENSE](LICENSE)。
 
 ### 代码规范
 
-QuantClaw 遵循 [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)，用 `clang-format` 强制执行。
+RavBot 遵循 [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)，用 `clang-format` 强制执行。
 
 **VS Code** — 在 `.vscode/settings.json` 中添加：
 
@@ -872,14 +872,14 @@ chmod +x .git/hooks/pre-commit
 测试使用 [Google Test](https://github.com/google/googletest)。运行指定测试套件：
 
 ```bash
-./build/quantclaw_tests --gtest_filter=AgentLoopTest.*
+./build/ravbot_tests --gtest_filter=AgentLoopTest.*
 ```
 
 测试结构示例：
 
 ```cpp
 #include <gtest/gtest.h>
-#include "quantclaw/my_module.hpp"
+#include "ravbot/my_module.hpp"
 
 TEST(MyModuleTest, BasicFunctionality) {
     MyModule module;
@@ -907,4 +907,4 @@ TEST(MyModuleTest, BasicFunctionality) {
 - 如果新增了用户可见的功能，请更新 README
 - 为新功能添加了单元测试
 
-有问题？欢迎提 [Issue](https://github.com/QuantClaw/QuantClaw/issues) 或发起 [Discussion](https://github.com/QuantClaw/QuantClaw/discussions)。
+有问题？欢迎提 [Issue](https://github.com/RavBot/RavBot/issues) 或发起 [Discussion](https://github.com/RavBot/RavBot/discussions)。

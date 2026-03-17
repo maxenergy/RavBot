@@ -29,17 +29,17 @@ echo ""
 echo "📁 关键文件检查:"
 
 # 检查主程序
-if dpkg -c "$DEB_FILE" | grep -q "./usr/bin/quantclaw$"; then
-    echo "  ✅ 主程序: /usr/bin/quantclaw"
+if dpkg -c "$DEB_FILE" | grep -q "./usr/bin/ravbot$"; then
+    echo "  ✅ 主程序: /usr/bin/ravbot"
 else
     echo "  ❌ 主程序缺失"
     exit 1
 fi
 
 # 检查 systemd 服务
-if dpkg -c "$DEB_FILE" | grep -q "./usr/lib/systemd/system/quantclaw.service$"; then
-    echo "  ✅ Systemd 服务: /usr/lib/systemd/system/quantclaw.service"
-elif dpkg -c "$DEB_FILE" | grep -q "./lib/systemd/system/quantclaw.service$"; then
+if dpkg -c "$DEB_FILE" | grep -q "./usr/lib/systemd/system/ravbot.service$"; then
+    echo "  ✅ Systemd 服务: /usr/lib/systemd/system/ravbot.service"
+elif dpkg -c "$DEB_FILE" | grep -q "./lib/systemd/system/ravbot.service$"; then
     echo "  ⚠️  Systemd 服务路径错误: /lib/systemd/system/ (应该是 /usr/lib/systemd/system/)"
     exit 1
 else
@@ -48,8 +48,8 @@ else
 fi
 
 # 检查 Sidecar
-if dpkg -c "$DEB_FILE" | grep -q "./usr/share/quantclaw/sidecar/dist/index.js$"; then
-    echo "  ✅ Sidecar: /usr/share/quantclaw/sidecar/dist/index.js"
+if dpkg -c "$DEB_FILE" | grep -q "./usr/share/ravbot/sidecar/dist/index.js$"; then
+    echo "  ✅ Sidecar: /usr/share/ravbot/sidecar/dist/index.js"
 else
     echo "  ❌ Sidecar 缺失"
     exit 1
@@ -65,7 +65,7 @@ else
 fi
 
 # 检查技能
-SKILLS_COUNT=$(dpkg -c "$DEB_FILE" | grep -c "/usr/share/quantclaw/skills/" || true)
+SKILLS_COUNT=$(dpkg -c "$DEB_FILE" | grep -c "/usr/share/ravbot/skills/" || true)
 if [ "$SKILLS_COUNT" -gt 0 ]; then
     echo "  ✅ 内置技能: $SKILLS_COUNT 个文件"
 else

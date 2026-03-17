@@ -8,7 +8,7 @@
 
 ### 远程机器配置
 
-**文件:** `~/.quantclaw/quantclaw.json`
+**文件:** `~/.ravbot/ravbot.json`
 
 ```json
 {
@@ -81,7 +81,7 @@ Claude API
 
 ### 问题 3: 多个进程冲突
 **原因:** 重启时未完全清理旧进程
-**解决:** 使用 `pkill -9 -f quantclaw` 强制终止所有进程
+**解决:** 使用 `pkill -9 -f ravbot` 强制终止所有进程
 
 ## 启动日志
 
@@ -110,11 +110,11 @@ curl http://192.168.1.226:8991
 ```
 
 ### 3. Telegram Bot 测试
-**Bot 用户名:** @amdquantclawbot
+**Bot 用户名:** @amdravbotbot
 **测试方法:** 在 Telegram 中发送消息给 bot
 
 **预期行为:**
-1. 用户发送消息到 @amdquantclawbot
+1. 用户发送消息到 @amdravbotbot
 2. Telegram API 将消息转发到远程机器 (192.168.1.104:18800)
 3. 远程 Gateway 接收消息
 4. 远程 Gateway 调用本地 API (192.168.1.226:8991)
@@ -125,22 +125,22 @@ curl http://192.168.1.226:8991
 
 1. **测试 Telegram Bot**
    ```
-   在 Telegram 中向 @amdquantclawbot 发送测试消息
+   在 Telegram 中向 @amdravbotbot 发送测试消息
    ```
 
 2. **监控日志**
    ```bash
    ssh kaifa@192.168.1.104
    # 查看实时日志（如果有日志文件）
-   tail -f ~/.quantclaw/logs/gateway.log
+   tail -f ~/.ravbot/logs/gateway.log
    ```
 
 3. **如果遇到问题**
    ```bash
    # 重启服务
    ssh kaifa@192.168.1.104
-   pkill -9 -f quantclaw
-   quantclaw gateway &
+   pkill -9 -f ravbot
+   ravbot gateway &
    ```
 
 ## 维护命令
@@ -148,15 +148,15 @@ curl http://192.168.1.226:8991
 ### 重启服务
 ```bash
 ssh kaifa@192.168.1.104
-pkill -9 -f quantclaw
+pkill -9 -f ravbot
 sleep 2
-quantclaw gateway &
+ravbot gateway &
 ```
 
 ### 查看进程状态
 ```bash
 ssh kaifa@192.168.1.104
-ps aux | grep quantclaw | grep -v grep
+ps aux | grep ravbot | grep -v grep
 ```
 
 ### 测试 API 连接
@@ -173,10 +173,10 @@ curl http://127.0.0.1:18801/health
 
 ## 配置文件位置
 
-- **远程配置:** `/home/kaifa/.quantclaw/quantclaw.json`
-- **远程工作区:** `/home/kaifa/.quantclaw/agents/main/workspace`
-- **远程会话:** `/home/kaifa/.quantclaw/agents/main/sessions`
-- **远程数据:** `/home/kaifa/.quantclaw/data/`
+- **远程配置:** `/home/kaifa/.ravbot/ravbot.json`
+- **远程工作区:** `/home/kaifa/.ravbot/agents/main/workspace`
+- **远程会话:** `/home/kaifa/.ravbot/agents/main/sessions`
+- **远程数据:** `/home/kaifa/.ravbot/data/`
 
 ## 安全注意事项
 
@@ -199,7 +199,7 @@ curl http://127.0.0.1:18801/health
 1. **检查服务状态**
    ```bash
    ssh kaifa@192.168.1.104
-   ps aux | grep quantclaw
+   ps aux | grep ravbot
    ```
 
 2. **检查 API 连接**
@@ -213,8 +213,8 @@ curl http://127.0.0.1:18801/health
 
 4. **重启服务**
    ```bash
-   pkill -9 -f quantclaw
-   quantclaw gateway &
+   pkill -9 -f ravbot
+   ravbot gateway &
    ```
 
 ### API 连接失败

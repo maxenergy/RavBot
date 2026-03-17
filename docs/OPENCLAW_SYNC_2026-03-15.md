@@ -2,7 +2,7 @@
 
 **日期**: 2026-03-15
 **OpenClaw 版本**: d230bd9c3 (2026-03-14)
-**QuantClaw 版本**: 0c8a92d (2026-03-15)
+**RavBot 版本**: 0c8a92d (2026-03-15)
 
 ---
 
@@ -36,8 +36,8 @@ agents.defaults.compaction.timeoutSeconds = 900  // 默认 15 分钟
 - 锁定时间与 compaction 时间同步
 - 防止锁过期导致的并发问题
 
-**QuantClaw 迁移**:
-- ✅ **需要迁移**: QuantClaw 也有 compaction 功能
+**RavBot 迁移**:
+- ✅ **需要迁移**: RavBot 也有 compaction 功能
 - 📍 **位置**: `src/core/agent_loop.cpp` 或配置系统
 - 🔧 **实现**: 添加 `compaction.timeoutSeconds` 配置项
 
@@ -58,7 +58,7 @@ gateway.health.staleThresholdMs = 30000  // 默认 30 秒
 gateway.health.maxRestarts = 3           // 默认 3 次
 ```
 
-**QuantClaw 迁移**:
+**RavBot 迁移**:
 - ✅ **需要迁移**: 提高系统可靠性
 - 📍 **位置**: `src/gateway/gateway_server.cpp`
 - 🔧 **实现**: 添加健康监控配置
@@ -78,8 +78,8 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 - 流式增强
 - Reactions 和卡片操作支持
 
-**QuantClaw 迁移**:
-- ⏸️ **暂不迁移**: QuantClaw 目前不支持 Feishu
+**RavBot 迁移**:
+- ⏸️ **暂不迁移**: RavBot 目前不支持 Feishu
 - 📝 **备注**: 未来如果添加 Feishu 支持时参考
 
 ---
@@ -94,8 +94,8 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 - 用户可选择隐藏思考块
 - 改善用户体验
 
-**QuantClaw 迁移**:
-- ⏸️ **暂不迁移**: QuantClaw 没有 webchat 界面
+**RavBot 迁移**:
+- ⏸️ **暂不迁移**: RavBot 没有 webchat 界面
 - 📝 **备注**: Telegram 可以考虑类似功能
 
 ---
@@ -113,8 +113,8 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 - 移除 chrome-relay 自动创建
 - 简化为仅用户配置文件
 
-**QuantClaw 迁移**:
-- ✅ **需要评估**: QuantClaw 的浏览器工具可能需要简化
+**RavBot 迁移**:
+- ✅ **需要评估**: RavBot 的浏览器工具可能需要简化
 - 📍 **位置**: `src/tools/browser_tool.cpp`
 - 🔧 **实现**: 评估当前实现，考虑简化
 
@@ -129,7 +129,7 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 - 支持 Linux/Docker/VPS 环境
 - Headless 模式下的现有会话支持
 
-**QuantClaw 迁移**:
+**RavBot 迁移**:
 - ✅ **需要迁移**: 提高 Docker 环境兼容性
 - 📍 **位置**: `src/tools/browser_tool.cpp`
 - 🔧 **实现**: 添加 headless 会话支持
@@ -151,8 +151,8 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 - 添加运行时能力检测
 - 自动降级不支持图像的模型
 
-**QuantClaw 迁移**:
-- ⏸️ **暂不迁移**: QuantClaw 目前不支持 OpenRouter
+**RavBot 迁移**:
+- ⏸️ **暂不迁移**: RavBot 目前不支持 OpenRouter
 - 📝 **备注**: 未来添加 OpenRouter 时参考
 
 ---
@@ -166,7 +166,7 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 - 新增 ZAI GLM-5-turbo 模型支持
 - 性能优于之前的模型
 
-**QuantClaw 迁移**:
+**RavBot 迁移**:
 - ⏸️ **暂不迁移**: 非核心功能
 - 📝 **备注**: 可选的模型支持
 
@@ -183,8 +183,8 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 - 限制 canvas 代理操作到可信表面
 - 提高安全性
 
-**QuantClaw 迁移**:
-- ⏸️ **暂不迁移**: QuantClaw 不支持 canvas
+**RavBot 迁移**:
+- ⏸️ **暂不迁移**: RavBot 不支持 canvas
 - 📝 **备注**: 安全模式的参考
 
 ---
@@ -198,7 +198,7 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 - 清理包装的元数据
 - 防止注入攻击
 
-**QuantClaw 迁移**:
+**RavBot 迁移**:
 - ✅ **需要迁移**: 提高安全性
 - 📍 **位置**: `src/gateway/message_sanitizer.cpp`
 - 🔧 **实现**: 增强元数据清理
@@ -216,7 +216,7 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 **解决方案**:
 - 认证成功时清理锁定状态
 
-**QuantClaw 迁移**:
+**RavBot 迁移**:
 - ✅ **需要迁移**: 改善用户体验
 - 📍 **位置**: 认证模块
 - 🔧 **实现**: 添加锁定状态清理
@@ -237,7 +237,7 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 **解决方案**:
 - 持久化 compaction 计数
 
-**QuantClaw 迁移**:
+**RavBot 迁移**:
 - ✅ **需要迁移**: 改善统计准确性
 - 📍 **位置**: `src/core/agent_loop.cpp`
 - 🔧 **实现**: 持久化 compaction 统计
@@ -255,8 +255,8 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 **解决方案**:
 - 恢复 usage 跟踪
 
-**QuantClaw 迁移**:
-- ✅ **需要检查**: 确保 QuantClaw 的 usage 跟踪正常
+**RavBot 迁移**:
+- ✅ **需要检查**: 确保 RavBot 的 usage 跟踪正常
 - 📍 **位置**: `src/providers/`
 - 🔧 **实现**: 验证并修复 usage 跟踪
 
@@ -273,8 +273,8 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 **解决方案**:
 - 验证输出文件非空
 
-**QuantClaw 迁移**:
-- ⏸️ **暂不迁移**: QuantClaw 不支持 TTS
+**RavBot 迁移**:
+- ⏸️ **暂不迁移**: RavBot 不支持 TTS
 - 📝 **备注**: 未来添加 TTS 时参考
 
 ---
@@ -384,15 +384,15 @@ gateway.health.maxRestarts = 3           // 默认 3 次
 
 1. **Compaction 性能**
    - OpenClaw 提高了默认超时到 15 分钟
-   - QuantClaw 需要评估当前性能
+   - RavBot 需要评估当前性能
 
 2. **浏览器工具复杂度**
    - OpenClaw 简化了实现
-   - QuantClaw 可能也需要简化
+   - RavBot 可能也需要简化
 
 3. **安全性增强**
    - OpenClaw 加强了元数据清理
-   - QuantClaw 需要同步安全措施
+   - RavBot 需要同步安全措施
 
 ---
 

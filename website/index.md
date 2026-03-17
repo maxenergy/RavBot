@@ -2,19 +2,19 @@
 layout: home
 
 hero:
-  name: "QuantClaw"
+  name: "RavBot"
   text: "High-Performance AI Agent Framework"
   tagline: "C++17 native implementation of OpenClaw with persistent memory, browser control, and plugin ecosystem"
   image:
     src: /logo-light.png
-    alt: QuantClaw
+    alt: RavBot
   actions:
     - theme: brand
       text: Get Started
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/QuantClaw/QuantClaw
+      link: https://github.com/RavBot/RavBot
 
 features:
   - icon: ⚡
@@ -54,9 +54,9 @@ features:
     details: "Works with OpenClaw workspace files, skill format, JSONL sessions, and the WebSocket RPC protocol"
 ---
 
-## Why QuantClaw?
+## Why RavBot?
 
-**QuantClaw** is a C++17 reimplementation of the [OpenClaw](https://github.com/openclaw/openclaw) AI agent ecosystem — built for performance and low memory footprint while staying compatible with OpenClaw workspace files, skills, and the RPC protocol.
+**RavBot** is a C++17 reimplementation of the [OpenClaw](https://github.com/openclaw/openclaw) AI agent ecosystem — built for performance and low memory footprint while staying compatible with OpenClaw workspace files, skills, and the RPC protocol.
 
 - **Native Performance**: C++17 binary, no Node.js runtime overhead
 - **OpenClaw Compatible**: Workspace files, SKILL.md format, JSONL sessions, and WebSocket RPC
@@ -65,7 +65,7 @@ features:
 
 ## Quick Comparison
 
-| Feature | QuantClaw | OpenClaw |
+| Feature | RavBot | OpenClaw |
 |---------|-----------|----------|
 | Language | C++17 | TypeScript/Node.js |
 | Runtime Overhead | Minimal | Node.js VM |
@@ -108,30 +108,30 @@ features:
 
 ```bash
 # Clone and build
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 mkdir build && cd build
 cmake .. && make -j$(nproc)
 
 # Initialize
-quantclaw onboard --quick
+ravbot onboard --quick
 
 # Start gateway and chat
-quantclaw gateway start
-quantclaw agent "Hello, introduce yourself"
+ravbot gateway start
+ravbot agent "Hello, introduce yourself"
 ```
 
 For detailed instructions, see [Getting Started](/guide/getting-started).
 
 ## Community & Support
 
-- **GitHub**: [QuantClaw/QuantClaw](https://github.com/QuantClaw/QuantClaw)
-- **Issues**: [Report bugs and request features](https://github.com/QuantClaw/QuantClaw/issues)
-- **Discussions**: [Community discussions](https://github.com/QuantClaw/QuantClaw/discussions)
+- **GitHub**: [RavBot/RavBot](https://github.com/RavBot/RavBot)
+- **Issues**: [Report bugs and request features](https://github.com/RavBot/RavBot/issues)
+- **Discussions**: [Community discussions](https://github.com/RavBot/RavBot/discussions)
 
 ## License
 
-QuantClaw is released under the [Apache 2.0 License](https://github.com/QuantClaw/QuantClaw/blob/main/LICENSE).
+RavBot is released under the [Apache 2.0 License](https://github.com/RavBot/RavBot/blob/main/LICENSE).
 
 ---
 

@@ -1,13 +1,13 @@
 # C++ 向量搜索记忆系统 - 技术方案
 
 生成日期: 2026-03-14
-项目: QuantClaw 长效记忆系统增强
+项目: RavBot 长效记忆系统增强
 
 ---
 
 ## 📋 目标
 
-为 QuantClaw 实现完整的向量搜索记忆系统,支持:
+为 RavBot 实现完整的向量搜索记忆系统,支持:
 1. 语义搜索 - 基于向量相似度的智能检索
 2. 嵌入模型 - 文本转向量的本地推理
 3. 向量数据库 - 高性能向量存储和检索
@@ -311,7 +311,7 @@ HNSWlib (向量索引和搜索)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    QuantClaw 记忆系统                      │
+│                    RavBot 记忆系统                      │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  ┌──────────────┐      ┌──────────────┐               │
@@ -372,7 +372,7 @@ HNSWlib (向量索引和搜索)
 4. 单元测试
 
 **文件**:
-- `include/quantclaw/core/vector_index.hpp`
+- `include/ravbot/core/vector_index.hpp`
 - `src/core/vector_index.cpp`
 - `tests/test_vector_index.cpp`
 
@@ -409,7 +409,7 @@ public:
 5. 单元测试
 
 **文件**:
-- `include/quantclaw/core/embedding_manager.hpp` (已存在)
+- `include/ravbot/core/embedding_manager.hpp` (已存在)
 - `src/core/embedding_manager.cpp`
 - `tests/test_embedding_manager.cpp`
 
@@ -442,7 +442,7 @@ public:
 5. 单元测试
 
 **文件**:
-- `include/quantclaw/core/vector_database.hpp` (已存在)
+- `include/ravbot/core/vector_database.hpp` (已存在)
 - `src/core/vector_database.cpp` (已存在)
 - `tests/test_vector_database.cpp`
 
@@ -484,7 +484,7 @@ public:
 4. 端到端测试
 
 **文件**:
-- `include/quantclaw/core/memory_manager.hpp` (修改)
+- `include/ravbot/core/memory_manager.hpp` (修改)
 - `src/core/memory_manager.cpp` (修改)
 - `tests/test_memory_semantic_search.cpp`
 
@@ -531,12 +531,12 @@ FetchContent_MakeAvailable(usearch)
 # sqlite-vec (作为扩展加载)
 # 编译时包含,运行时加载
 
-target_link_libraries(quantclaw_core
+target_link_libraries(ravbot_core
   PRIVATE
     onnxruntime::onnxruntime
 )
 
-target_include_directories(quantclaw_core
+target_include_directories(ravbot_core
   PRIVATE
     ${usearch_SOURCE_DIR}/include
 )

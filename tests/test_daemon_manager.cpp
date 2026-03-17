@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -7,18 +7,18 @@
 #include <fstream>
 #include <cstdlib>
 #include <unistd.h>
-#include "quantclaw/gateway/daemon_manager.hpp"
+#include "ravbot/gateway/daemon_manager.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 #include "test_helpers.hpp"
 
-using namespace quantclaw::gateway;
+using namespace ravbot::gateway;
 
 class DaemonManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Use a temp directory as HOME so we don't touch the real system
-        test_home_ = quantclaw::test::MakeTestDir("quantclaw_daemon_test");
+        test_home_ = ravbot::test::MakeTestDir("ravbot_daemon_test");
 
         original_home_ = std::getenv("HOME") ? std::getenv("HOME") : "";
         setenv("HOME", test_home_.c_str(), 1);
@@ -42,7 +42,7 @@ protected:
 
     // Write a PID file directly for testing
     void write_pid_file(int pid) {
-        auto pid_path = test_home_ / ".quantclaw" / "gateway.pid";
+        auto pid_path = test_home_ / ".ravbot" / "gateway.pid";
         std::filesystem::create_directories(pid_path.parent_path());
         std::ofstream f(pid_path);
         f << pid;
@@ -58,13 +58,13 @@ protected:
 // --- Constructor ---
 
 TEST_F(DaemonManagerTest, ConstructorCreatesDirectories) {
-    auto logs_dir = test_home_ / ".quantclaw" / "logs";
+    auto logs_dir = test_home_ / ".ravbot" / "logs";
     EXPECT_TRUE(std::filesystem::exists(logs_dir));
     EXPECT_TRUE(std::filesystem::is_directory(logs_dir));
 }
 
-TEST_F(DaemonManagerTest, ConstructorCreatesQuantclawDir) {
-    auto qc_dir = test_home_ / ".quantclaw";
+TEST_F(DaemonManagerTest, ConstructorCreatesRavBotDir) {
+    auto qc_dir = test_home_ / ".ravbot";
     EXPECT_TRUE(std::filesystem::exists(qc_dir));
 }
 
@@ -80,7 +80,7 @@ TEST_F(DaemonManagerTest, GetPidValidPidFile) {
 }
 
 TEST_F(DaemonManagerTest, GetPidEmptyFile) {
-    auto pid_path = test_home_ / ".quantclaw" / "gateway.pid";
+    auto pid_path = test_home_ / ".ravbot" / "gateway.pid";
     std::ofstream f(pid_path);
     f << "";
     f.close();
@@ -89,7 +89,7 @@ TEST_F(DaemonManagerTest, GetPidEmptyFile) {
 }
 
 TEST_F(DaemonManagerTest, GetPidInvalidContent) {
-    auto pid_path = test_home_ / ".quantclaw" / "gateway.pid";
+    auto pid_path = test_home_ / ".ravbot" / "gateway.pid";
     std::ofstream f(pid_path);
     f << "not_a_number";
     f.close();

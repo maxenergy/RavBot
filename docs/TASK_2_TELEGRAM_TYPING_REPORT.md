@@ -139,7 +139,7 @@ void TypingStateManager::refresh_loop() {
 ## 文件变更
 
 ### 新增文件
-1. `include/quantclaw/channels/telegram_typing_manager.hpp`
+1. `include/ravbot/channels/telegram_typing_manager.hpp`
    - TypingStateManager 类定义
    - TypingStateGuard RAII 包装器
 
@@ -152,7 +152,7 @@ void TypingStateManager::refresh_loop() {
    - 覆盖所有核心功能
 
 ### 修改文件
-1. `include/quantclaw/channels/telegram_channel.hpp`
+1. `include/ravbot/channels/telegram_channel.hpp`
    - 添加 telegram_typing_manager.hpp 头文件
 
 2. `src/channels/telegram_channel.cpp`
@@ -210,7 +210,7 @@ void TypingStateManager::refresh_loop() {
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | Typing 状态刷新 | ✅ | ✅ | 完成 |
 | 自动停止机制 | ✅ | ✅ | 完成 |

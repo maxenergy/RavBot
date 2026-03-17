@@ -1,11 +1,11 @@
-# QuantClaw 向量搜索系统 - Phase 1 完成总结
+# RavBot 向量搜索系统 - Phase 1 完成总结
 
 ## 完成时间
 2026-03-14
 
 ## 实施内容
 
-成功完成 **Phase 1: HNSW 向量搜索集成**,将 HNSWlib 集成到 QuantClaw,实现高性能近似最近邻搜索。
+成功完成 **Phase 1: HNSW 向量搜索集成**,将 HNSWlib 集成到 RavBot,实现高性能近似最近邻搜索。
 
 ## 主要成果
 
@@ -36,7 +36,7 @@
 ## 文件变更
 
 ### 新增文件 (4 个)
-1. `include/quantclaw/core/hnsw_index.hpp` (+100 行)
+1. `include/ravbot/core/hnsw_index.hpp` (+100 行)
 2. `src/core/hnsw_index.cpp` (+450 行)
 3. `tests/test_hnsw_index.cpp` (+380 行)
 4. `third_party/hnswlib/` (外部库)
@@ -87,7 +87,7 @@
 
 ## 总结
 
-Phase 1 成功完成,QuantClaw 现在具备了生产级的向量搜索能力:
+Phase 1 成功完成,RavBot 现在具备了生产级的向量搜索能力:
 - **性能**: 571x 搜索速度提升
 - **准确率**: 100% Recall@1
 - **可靠性**: 100% 测试覆盖

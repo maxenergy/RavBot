@@ -1,8 +1,8 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
-#include "quantclaw/tools/tool_chain.hpp"
+#include "ravbot/tools/tool_chain.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
@@ -16,7 +16,7 @@ protected:
     std::shared_ptr<spdlog::logger> logger_;
 
     // Simple executor that echoes arguments or returns fixed values
-    quantclaw::ToolExecutorFn echo_executor() {
+    ravbot::ToolExecutorFn echo_executor() {
         return [](const std::string& tool_name, const nlohmann::json& args) -> std::string {
             if (tool_name == "echo") {
                 return args.value("text", "");
@@ -41,81 +41,81 @@ protected:
 // --- Template Engine Tests ---
 
 TEST_F(ToolChainTest, TemplateResolvePrevResult) {
-    std::vector<quantclaw::ChainStepResult> results = {
+    std::vector<ravbot::ChainStepResult> results = {
         {0, "echo", "hello", "", true}
     };
 
     nlohmann::json input = {{"text", "{{prev.result}}"}};
-    auto resolved = quantclaw::ChainTemplateEngine::resolve(input, results);
+    auto resolved = ravbot::ChainTemplateEngine::resolve(input, results);
     EXPECT_EQ(resolved["text"].get<std::string>(), "hello");
 }
 
 TEST_F(ToolChainTest, TemplateResolveStepIndex) {
-    std::vector<quantclaw::ChainStepResult> results = {
+    std::vector<ravbot::ChainStepResult> results = {
         {0, "echo", "first", "", true},
         {1, "echo", "second", "", true}
     };
 
     nlohmann::json input = {{"text", "{{steps[0].result}}"}};
-    auto resolved = quantclaw::ChainTemplateEngine::resolve(input, results);
+    auto resolved = ravbot::ChainTemplateEngine::resolve(input, results);
     EXPECT_EQ(resolved["text"].get<std::string>(), "first");
 
     input = {{"text", "{{steps[1].result}}"}};
-    resolved = quantclaw::ChainTemplateEngine::resolve(input, results);
+    resolved = ravbot::ChainTemplateEngine::resolve(input, results);
     EXPECT_EQ(resolved["text"].get<std::string>(), "second");
 }
 
 TEST_F(ToolChainTest, TemplateResolveNestedObject) {
-    std::vector<quantclaw::ChainStepResult> results = {
+    std::vector<ravbot::ChainStepResult> results = {
         {0, "echo", "world", "", true}
     };
 
     nlohmann::json input = {
         {"outer", {{"inner", "hello {{prev.result}}"}}}
     };
-    auto resolved = quantclaw::ChainTemplateEngine::resolve(input, results);
+    auto resolved = ravbot::ChainTemplateEngine::resolve(input, results);
     EXPECT_EQ(resolved["outer"]["inner"].get<std::string>(), "hello world");
 }
 
 TEST_F(ToolChainTest, TemplateResolveArray) {
-    std::vector<quantclaw::ChainStepResult> results = {
+    std::vector<ravbot::ChainStepResult> results = {
         {0, "echo", "item", "", true}
     };
 
     nlohmann::json input = nlohmann::json::array({"{{prev.result}}", "static"});
-    auto resolved = quantclaw::ChainTemplateEngine::resolve(input, results);
+    auto resolved = ravbot::ChainTemplateEngine::resolve(input, results);
     EXPECT_EQ(resolved[0].get<std::string>(), "item");
     EXPECT_EQ(resolved[1].get<std::string>(), "static");
 }
 
 TEST_F(ToolChainTest, TemplatePreservesNonStringValues) {
-    std::vector<quantclaw::ChainStepResult> results;
+    std::vector<ravbot::ChainStepResult> results;
 
     nlohmann::json input = {{"count", 42}, {"flag", true}, {"empty", nullptr}};
-    auto resolved = quantclaw::ChainTemplateEngine::resolve(input, results);
+    auto resolved = ravbot::ChainTemplateEngine::resolve(input, results);
     EXPECT_EQ(resolved["count"].get<int>(), 42);
     EXPECT_EQ(resolved["flag"].get<bool>(), true);
     EXPECT_TRUE(resolved["empty"].is_null());
 }
 
 TEST_F(ToolChainTest, TemplateEmptyPrevResult) {
-    std::vector<quantclaw::ChainStepResult> results;  // empty
+    std::vector<ravbot::ChainStepResult> results;  // empty
     nlohmann::json input = {{"text", "prefix-{{prev.result}}-suffix"}};
-    auto resolved = quantclaw::ChainTemplateEngine::resolve(input, results);
+    auto resolved = ravbot::ChainTemplateEngine::resolve(input, results);
     EXPECT_EQ(resolved["text"].get<std::string>(), "prefix--suffix");
 }
 
 // --- Chain Executor Tests ---
 
 TEST_F(ToolChainTest, SimpleChainExecution) {
-    quantclaw::ToolChainDef chain;
+    ravbot::ToolChainDef chain;
     chain.name = "simple";
     chain.steps = {
         {"echo", {{"text", "hello"}}},
         {"upper", {{"text", "{{prev.result}}"}}}
     };
 
-    quantclaw::ToolChainExecutor executor(echo_executor(), logger_);
+    ravbot::ToolChainExecutor executor(echo_executor(), logger_);
     auto result = executor.Execute(chain);
 
     EXPECT_TRUE(result.success);
@@ -126,7 +126,7 @@ TEST_F(ToolChainTest, SimpleChainExecution) {
 }
 
 TEST_F(ToolChainTest, ChainWithStepIndexReference) {
-    quantclaw::ToolChainDef chain;
+    ravbot::ToolChainDef chain;
     chain.name = "indexed";
     chain.steps = {
         {"echo", {{"text", "first"}}},
@@ -134,7 +134,7 @@ TEST_F(ToolChainTest, ChainWithStepIndexReference) {
         {"concat", {{"a", "{{steps[0].result}}"}, {"b", "{{steps[1].result}}"}}}
     };
 
-    quantclaw::ToolChainExecutor executor(echo_executor(), logger_);
+    ravbot::ToolChainExecutor executor(echo_executor(), logger_);
     auto result = executor.Execute(chain);
 
     EXPECT_TRUE(result.success);
@@ -142,16 +142,16 @@ TEST_F(ToolChainTest, ChainWithStepIndexReference) {
 }
 
 TEST_F(ToolChainTest, ChainStopOnError) {
-    quantclaw::ToolChainDef chain;
+    ravbot::ToolChainDef chain;
     chain.name = "stop-chain";
-    chain.error_policy = quantclaw::ChainErrorPolicy::kStopOnError;
+    chain.error_policy = ravbot::ChainErrorPolicy::kStopOnError;
     chain.steps = {
         {"echo", {{"text", "ok"}}},
         {"fail", {}},
         {"echo", {{"text", "never reached"}}}
     };
 
-    quantclaw::ToolChainExecutor executor(echo_executor(), logger_);
+    ravbot::ToolChainExecutor executor(echo_executor(), logger_);
     auto result = executor.Execute(chain);
 
     EXPECT_FALSE(result.success);
@@ -161,16 +161,16 @@ TEST_F(ToolChainTest, ChainStopOnError) {
 }
 
 TEST_F(ToolChainTest, ChainContinueOnError) {
-    quantclaw::ToolChainDef chain;
+    ravbot::ToolChainDef chain;
     chain.name = "continue-chain";
-    chain.error_policy = quantclaw::ChainErrorPolicy::kContinueOnError;
+    chain.error_policy = ravbot::ChainErrorPolicy::kContinueOnError;
     chain.steps = {
         {"echo", {{"text", "first"}}},
         {"fail", {}},
         {"echo", {{"text", "third"}}}
     };
 
-    quantclaw::ToolChainExecutor executor(echo_executor(), logger_);
+    ravbot::ToolChainExecutor executor(echo_executor(), logger_);
     auto result = executor.Execute(chain);
 
     EXPECT_FALSE(result.success);  // Overall failure due to step 1
@@ -183,7 +183,7 @@ TEST_F(ToolChainTest, ChainContinueOnError) {
 
 TEST_F(ToolChainTest, ChainRetryPolicy) {
     int call_count = 0;
-    quantclaw::ToolExecutorFn flaky_executor = [&call_count](
+    ravbot::ToolExecutorFn flaky_executor = [&call_count](
         const std::string& /*tool_name*/, const nlohmann::json& /*args*/) -> std::string {
         call_count++;
         if (call_count < 3) {
@@ -192,13 +192,13 @@ TEST_F(ToolChainTest, ChainRetryPolicy) {
         return "success after retries";
     };
 
-    quantclaw::ToolChainDef chain;
+    ravbot::ToolChainDef chain;
     chain.name = "retry-chain";
-    chain.error_policy = quantclaw::ChainErrorPolicy::kRetry;
+    chain.error_policy = ravbot::ChainErrorPolicy::kRetry;
     chain.max_retries = 3;
     chain.steps = {{"flaky", {}}};
 
-    quantclaw::ToolChainExecutor executor(flaky_executor, logger_);
+    ravbot::ToolChainExecutor executor(flaky_executor, logger_);
     auto result = executor.Execute(chain);
 
     EXPECT_TRUE(result.success);
@@ -207,10 +207,10 @@ TEST_F(ToolChainTest, ChainRetryPolicy) {
 }
 
 TEST_F(ToolChainTest, EmptyChain) {
-    quantclaw::ToolChainDef chain;
+    ravbot::ToolChainDef chain;
     chain.name = "empty";
 
-    quantclaw::ToolChainExecutor executor(echo_executor(), logger_);
+    ravbot::ToolChainExecutor executor(echo_executor(), logger_);
     auto result = executor.Execute(chain);
 
     EXPECT_TRUE(result.success);
@@ -232,10 +232,10 @@ TEST_F(ToolChainTest, ParseChainFromJson) {
         }}
     };
 
-    auto chain = quantclaw::ToolChainExecutor::ParseChain(j);
+    auto chain = ravbot::ToolChainExecutor::ParseChain(j);
     EXPECT_EQ(chain.name, "test-chain");
     EXPECT_EQ(chain.description, "A test chain");
-    EXPECT_EQ(chain.error_policy, quantclaw::ChainErrorPolicy::kContinueOnError);
+    EXPECT_EQ(chain.error_policy, ravbot::ChainErrorPolicy::kContinueOnError);
     EXPECT_EQ(chain.max_retries, 2);
     EXPECT_EQ(chain.steps.size(), 2u);
     EXPECT_EQ(chain.steps[0].tool_name, "read");
@@ -243,7 +243,7 @@ TEST_F(ToolChainTest, ParseChainFromJson) {
 }
 
 TEST_F(ToolChainTest, ResultToJson) {
-    quantclaw::ChainResult result;
+    ravbot::ChainResult result;
     result.chain_name = "test";
     result.success = true;
     result.final_result = "done";
@@ -252,7 +252,7 @@ TEST_F(ToolChainTest, ResultToJson) {
         {1, "upper", "HELLO", "", true}
     };
 
-    auto j = quantclaw::ToolChainExecutor::ResultToJson(result);
+    auto j = ravbot::ToolChainExecutor::ResultToJson(result);
     EXPECT_EQ(j["chain_name"], "test");
     EXPECT_TRUE(j["success"].get<bool>());
     EXPECT_EQ(j["final_result"], "done");
@@ -263,8 +263,8 @@ TEST_F(ToolChainTest, ResultToJson) {
 
 TEST_F(ToolChainTest, ParseDefaultValues) {
     nlohmann::json j = {{"steps", {{{"tool", "read"}}}}};
-    auto chain = quantclaw::ToolChainExecutor::ParseChain(j);
+    auto chain = ravbot::ToolChainExecutor::ParseChain(j);
     EXPECT_EQ(chain.name, "unnamed-chain");
-    EXPECT_EQ(chain.error_policy, quantclaw::ChainErrorPolicy::kStopOnError);
+    EXPECT_EQ(chain.error_policy, ravbot::ChainErrorPolicy::kStopOnError);
     EXPECT_EQ(chain.max_retries, 1);
 }

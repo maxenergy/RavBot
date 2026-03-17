@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-成功修复了 QuantClaw 中 exec 工具的 `popen() failed: Cannot allocate memory (errno=12)` 错误。问题根源是 SecuritySandbox 设置的 256MB 虚拟内存限制 (RLIMIT_AS) 过于严格,导致 fork 子进程时内存不足。
+成功修复了 RavBot 中 exec 工具的 `popen() failed: Cannot allocate memory (errno=12)` 错误。问题根源是 SecuritySandbox 设置的 256MB 虚拟内存限制 (RLIMIT_AS) 过于严格,导致 fork 子进程时内存不足。
 
 ---
 
@@ -123,7 +123,7 @@ exec_tool 抛出异常
 
 **修改前**:
 ```cpp
-quantclaw::SecuritySandbox::ApplyResourceLimits();
+ravbot::SecuritySandbox::ApplyResourceLimits();
 logger_->info("Executing command: {}", command);
 ```
 
@@ -132,7 +132,7 @@ logger_->info("Executing command: {}", command);
 // NOTE: ApplyResourceLimits() causes ENOMEM (errno=12) in popen()
 // because RLIMIT_AS (256MB) is too restrictive for fork+exec.
 // Disabled for now - commands run without memory limits.
-// quantclaw::SecuritySandbox::ApplyResourceLimits();
+// ravbot::SecuritySandbox::ApplyResourceLimits();
 
 logger_->info("Executing command: {}", command);
 ```
@@ -164,7 +164,7 @@ logger_->info("Executing command: {}", command);
 
 ### 测试 1: 基本命令执行
 
-**命令**: `./build/quantclaw agent request -m "请执行命令: which gh"`
+**命令**: `./build/ravbot agent request -m "请执行命令: which gh"`
 
 **结果**: ✅ 成功
 ```
@@ -238,9 +238,9 @@ OpenClaw 使用 Node.js:
 - `child_process.spawn()` 使用不同的机制
 - 不需要设置 RLIMIT_AS
 
-### QuantClaw 的优势
+### RavBot 的优势
 
-修复后,QuantClaw 的命令执行更加高效:
+修复后,RavBot 的命令执行更加高效:
 - 直接使用系统 fork/exec
 - 更低的进程创建开销
 - 更快的命令执行速度

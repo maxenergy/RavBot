@@ -1,7 +1,7 @@
-# QuantClaw v0.3.0 - 项目完成总结
+# RavBot v0.3.0 - 项目完成总结
 
 生成日期：2026-03-11
-版本：QuantClaw v0.3.0 (build eae3b0e)
+版本：RavBot v0.3.0 (build eae3b0e)
 状态：✅ **生产就绪**
 
 ---
@@ -79,7 +79,7 @@
 
 ## 🚀 性能对比
 
-| 指标 | OpenClaw | QuantClaw | 提升 |
+| 指标 | OpenClaw | RavBot | 提升 |
 |------|----------|-----------|------|
 | 启动时间 | ~1000ms | ~80ms | **12.5x** |
 | 内存占用 | ~200MB | ~50MB | **4x** |
@@ -106,7 +106,7 @@
 ## 📦 部署配置
 
 ### 配置文件
-- **位置**: `~/.quantclaw/quantclaw.json`
+- **位置**: `~/.ravbot/ravbot.json`
 - **格式**: JSON5 (支持注释)
 - **热重载**: 支持
 
@@ -202,31 +202,31 @@
 
 ### 启动 Gateway
 ```bash
-cd /home/rogers/source/develop/QuantClaw/build
-./quantclaw gateway start
+cd /home/rogers/source/develop/RavBot/build
+./ravbot gateway start
 ```
 
 ### 健康检查
 ```bash
-./quantclaw health
+./ravbot health
 # 输出: Gateway: ok, Version: 0.3.0, Uptime: 11s
 ```
 
 ### 查看状态
 ```bash
-./quantclaw status
+./ravbot status
 # 输出: Running: yes, Port: 18800, Connections: 1, Sessions: 0
 ```
 
 ### 列出模型
 ```bash
-./quantclaw models list
+./ravbot models list
 # 输出: Current: claude-sonnet-4-6, Available models: ...
 ```
 
 ### 停止 Gateway
 ```bash
-./quantclaw gateway stop
+./ravbot gateway stop
 ```
 
 ---
@@ -281,7 +281,7 @@ cd /home/rogers/source/develop/QuantClaw/build
 
 ## 🎉 结论
 
-**QuantClaw v0.3.0 已成功实现与 OpenClaw 3.9 的完全 100% 功能对齐！**
+**RavBot v0.3.0 已成功实现与 OpenClaw 3.9 的完全 100% 功能对齐！**
 
 ### 核心成就
 - ✅ **100% 功能对齐** - 所有 RPC 方法、提供商、通道完整实现
@@ -300,11 +300,11 @@ cd /home/rogers/source/develop/QuantClaw/build
 
 ---
 
-**QuantClaw - 高性能 Agent 网关框架**
+**RavBot - 高性能 Agent 网关框架**
 **100% OpenClaw 兼容 | C++17 原生实现 | 生产就绪**
 
 ---
 
 *生成时间: 2026-03-11*
-*版本: QuantClaw v0.3.0 (build eae3b0e)*
+*版本: RavBot v0.3.0 (build eae3b0e)*
 *状态: 项目完成 ✅*

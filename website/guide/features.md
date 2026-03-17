@@ -1,6 +1,6 @@
 # Core Features
 
-QuantClaw combines powerful AI capabilities with local-first execution and robust error handling.
+RavBot combines powerful AI capabilities with local-first execution and robust error handling.
 
 ## 🧠 Intelligent Conversation
 
@@ -12,7 +12,7 @@ Multi-turn dialogue with full context awareness:
 - **Memory Integration**: Automatic context retrieval from knowledge bases
 
 ```bash
-quantclaw run "Help me analyze this code"
+ravbot run "Help me analyze this code"
 ```
 
 ## 💾 Persistent Memory System
@@ -27,8 +27,8 @@ Advanced memory management inspired by human cognition:
 
 ### Memory Operations
 ```bash
-quantclaw memory search "user preferences"
-quantclaw memory get workspace/MEMORY.md
+ravbot memory search "user preferences"
+ravbot memory get workspace/MEMORY.md
 ```
 
 ### Automatic Context Pruning
@@ -60,14 +60,14 @@ The `bash` and `process` tools are built-in agent tools (not direct CLI commands
 
 ### File Operations
 ```bash
-# Workspace files are accessed via the agent or directly from ~/.quantclaw/agents/main/workspace/
-ls ~/.quantclaw/agents/main/workspace/
-cat ~/.quantclaw/agents/main/workspace/MEMORY.md
+# Workspace files are accessed via the agent or directly from ~/.ravbot/agents/main/workspace/
+ls ~/.ravbot/agents/main/workspace/
+cat ~/.ravbot/agents/main/workspace/MEMORY.md
 ```
 
 ### Environment Access
 ```bash
-quantclaw config get llm.model
+ravbot config get llm.model
 ```
 
 ## 🔌 Plugin Ecosystem
@@ -85,8 +85,8 @@ Extensible architecture with Node.js sidecar:
 
 ### Custom Plugin Development
 ```bash
-quantclaw skills list
-quantclaw skills install ./my-plugin
+ravbot skills list
+ravbot skills install ./my-plugin
 ```
 
 ## 🔄 Multi-Provider LLM Support
@@ -151,10 +151,10 @@ RBAC is enforced at the gateway level. Roles include:
 Comprehensive monitoring and analytics:
 
 ```bash
-quantclaw usage cost          # Total token costs
-quantclaw sessions usage      # Session-by-session breakdown
-quantclaw sessions list              # List sessions
-quantclaw logs tail          # Real-time logs
+ravbot usage cost          # Total token costs
+ravbot sessions usage      # Session-by-session breakdown
+ravbot sessions list              # List sessions
+ravbot logs tail          # Real-time logs
 ```
 
 ### Metrics Collected
@@ -193,9 +193,9 @@ Scheduled and triggered automation:
 
 ### Cron Jobs
 ```bash
-quantclaw cron add "daily-report" "0 9 * * *" "Send daily summary"
-quantclaw cron list
-quantclaw cron remove TASK_ID
+ravbot cron add "daily-report" "0 9 * * *" "Send daily summary"
+ravbot cron list
+ravbot cron remove TASK_ID
 ```
 
 ### Hooks and Callbacks

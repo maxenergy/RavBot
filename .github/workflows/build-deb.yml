@@ -34,11 +34,11 @@ jobs:
       - name: Prepare artifacts
         run: |
           mkdir -p dist
-          mv ../quantclaw_*.deb dist/
-          mv ../quantclaw_*.changes dist/ || true
-          mv ../quantclaw_*.buildinfo dist/ || true
+          mv ../ravbot_*.deb dist/
+          mv ../ravbot_*.changes dist/ || true
+          mv ../ravbot_*.buildinfo dist/ || true
           cd dist
-          for file in quantclaw_*.deb; do
+          for file in ravbot_*.deb; do
             if [ -f "$file" ]; then
               sha256sum "$file" > "$file.sha256"
             fi
@@ -47,7 +47,7 @@ jobs:
       - name: Upload DEB package
         uses: actions/upload-artifact@v4
         with:
-          name: quantclaw-deb-ubuntu-24.04
+          name: ravbot-deb-ubuntu-24.04
           path: |
             dist/*.deb
             dist/*.sha256

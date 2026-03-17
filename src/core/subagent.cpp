@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/subagent.hpp"
+#include "ravbot/core/subagent.hpp"
 
 #include <algorithm>
 #include <random>
 #include <sstream>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- SpawnMode ---
 
@@ -270,4 +270,4 @@ std::string SubagentManager::generate_session_key(
   return ss.str();
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

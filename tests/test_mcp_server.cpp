@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <memory>
-#include "quantclaw/mcp/mcp_server.hpp"
+#include "ravbot/mcp/mcp_server.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
-class TestMCPTool : public quantclaw::mcp::MCPTool {
+class TestMCPTool : public ravbot::mcp::MCPTool {
 public:
     TestMCPTool() : MCPTool("test_tool", "A test tool for testing") {
         AddParameter("input", "string", "Input string", true);
@@ -26,12 +26,12 @@ protected:
         auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
         logger_ = std::make_shared<spdlog::logger>("test", null_sink);
 
-        server_ = std::make_unique<quantclaw::mcp::MCPServer>(logger_);
+        server_ = std::make_unique<ravbot::mcp::MCPServer>(logger_);
         server_->RegisterTool(std::make_unique<TestMCPTool>());
     }
 
     std::shared_ptr<spdlog::logger> logger_;
-    std::unique_ptr<quantclaw::mcp::MCPServer> server_;
+    std::unique_ptr<ravbot::mcp::MCPServer> server_;
 };
 
 TEST_F(MCPServerTest, Initialize) {
@@ -171,7 +171,7 @@ TEST_F(MCPServerTest, ListResourcesEmpty) {
 }
 
 TEST_F(MCPServerTest, RegisterAndListResource) {
-    quantclaw::mcp::MCPResource res;
+    ravbot::mcp::MCPResource res;
     res.uri = "file:///workspace/MEMORY.md";
     res.name = "Agent Memory";
     res.description = "Persistent memory file";
@@ -191,7 +191,7 @@ TEST_F(MCPServerTest, RegisterAndListResource) {
 }
 
 TEST_F(MCPServerTest, ReadResource) {
-    quantclaw::mcp::MCPResource res;
+    ravbot::mcp::MCPResource res;
     res.uri = "file:///test/data.txt";
     res.name = "Test Data";
     res.mime_type = "text/plain";
@@ -232,7 +232,7 @@ TEST_F(MCPServerTest, ListPromptsEmpty) {
 }
 
 TEST_F(MCPServerTest, RegisterAndListPrompt) {
-    quantclaw::mcp::MCPPrompt prompt;
+    ravbot::mcp::MCPPrompt prompt;
     prompt.name = "summarize";
     prompt.description = "Summarize text";
     prompt.arguments = {{"text", "Text to summarize", true}};
@@ -256,7 +256,7 @@ TEST_F(MCPServerTest, RegisterAndListPrompt) {
 }
 
 TEST_F(MCPServerTest, GetPrompt) {
-    quantclaw::mcp::MCPPrompt prompt;
+    ravbot::mcp::MCPPrompt prompt;
     prompt.name = "greet";
     prompt.description = "Greeting prompt";
     prompt.renderer = [](const nlohmann::json& args) -> nlohmann::json {

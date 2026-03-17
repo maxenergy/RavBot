@@ -1,6 +1,6 @@
-import { formatDurationHuman } from "../../../src/infra/format-time/format-duration.ts";
-import { formatRelativeTimestamp } from "../../../src/infra/format-time/format-relative.ts";
-import { stripReasoningTagsFromText } from "../../../src/shared/text/reasoning-tags.js";
+import { formatDurationHuman } from "../shared/gateway-utils.js";
+import { formatRelativeTimestamp } from "../shared/gateway-utils.js";
+import { stripReasoningTagsFromText } from "../shared/gateway-utils.js";
 
 export { formatRelativeTimestamp, formatDurationHuman };
 

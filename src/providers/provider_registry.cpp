@@ -1,16 +1,16 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/providers/provider_registry.hpp"
-#include "quantclaw/providers/openai_provider.hpp"
-#include "quantclaw/providers/anthropic_provider.hpp"
-#include "quantclaw/providers/google_provider.hpp"
-#include "quantclaw/providers/qwen_provider.hpp"
+#include "ravbot/providers/provider_registry.hpp"
+#include "ravbot/providers/openai_provider.hpp"
+#include "ravbot/providers/anthropic_provider.hpp"
+#include "ravbot/providers/google_provider.hpp"
+#include "ravbot/providers/qwen_provider.hpp"
 
 #include <cstdlib>
 #include <algorithm>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- ModelRef ---
 
@@ -394,4 +394,4 @@ std::string ProviderRegistry::resolve_api_key(
   return "";
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

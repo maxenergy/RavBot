@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/gateway/gateway_server.hpp"
+#include "ravbot/gateway/gateway_server.hpp"
 #include <chrono>
 #include <random>
 #include <sstream>
 #include <iomanip>
 
-namespace quantclaw::gateway {
+namespace ravbot::gateway {
 
 GatewayServer::GatewayServer(int port, std::shared_ptr<spdlog::logger> logger)
     : port_(port), logger_(logger) {
@@ -250,7 +250,14 @@ void GatewayServer::handle_message(const std::string& conn_id,
         // Requirements: 3.3.1, 7.1, 13.1
         std::string sanitized_data = sanitizer_.SanitizeInput(data);
 
+        // 调试：记录收到的消息
+        logger_->debug("Received message from {}: {}", conn_id, sanitized_data.substr(0, 200));
+
         auto j = nlohmann::json::parse(sanitized_data);
+
+        // 调试：检查消息结构
+        logger_->debug("Parsed JSON keys: {}", j.dump());
+
         auto type = ParseFrameType(j);
 
         switch (type) {
@@ -538,7 +545,7 @@ bool GatewayServer::handle_hello(const std::string& conn_id,
     it->second.client_name = hello.client_name;
     it->second.client_version = hello.client_version;
     it->second.authenticated = true;
-    it->second.client_type = is_openclaw ? "openclaw" : "quantclaw";
+    it->second.client_type = is_openclaw ? "openclaw" : "ravbot";
 
     logger_->info("Client {} authenticated: role={}, client={}, type={}",
                   conn_id, hello.role, hello.client_name, it->second.client_type);
@@ -750,4 +757,4 @@ void GatewayServer::ClearAuthLockout(const std::string& identifier) {
     }
 }
 
-} // namespace quantclaw::gateway
+} // namespace ravbot::gateway

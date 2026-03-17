@@ -1,10 +1,10 @@
-# QuantClaw 与 OpenClaw 3.9 对齐报告
+# RavBot 与 OpenClaw 3.9 对齐报告
 
 生成日期：2026-03-11
 
 ## 执行摘要
 
-QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源占用和嵌入式部署场景。本报告详细对比了 QuantClaw 与 OpenClaw 3.9 的功能实现情况。
+RavBot 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源占用和嵌入式部署场景。本报告详细对比了 RavBot 与 OpenClaw 3.9 的功能实现情况。
 
 ### 总体对齐度：**92%**
 
@@ -19,7 +19,7 @@ QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源�
 
 ### 1. 核心功能 (100%)
 
-| 功能模块 | OpenClaw | QuantClaw | 状态 |
+| 功能模块 | OpenClaw | RavBot | 状态 |
 |---------|----------|-----------|------|
 | Agent Loop | ✅ | ✅ | 完全实现 |
 | Session 管理 | ✅ | ✅ | 完全实现 |
@@ -152,7 +152,7 @@ QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源�
 
 ### 3. LLM 提供商 (67% - 4/6)
 
-| 提供商 | OpenClaw | QuantClaw | 实现方式 |
+| 提供商 | OpenClaw | RavBot | 实现方式 |
 |--------|----------|-----------|---------|
 | Anthropic | ✅ | ✅ | 原生 API |
 | OpenAI | ✅ | ✅ | 原生 API |
@@ -169,7 +169,7 @@ QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源�
 
 ### 4. 通道适配器 (50% - 4/8)
 
-| 通道 | OpenClaw | QuantClaw | 实现方式 |
+| 通道 | OpenClaw | RavBot | 实现方式 |
 |------|----------|-----------|---------|
 | WebSocket | ✅ | ✅ | IXWebSocket |
 | HTTP | ✅ | ✅ | cpp-httplib |
@@ -182,14 +182,14 @@ QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源�
 
 ### 5. 向量数据库 (0% - 可选)
 
-| 数据库 | OpenClaw | QuantClaw | 状态 |
+| 数据库 | OpenClaw | RavBot | 状态 |
 |--------|----------|-----------|------|
 | SQLite + sqlite-vec | ✅ | ❌ | 可选功能 |
 | LanceDB | ✅ | ❌ | 可选功能 |
 
 ### 6. 嵌入模型 (0% - 可选)
 
-| 模型 | OpenClaw | QuantClaw | 状态 |
+| 模型 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | OpenAI text-embedding-3 | ✅ | ❌ | 可选功能 |
 | Google text-embedding-004 | ✅ | ❌ | 可选功能 |
@@ -200,7 +200,7 @@ QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源�
 
 ## 架构优势
 
-### QuantClaw 的独特优势
+### RavBot 的独特优势
 
 1. **高性能**
    - C++17 原生实现
@@ -234,7 +234,7 @@ QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源�
 
 ## 性能指标
 
-| 指标 | OpenClaw | QuantClaw | 提升 |
+| 指标 | OpenClaw | RavBot | 提升 |
 |------|----------|-----------|------|
 | 启动时间 | ~1000ms | ~80ms | **12.5x** |
 | 内存占用 | ~200MB | ~50MB | **4x** |
@@ -252,7 +252,7 @@ QuantClaw 是 OpenClaw 的 C++17 原生实现，专注于高性能、低资源�
 
 ### OpenClaw 协议兼容性
 
-QuantClaw 完全兼容 OpenClaw 3.9 的 WebSocket 协议：
+RavBot 完全兼容 OpenClaw 3.9 的 WebSocket 协议：
 
 - ✅ 相同的 JSON-RPC 格式
 - ✅ 相同的消息类型 (req/res/event)
@@ -295,7 +295,7 @@ QuantClaw 完全兼容 OpenClaw 3.9 的 WebSocket 协议：
 
 ## 结论
 
-QuantClaw 已经实现了 OpenClaw 3.9 的 **92%** 核心功能，所有关键特性都已完整实现。剩余的 8% 主要是可选功能（向量数据库、嵌入模型）和低优先级通道（iMessage、WhatsApp）。
+RavBot 已经实现了 OpenClaw 3.9 的 **92%** 核心功能，所有关键特性都已完整实现。剩余的 8% 主要是可选功能（向量数据库、嵌入模型）和低优先级通道（iMessage、WhatsApp）。
 
 ### 核心功能完整性：100%
 
@@ -311,7 +311,7 @@ QuantClaw 已经实现了 OpenClaw 3.9 的 **92%** 核心功能，所有关键�
 
 ### 生产就绪度：95%
 
-QuantClaw 已经可以用于生产环境，特别适合：
+RavBot 已经可以用于生产环境，特别适合：
 
 1. **嵌入式设备** - 低内存占用，快速启动
 2. **边缘计算** - 单一可执行文件，无运行时依赖
@@ -328,6 +328,6 @@ QuantClaw 已经可以用于生产环境，特别适合：
 
 ---
 
-**报告生成**: QuantClaw v0.3.0
+**报告生成**: RavBot v0.3.0
 **对比版本**: OpenClaw 3.9
 **最后更新**: 2026-03-11

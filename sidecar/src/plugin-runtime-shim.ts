@@ -1,4 +1,4 @@
-// Copyright 2024 QuantClaw Contributors
+// Copyright 2024 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 // ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ const VERSION = "0.1.0";
 
 function notImplemented(name: string): (...args: unknown[]) => never {
   return () => {
-    throw new Error(`[quantclaw-sidecar] ${name} is not implemented`);
+    throw new Error(`[ravbot-sidecar] ${name} is not implemented`);
   };
 }
 
@@ -38,7 +38,7 @@ export function createPluginRuntime(opts: {
   const { config, workspaceDir, logger } = opts;
 
   const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
-  const quantclawDir = path.join(homeDir, ".quantclaw");
+  const ravbotDir = path.join(homeDir, ".ravbot");
 
   return {
     version: VERSION,
@@ -79,7 +79,7 @@ export function createPluginRuntime(opts: {
     },
 
     logging: {
-      shouldLogVerbose: () => !!process.env.QUANTCLAW_VERBOSE,
+      shouldLogVerbose: () => !!process.env.RAVBOT_VERBOSE,
       getChildLogger: (bindings, childOpts) => {
         const prefix = bindings
           ? `[${Object.values(bindings).join(":")}]`
@@ -95,7 +95,7 @@ export function createPluginRuntime(opts: {
 
     state: {
       resolveStateDir: (pluginId) => {
-        const dir = path.join(quantclawDir, "plugins", pluginId);
+        const dir = path.join(ravbotDir, "plugins", pluginId);
         fs.mkdirSync(dir, { recursive: true });
         return dir;
       },

@@ -2,7 +2,7 @@
 
 ## 问题描述
 
-在运行 `quantclaw_tests` 时，测试程序 CPU 占用率达到 100% 并挂起，具体表现为：
+在运行 `ravbot_tests` 时，测试程序 CPU 占用率达到 100% 并挂起，具体表现为：
 
 - 测试 `VectorDatabaseHNSWTest.IndexAndSearchWithHNSW` 无法完成
 - 程序在添加第一个向量时挂起

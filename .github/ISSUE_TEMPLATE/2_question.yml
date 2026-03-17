@@ -1,5 +1,5 @@
 name: "❓ Question"
-description: "Ask a question about QuantClaw"
+description: "Ask a question about RavBot"
 title: "[QUESTION] "
 labels: ["question"]
 body:
@@ -8,7 +8,7 @@ body:
       value: |
         ## 🤔 Question
 
-        We're happy to help answer your questions about QuantClaw!
+        We're happy to help answer your questions about RavBot!
 
   - type: checkboxes
     id: verification
@@ -28,10 +28,10 @@ body:
         ## 🔧 Environment (Optional)
 
   - type: input
-    id: quantclaw-version
+    id: ravbot-version
     attributes:
-      label: "QuantClaw Version"
-      description: "Version of QuantClaw you're using"
+      label: "RavBot Version"
+      description: "Version of RavBot you're using"
       placeholder: "e.g., v0.2.0"
     validations:
       required: false

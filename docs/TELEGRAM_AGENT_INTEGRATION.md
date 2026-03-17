@@ -94,7 +94,7 @@
 std::string session_key = "telegram:" + chat_id;
 
 // 会话存储位置
-~/.quantclaw/agents/main/sessions/telegram_{chat_id}.jsonl
+~/.ravbot/agents/main/sessions/telegram_{chat_id}.jsonl
 ```
 
 ### 消息格式转换
@@ -184,13 +184,13 @@ auto new_messages = agent_loop->ProcessMessage(
 **检查步骤**:
 ```bash
 # 查看 Gateway 状态
-./quantclaw status
+./ravbot status
 
 # 查看 Telegram 日志
-./quantclaw logs --level info | grep -i telegram
+./ravbot logs --level info | grep -i telegram
 
 # 查看错误日志
-./quantclaw logs --level error
+./ravbot logs --level error
 ```
 
 ### 2. 回复错误
@@ -202,23 +202,23 @@ auto new_messages = agent_loop->ProcessMessage(
 **解决方案**:
 ```bash
 # 检查模型配置
-./quantclaw config get models
+./ravbot config get models
 
 # 测试模型连接
-./quantclaw agent "test message"
+./ravbot agent "test message"
 ```
 
 ### 3. 会话丢失
 **检查会话文件**:
 ```bash
-ls -la ~/.quantclaw/agents/main/sessions/telegram_*
+ls -la ~/.ravbot/agents/main/sessions/telegram_*
 ```
 
 ## 相关文档
 
 - [Telegram Bot 配置](TELEGRAM_BOT_SETUP.md)
-- [Agent Loop 文档](../include/quantclaw/core/agent_loop.hpp)
-- [Session Manager 文档](../include/quantclaw/session/session_manager.hpp)
+- [Agent Loop 文档](../include/ravbot/core/agent_loop.hpp)
+- [Session Manager 文档](../include/ravbot/session/session_manager.hpp)
 - [Telegram Bot API](https://core.telegram.org/bots/api)
 
 ## 下一步

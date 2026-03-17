@@ -1,4 +1,4 @@
-# QuantClaw 工具执行故障排查指南
+# RavBot 工具执行故障排查指南
 
 ## 问题描述
 
@@ -6,7 +6,7 @@
 
 ## 根本原因
 
-配置文件 `~/.quantclaw/quantclaw.json` 中的工具白名单为空:
+配置文件 `~/.ravbot/ravbot.json` 中的工具白名单为空:
 
 ```json
 "tools": {
@@ -34,7 +34,7 @@ bash scripts/diagnose_tools.sh
 
 #### 2.1 允许所有工具 (开发环境推荐)
 
-编辑 `~/.quantclaw/quantclaw.json`:
+编辑 `~/.ravbot/ravbot.json`:
 
 ```json
 "tools": {
@@ -70,24 +70,24 @@ bash scripts/diagnose_tools.sh
 
 ```bash
 # 备份配置
-cp ~/.quantclaw/quantclaw.json ~/.quantclaw/quantclaw.json.backup
+cp ~/.ravbot/ravbot.json ~/.ravbot/ravbot.json.backup
 
 # 允许所有工具
-jq '.tools.allow = ["*"]' ~/.quantclaw/quantclaw.json > ~/.quantclaw/quantclaw.json.tmp
-mv ~/.quantclaw/quantclaw.json.tmp ~/.quantclaw/quantclaw.json
+jq '.tools.allow = ["*"]' ~/.ravbot/ravbot.json > ~/.ravbot/ravbot.json.tmp
+mv ~/.ravbot/ravbot.json.tmp ~/.ravbot/ravbot.json
 ```
 
 ## 重启服务
 
-修复配置后,重启 QuantClaw 服务:
+修复配置后,重启 RavBot 服务:
 
 ```bash
 # 如果使用 systemd
-systemctl --user restart quantclaw
+systemctl --user restart ravbot
 
 # 或者手动重启
-pkill quantclaw
-quantclaw daemon start
+pkill ravbot
+ravbot daemon start
 ```
 
 ## 验证修复
@@ -95,7 +95,7 @@ quantclaw daemon start
 ### 1. 检查配置
 
 ```bash
-jq '.tools' ~/.quantclaw/quantclaw.json
+jq '.tools' ~/.ravbot/ravbot.json
 ```
 
 应该看到:
@@ -132,10 +132,10 @@ jq '.tools' ~/.quantclaw/quantclaw.json
 
 ```bash
 # 查看实时日志
-journalctl --user -u quantclaw -f
+journalctl --user -u ravbot -f
 
 # 或查看最近日志
-tail -f ~/.quantclaw/logs/quantclaw.log
+tail -f ~/.ravbot/logs/ravbot.log
 ```
 
 ## 工具白名单说明
@@ -175,7 +175,7 @@ tail -f ~/.quantclaw/logs/quantclaw.log
 
 ### 沙箱保护
 
-即使允许所有工具,QuantClaw 仍有多层安全保护:
+即使允许所有工具,RavBot 仍有多层安全保护:
 
 1. **命令验证**: `SecuritySandbox::ValidateShellCommand()`
    - 阻止 `rm -rf /`
@@ -233,7 +233,7 @@ tail -f ~/.quantclaw/logs/quantclaw.log
 **A**: 确保已重启服务:
 
 ```bash
-systemctl --user restart quantclaw
+systemctl --user restart ravbot
 ```
 
 ### Q2: 特定命令被阻止
@@ -241,7 +241,7 @@ systemctl --user restart quantclaw
 **A**: 检查是否触发了沙箱规则:
 
 ```bash
-grep "Command not allowed" ~/.quantclaw/logs/quantclaw.log
+grep "Command not allowed" ~/.ravbot/logs/ravbot.log
 ```
 
 ### Q3: 如何查看可用工具列表
@@ -264,11 +264,11 @@ grep "register_tool" src/tools/tool_registry.cpp
 
 ## 相关文件
 
-- **配置文件**: `~/.quantclaw/quantclaw.json`
+- **配置文件**: `~/.ravbot/ravbot.json`
 - **诊断脚本**: `scripts/diagnose_tools.sh`
 - **工具注册**: `src/tools/tool_registry.cpp`
 - **沙箱实现**: `src/security/sandbox.cpp`
-- **日志文件**: `~/.quantclaw/logs/quantclaw.log`
+- **日志文件**: `~/.ravbot/logs/ravbot.log`
 
 ## 参考文档
 

@@ -1,11 +1,11 @@
-// Copyright 2024 QuantClaw Authors. All Rights Reserved.
+// Copyright 2024 RavBot Authors. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/providers/curl_raii.hpp"
+#include "ravbot/providers/curl_raii.hpp"
 
 #include <curl/curl.h>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- CurlHandle ---
 
@@ -63,4 +63,4 @@ void CurlSlist::append(const char* str) {
   list_ = curl_slist_append(list_, str);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -18,7 +18,7 @@ Telegram bot 重复发送相同的回复，同一条消息被处理多次。
 ## 修复代码
 
 ### 头文件修改
-**文件**: `include/quantclaw/channels/telegram_channel.hpp`
+**文件**: `include/ravbot/channels/telegram_channel.hpp`
 
 ```cpp
 #include <unordered_set>

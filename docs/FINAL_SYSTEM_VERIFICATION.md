@@ -1,4 +1,4 @@
-# QuantClaw 系统最终验证报告
+# RavBot 系统最终验证报告
 
 **日期**: 2026-03-15
 **状态**: ✅ 所有功能验证通过
@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-完成了 QuantClaw 系统的最终全面验证,确认所有核心功能正常运行,所有配置优化已生效。系统从之前的完全不可用状态恢复到 100% 稳定运行。
+完成了 RavBot 系统的最终全面验证,确认所有核心功能正常运行,所有配置优化已生效。系统从之前的完全不可用状态恢复到 100% 稳定运行。
 
 ---
 
@@ -19,14 +19,14 @@
 
 | 服务 | 进程 | 端口 | 状态 |
 |------|------|------|------|
-| QuantClaw Gateway | PID 1593045 | 18800 | ✅ 运行中 |
-| QuantClaw HTTP API | PID 1593045 | 18801 | ✅ 运行中 |
+| RavBot Gateway | PID 1593045 | 18800 | ✅ 运行中 |
+| RavBot HTTP API | PID 1593045 | 18801 | ✅ 运行中 |
 | kiro-gateway (Anthropic 代理) | PID 2006316 | 8991 | ✅ 运行中 |
 | Ollama (嵌入模型服务) | PID 2305 | 11434 | ✅ 运行中 |
 
 **验证命令**:
 ```bash
-ps aux | grep -E "(quantclaw|ollama|kiro-gateway)" | grep -v grep
+ps aux | grep -E "(ravbot|ollama|kiro-gateway)" | grep -v grep
 lsof -i :18800 -i :18801 -i :8991 -i :11434
 ```
 
@@ -34,7 +34,7 @@ lsof -i :18800 -i :18801 -i :8991 -i :11434
 
 ### 2. 配置验证
 
-**配置文件**: `~/.quantclaw/quantclaw.json`
+**配置文件**: `~/.ravbot/ravbot.json`
 
 **关键配置项**:
 
@@ -100,7 +100,7 @@ curl -s http://127.0.0.1:11434/api/tags
 
 **测试命令**:
 ```bash
-./build/quantclaw agent request -m "请执行命令: echo 'System test OK'"
+./build/ravbot agent request -m "请执行命令: echo 'System test OK'"
 ```
 
 **结果**: ✅ 成功
@@ -119,7 +119,7 @@ curl -s http://127.0.0.1:11434/api/tags
 
 **测试命令**:
 ```bash
-./build/quantclaw agent request -m "使用github_search_repos工具搜索awesome-openclaw-skills,按stars排序,返回top1"
+./build/ravbot agent request -m "使用github_search_repos工具搜索awesome-openclaw-skills,按stars排序,返回top1"
 ```
 
 **结果**: ✅ 成功
@@ -215,7 +215,7 @@ awesome-openclaw-skills (VoltAgent)
 
 ### 功能对等性
 
-| 功能 | OpenClaw | QuantClaw | 对等性 |
+| 功能 | OpenClaw | RavBot | 对等性 |
 |------|----------|-----------|--------|
 | GitHub 搜索 | ✅ | ✅ | 100% |
 | 搜索策略 | ✅ | ✅ | 100% |
@@ -225,14 +225,14 @@ awesome-openclaw-skills (VoltAgent)
 
 ### 性能对比
 
-| 指标 | OpenClaw | QuantClaw | 优势 |
+| 指标 | OpenClaw | RavBot | 优势 |
 |------|----------|-----------|------|
 | 响应时间 | ~20s | ~23s | OpenClaw +15% |
-| 内存使用 | ~600MB | ~450MB | QuantClaw -25% |
-| CPU 使用 | ~10% | ~5% | QuantClaw -50% |
-| 启动时间 | ~3s | ~1s | QuantClaw -67% |
+| 内存使用 | ~600MB | ~450MB | RavBot -25% |
+| CPU 使用 | ~10% | ~5% | RavBot -50% |
+| 启动时间 | ~3s | ~1s | RavBot -67% |
 
-**结论**: ✅ QuantClaw 功能对等,性能更优
+**结论**: ✅ RavBot 功能对等,性能更优
 
 ---
 
@@ -244,7 +244,7 @@ awesome-openclaw-skills (VoltAgent)
    - 使用 detached 线程
    - 移除无效的清理逻辑
 
-2. **include/quantclaw/gateway/command_queue.hpp**
+2. **include/ravbot/gateway/command_queue.hpp**
    - 移除 workers_ 成员变量
 
 3. **src/main.cpp**
@@ -256,7 +256,7 @@ awesome-openclaw-skills (VoltAgent)
 5. **src/platform/process_unix.cpp**
    - 添加 errno 错误日志
 
-6. **~/.quantclaw/quantclaw.json**
+6. **~/.ravbot/ravbot.json**
    - 移除 Ollama fallback 配置
 
 ### 代码统计
@@ -331,7 +331,7 @@ awesome-openclaw-skills (VoltAgent)
 ### 进程状态
 
 ```
-quantclaw 1593045  0.1  0.0 711716 24456 ?  Sl  13:13  ./build/quantclaw gateway run --port 18800
+ravbot 1593045  0.1  0.0 711716 24456 ?  Sl  13:13  ./build/ravbot gateway run --port 18800
 ollama      2305  0.0  0.0 3045536 38080 ?  Ssl Mar12  /usr/local/bin/ollama serve
 kiro-gate 2006316  1.3  0.9 78329108 596940 ? Sl Mar13  /usr/bin/kiro-gateway
 ```
@@ -344,8 +344,8 @@ kiro-gate 2006316  1.3  0.9 78329108 596940 ? Sl Mar13  /usr/bin/kiro-gateway
 ### 端口监听
 
 ```
-quantclaw 1593045  7u  IPv4  TCP *:18800 (LISTEN)
-quantclaw 1593045 10u  IPv4  TCP *:18801 (LISTEN)
+ravbot 1593045  7u  IPv4  TCP *:18800 (LISTEN)
+ravbot 1593045 10u  IPv4  TCP *:18801 (LISTEN)
 kiro-gate 2006316 22u  IPv4  TCP *:8991 (LISTEN)
 ```
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Installing QuantClaw..."
+echo "Installing RavBot..."
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
@@ -62,7 +62,7 @@ case $OS in
 esac
 
 # Build from source (IXWebSocket fetched via FetchContent)
-echo "Building QuantClaw..."
+echo "Building RavBot..."
 mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF ..
@@ -70,20 +70,20 @@ make -j$(nproc)
 
 # Install
 echo "Installing binary..."
-cp quantclaw /usr/local/bin/
-chmod +x /usr/local/bin/quantclaw
+cp ravbot /usr/local/bin/
+chmod +x /usr/local/bin/ravbot
 
 # Create workspace (OpenClaw-compatible layout)
 echo "Creating workspace..."
 USER_HOME=$(eval echo ~$SUDO_USER)
-mkdir -p "$USER_HOME/.quantclaw/agents/main/workspace"
-mkdir -p "$USER_HOME/.quantclaw/agents/main/sessions"
-mkdir -p "$USER_HOME/.quantclaw/logs"
+mkdir -p "$USER_HOME/.ravbot/agents/main/workspace"
+mkdir -p "$USER_HOME/.ravbot/agents/main/sessions"
+mkdir -p "$USER_HOME/.ravbot/logs"
 
 # Create example config (OpenClaw format)
-if [ ! -f "$USER_HOME/.quantclaw/quantclaw.json" ]; then
+if [ ! -f "$USER_HOME/.ravbot/ravbot.json" ]; then
     echo "Creating example config..."
-    cat > "$USER_HOME/.quantclaw/quantclaw.json" << 'EOF'
+    cat > "$USER_HOME/.ravbot/ravbot.json" << 'EOF'
 {
   "agent": {
     "model": "openai/qwen-max",
@@ -118,16 +118,16 @@ fi
 
 # Fix ownership
 if [ -n "$SUDO_USER" ]; then
-    chown -R "$SUDO_USER:$(id -gn $SUDO_USER)" "$USER_HOME/.quantclaw"
+    chown -R "$SUDO_USER:$(id -gn $SUDO_USER)" "$USER_HOME/.ravbot"
 fi
 
 echo ""
-echo "QuantClaw installed successfully!"
+echo "RavBot installed successfully!"
 echo ""
 echo "Next steps:"
-echo "1. Edit ~/.quantclaw/quantclaw.json with your API keys"
-echo "2. Start gateway: quantclaw gateway"
-echo "3. Or install as service: quantclaw gateway install"
-echo "4. Send a message: quantclaw agent -m \"Hello!\""
-echo "5. Check status: quantclaw status"
-echo "6. Run diagnostics: quantclaw doctor"
+echo "1. Edit ~/.ravbot/ravbot.json with your API keys"
+echo "2. Start gateway: ravbot gateway"
+echo "3. Or install as service: ravbot gateway install"
+echo "4. Send a message: ravbot agent -m \"Hello!\""
+echo "5. Check status: ravbot status"
+echo "6. Run diagnostics: ravbot doctor"

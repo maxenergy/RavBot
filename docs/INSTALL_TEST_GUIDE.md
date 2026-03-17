@@ -5,7 +5,7 @@
 **原问题:**
 ```
 dpkg: 处理归档时出错：
- 无法打开 /usr/lib/systemd/system/quantclaw.service.dpkg-new: 没有那个文件或目录
+ 无法打开 /usr/lib/systemd/system/ravbot.service.dpkg-new: 没有那个文件或目录
 ```
 
 **修复内容:**
@@ -15,7 +15,7 @@ dpkg: 处理归档时出错：
 
 ## 新包信息
 
-**文件:** `dist/quantclaw_0.3.0-1_amd64.deb`
+**文件:** `dist/ravbot_0.3.0-1_amd64.deb`
 **大小:** 11MB
 **SHA256:** `b3dadb6dc25e7fce177dcf150fe36be9d11470bd20256a8660ca5ea07e4dfbbb`
 
@@ -25,30 +25,30 @@ dpkg: 处理归档时出错：
 
 ```bash
 # 方法 1: 从构建机器复制
-scp user@build-machine:/path/to/QuantClaw/dist/quantclaw_0.3.0-1_amd64.deb ~/
+scp user@build-machine:/path/to/RavBot/dist/ravbot_0.3.0-1_amd64.deb ~/
 
 # 方法 2: 从 GitHub Releases 下载 (发布后)
-wget https://github.com/QuantClaw/QuantClaw/releases/download/v0.3.0/quantclaw_0.3.0-1_amd64.deb
+wget https://github.com/RavBot/RavBot/releases/download/v0.3.0/ravbot_0.3.0-1_amd64.deb
 ```
 
 ### 2. 验证包 (可选但推荐)
 
 ```bash
 # 验证 SHA256
-echo "b3dadb6dc25e7fce177dcf150fe36be9d11470bd20256a8660ca5ea07e4dfbbb  quantclaw_0.3.0-1_amd64.deb" | sha256sum -c
+echo "b3dadb6dc25e7fce177dcf150fe36be9d11470bd20256a8660ca5ea07e4dfbbb  ravbot_0.3.0-1_amd64.deb" | sha256sum -c
 
 # 查看包内容
-dpkg -c quantclaw_0.3.0-1_amd64.deb | less
+dpkg -c ravbot_0.3.0-1_amd64.deb | less
 
 # 查看包信息
-dpkg-deb -I quantclaw_0.3.0-1_amd64.deb
+dpkg-deb -I ravbot_0.3.0-1_amd64.deb
 ```
 
 ### 3. 安装
 
 ```bash
 # 安装包
-sudo dpkg -i quantclaw_0.3.0-1_amd64.deb
+sudo dpkg -i ravbot_0.3.0-1_amd64.deb
 
 # 自动安装依赖 (包括 nodejs >= 18)
 sudo apt-get install -f
@@ -56,32 +56,32 @@ sudo apt-get install -f
 
 **预期输出:**
 ```
-正在选中未选择的软件包 quantclaw。
-正在解压 quantclaw (0.3.0-1) ...
-正在设置 quantclaw (0.3.0-1) ...
+正在选中未选择的软件包 ravbot。
+正在解压 ravbot (0.3.0-1) ...
+正在设置 ravbot (0.3.0-1) ...
 ✓ Sidecar installed successfully
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  QuantClaw has been installed successfully!
+  RavBot has been installed successfully!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Next steps:
   1. Run the onboarding wizard:
-     quantclaw onboard
+     ravbot onboard
 
   2. Start the gateway:
-     quantclaw gateway
+     ravbot gateway
 
   3. Or install as system service:
-     quantclaw gateway install
-     systemctl start quantclaw
-     systemctl enable quantclaw
+     ravbot gateway install
+     systemctl start ravbot
+     systemctl enable ravbot
 
-Configuration will be stored in: ~/.quantclaw/
+Configuration will be stored in: ~/.ravbot/
 
 Plugin system (Node.js Sidecar) is ready for OpenClaw plugins.
 
-For more information, visit: https://quantclaw.github.io
+For more information, visit: https://ravbot.github.io
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -89,14 +89,14 @@ For more information, visit: https://quantclaw.github.io
 
 ```bash
 # 检查版本
-quantclaw --version
-# 输出: quantclaw 0.3.0 (build ...)
+ravbot --version
+# 输出: ravbot 0.3.0 (build ...)
 
 # 检查文件
-ls -la /usr/bin/quantclaw
-ls -la /usr/lib/systemd/system/quantclaw.service
-ls -la /usr/share/quantclaw/sidecar/dist/index.js
-ls -la /usr/share/quantclaw/skills/
+ls -la /usr/bin/ravbot
+ls -la /usr/lib/systemd/system/ravbot.service
+ls -la /usr/share/ravbot/sidecar/dist/index.js
+ls -la /usr/share/ravbot/skills/
 
 # 检查 Node.js
 node --version
@@ -107,7 +107,7 @@ node --version
 
 ```bash
 # 运行初始化向导
-quantclaw onboard
+ravbot onboard
 ```
 
 **交互式配置:**
@@ -120,38 +120,38 @@ quantclaw onboard
 
 **方式 1: 前台运行 (推荐用于测试)**
 ```bash
-quantclaw gateway
+ravbot gateway
 ```
 
 **方式 2: 系统服务 (推荐用于生产)**
 ```bash
 # 安装服务
-quantclaw gateway install
+ravbot gateway install
 
 # 启动
-sudo systemctl start quantclaw
+sudo systemctl start ravbot
 
 # 开机自启
-sudo systemctl enable quantclaw
+sudo systemctl enable ravbot
 
 # 查看状态
-sudo systemctl status quantclaw
+sudo systemctl status ravbot
 
 # 查看日志
-journalctl -u quantclaw -f
+journalctl -u ravbot -f
 ```
 
 ### 7. 测试功能
 
 ```bash
 # 健康检查
-quantclaw health
+ravbot health
 
 # 发送测试消息
-quantclaw agent "你好，请介绍一下自己"
+ravbot agent "你好，请介绍一下自己"
 
 # 打开 Web 控制台
-quantclaw dashboard
+ravbot dashboard
 # 浏览器访问: http://localhost:18801
 ```
 
@@ -161,24 +161,24 @@ quantclaw dashboard
 
 ```bash
 # 检查编译后的 JavaScript
-ls -la /usr/share/quantclaw/sidecar/dist/
+ls -la /usr/share/ravbot/sidecar/dist/
 # 应该看到: index.js, plugin-loader.js, rpc-server.js 等
 
 # 检查 Node.js 依赖
-ls -la /usr/share/quantclaw/sidecar/node_modules/
+ls -la /usr/share/ravbot/sidecar/node_modules/
 # 应该看到: jiti/ 等目录
 
 # 检查包配置
-cat /usr/share/quantclaw/sidecar/package.json
+cat /usr/share/ravbot/sidecar/package.json
 ```
 
 ### 测试插件功能
 
 ```bash
 # 1. 创建测试插件
-mkdir -p ~/.quantclaw/plugins/test-plugin
+mkdir -p ~/.ravbot/plugins/test-plugin
 
-cat > ~/.quantclaw/plugins/test-plugin/quantclaw.plugin.json << 'EOF'
+cat > ~/.ravbot/plugins/test-plugin/ravbot.plugin.json << 'EOF'
 {
   "name": "test-plugin",
   "version": "1.0.0",
@@ -186,7 +186,7 @@ cat > ~/.quantclaw/plugins/test-plugin/quantclaw.plugin.json << 'EOF'
 }
 EOF
 
-cat > ~/.quantclaw/plugins/test-plugin/index.js << 'EOF'
+cat > ~/.ravbot/plugins/test-plugin/index.js << 'EOF'
 export const tools = [{
   name: "test_tool",
   description: "测试工具",
@@ -203,16 +203,16 @@ export const tools = [{
 EOF
 
 # 2. 启用插件
-quantclaw config set plugins.allow '["test-plugin"]'
+ravbot config set plugins.allow '["test-plugin"]'
 
 # 3. 重启服务
-quantclaw gateway restart
+ravbot gateway restart
 
 # 4. 验证插件
-quantclaw plugins list
+ravbot plugins list
 
 # 5. 测试插件工具
-quantclaw agent "使用 test_tool 发送消息: Hello"
+ravbot agent "使用 test_tool 发送消息: Hello"
 ```
 
 ## 故障排查
@@ -232,16 +232,16 @@ node --version  # 确认 >= 18
 
 ```bash
 # 查看详细日志
-journalctl -u quantclaw -n 50 --no-pager
+journalctl -u ravbot -n 50 --no-pager
 
 # 检查服务文件
-cat /usr/lib/systemd/system/quantclaw.service
+cat /usr/lib/systemd/system/ravbot.service
 
 # 重新加载 systemd
 sudo systemctl daemon-reload
 
 # 手动运行 (查看错误)
-quantclaw gateway
+ravbot gateway
 ```
 
 ### 问题 3: Sidecar 无法启动
@@ -251,12 +251,12 @@ quantclaw gateway
 node --version  # 必须 >= 18
 
 # 检查 Sidecar 文件
-ls -la /usr/share/quantclaw/sidecar/dist/
-ls -la /usr/share/quantclaw/sidecar/node_modules/
+ls -la /usr/share/ravbot/sidecar/dist/
+ls -la /usr/share/ravbot/sidecar/node_modules/
 
 # 手动测试 Sidecar
-export QUANTCLAW_PORT=18802
-node /usr/share/quantclaw/sidecar/dist/index.js
+export RAVBOT_PORT=18802
+node /usr/share/ravbot/sidecar/dist/index.js
 ```
 
 ### 问题 4: 端口冲突
@@ -266,36 +266,36 @@ node /usr/share/quantclaw/sidecar/dist/index.js
 sudo netstat -tlnp | grep -E '18800|18801'
 
 # 修改端口
-quantclaw config set gateway.port 19000
-quantclaw config set gateway.controlUi.port 19001
+ravbot config set gateway.port 19000
+ravbot config set gateway.controlUi.port 19001
 ```
 
 ### 问题 5: 插件加载失败
 
 ```bash
 # 检查插件配置
-cat ~/.quantclaw/quantclaw.json | grep -A 5 plugins
+cat ~/.ravbot/ravbot.json | grep -A 5 plugins
 
 # 检查插件目录
-ls -la ~/.quantclaw/plugins/
+ls -la ~/.ravbot/plugins/
 
 # 启用详细日志
-QUANTCLAW_VERBOSE=1 quantclaw gateway
+RAVBOT_VERBOSE=1 ravbot gateway
 ```
 
 ## 卸载
 
 ```bash
 # 停止服务
-sudo systemctl stop quantclaw
-sudo systemctl disable quantclaw
+sudo systemctl stop ravbot
+sudo systemctl disable ravbot
 
 # 卸载包 (保留配置)
-sudo apt-get remove quantclaw
+sudo apt-get remove ravbot
 
 # 完全删除 (包括配置)
-sudo apt-get purge quantclaw
-rm -rf ~/.quantclaw
+sudo apt-get purge ravbot
+rm -rf ~/.ravbot
 ```
 
 ## 反馈问题
@@ -308,32 +308,32 @@ lsb_release -a
 uname -a
 
 # 2. 包信息
-dpkg -l | grep quantclaw
+dpkg -l | grep ravbot
 
 # 3. 依赖信息
 dpkg -l | grep -E "nodejs|libssl|libcurl|libsqlite"
 
 # 4. 服务状态
-systemctl status quantclaw
+systemctl status ravbot
 
 # 5. 日志
-journalctl -u quantclaw -n 100 --no-pager
+journalctl -u ravbot -n 100 --no-pager
 
 # 6. 配置
-cat ~/.quantclaw/quantclaw.json
+cat ~/.ravbot/ravbot.json
 ```
 
-提交 Issue: https://github.com/QuantClaw/QuantClaw/issues
+提交 Issue: https://github.com/RavBot/RavBot/issues
 
 ## 成功标志
 
 安装成功后,你应该能够:
 
-- ✅ 运行 `quantclaw --version` 看到版本号
-- ✅ 运行 `quantclaw health` 看到 "Gateway: ok"
-- ✅ 运行 `quantclaw agent "test"` 收到 AI 回复
+- ✅ 运行 `ravbot --version` 看到版本号
+- ✅ 运行 `ravbot health` 看到 "Gateway: ok"
+- ✅ 运行 `ravbot agent "test"` 收到 AI 回复
 - ✅ 访问 http://localhost:18801 看到 Web 控制台
-- ✅ 看到 Sidecar 文件在 `/usr/share/quantclaw/sidecar/`
+- ✅ 看到 Sidecar 文件在 `/usr/share/ravbot/sidecar/`
 - ✅ 创建和加载插件成功
 
 ---

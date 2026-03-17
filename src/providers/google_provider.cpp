@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/providers/google_provider.hpp"
+#include "ravbot/providers/google_provider.hpp"
 
 #include <sstream>
 #include <stdexcept>
@@ -9,7 +9,7 @@
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 
-namespace quantclaw {
+namespace ravbot {
 
 GoogleProvider::GoogleProvider(const std::string& api_key,
                                const std::string& base_url, int timeout,
@@ -267,4 +267,4 @@ void GoogleProvider::ChatCompletionStream(
   }
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

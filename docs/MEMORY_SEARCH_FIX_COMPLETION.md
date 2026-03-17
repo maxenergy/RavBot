@@ -8,7 +8,7 @@
 
 ## 执行摘要
 
-成功修复了记忆系统和搜索功能的三个关键问题，显著提升了 QuantClaw 的长效记忆能力和搜索稳定性。
+成功修复了记忆系统和搜索功能的三个关键问题，显著提升了 RavBot 的长效记忆能力和搜索稳定性。
 
 ---
 
@@ -25,7 +25,7 @@
 - 更新 System Prompt 添加记忆管理指令
 
 **修改文件**:
-- `include/quantclaw/tools/tool_registry.hpp` - 添加声明
+- `include/ravbot/tools/tool_registry.hpp` - 添加声明
 - `src/tools/tool_registry.cpp` - 实现工具
 - `src/core/prompt_builder.cpp` - 添加记忆管理指令
 
@@ -76,7 +76,7 @@
 - 错误处理不影响主流程
 
 **修改文件**:
-- `include/quantclaw/core/agent_loop.hpp`
+- `include/ravbot/core/agent_loop.hpp`
   - 添加 embedding_manager_ 成员变量
   - 添加 SetEmbeddingManager() 方法
 - `src/core/agent_loop.cpp`
@@ -238,13 +238,13 @@ github_search → JSON 错误格式 → API 成功
 
 ### 编译测试
 ```bash
-cmake --build build --target quantclaw -j$(nproc)
+cmake --build build --target ravbot -j$(nproc)
 ```
 **结果**: ✅ 编译成功
 
 ### 运行测试
 ```bash
-./build/quantclaw --version
+./build/ravbot --version
 ```
 **结果**: ✅ 程序正常运行
 
@@ -320,13 +320,13 @@ cmake --build build --target quantclaw -j$(nproc)
 ## 与 OpenClaw 的对比
 
 ### 功能完整性
-- **记忆写入**: ✅ 100% (OpenClaw 有，QuantClaw 现在也有)
-- **向量搜索**: ✅ 100% (OpenClaw 有，QuantClaw 现在也有)
-- **自动索引**: ✅ 100% (OpenClaw 有，QuantClaw 现在也有)
-- **搜索稳定性**: ✅ 100% (QuantClaw 更好)
+- **记忆写入**: ✅ 100% (OpenClaw 有，RavBot 现在也有)
+- **向量搜索**: ✅ 100% (OpenClaw 有，RavBot 现在也有)
+- **自动索引**: ✅ 100% (OpenClaw 有，RavBot 现在也有)
+- **搜索稳定性**: ✅ 100% (RavBot 更好)
 
 ### 技术对比
-| 功能 | OpenClaw | QuantClaw | 状态 |
+| 功能 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 记忆写入 | ✅ | ✅ | 对等 |
 | BM25 搜索 | ✅ | ✅ | 对等 |
@@ -412,8 +412,8 @@ a60b3b3 feat: 添加记忆写入工具和搜索功能修复
 
 ### 修改文件列表
 ```
-include/quantclaw/core/agent_loop.hpp
-include/quantclaw/tools/tool_registry.hpp
+include/ravbot/core/agent_loop.hpp
+include/ravbot/tools/tool_registry.hpp
 src/core/agent_loop.cpp
 src/core/prompt_builder.cpp
 src/tools/tool_registry.cpp

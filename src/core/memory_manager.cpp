@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/memory_manager.hpp"
+#include "ravbot/core/memory_manager.hpp"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -11,15 +11,15 @@
 #include <filesystem>
 #include <spdlog/spdlog.h>
 
-namespace quantclaw {
+namespace ravbot {
 
 MemoryManager::MemoryManager(const std::filesystem::path& workspace_path,
                              std::shared_ptr<spdlog::logger> logger)
     : workspace_path_(workspace_path), logger_(logger) {
 
     // Determine base dir from workspace path
-    // Expected: ~/.quantclaw/agents/{agentId}/workspace
-    // Or legacy: ~/.quantclaw/workspace
+    // Expected: ~/.ravbot/agents/{agentId}/workspace
+    // Or legacy: ~/.ravbot/workspace
     if (workspace_path_.string().find("/agents/") != std::string::npos) {
         // New layout: base_dir is 3 levels up from workspace
         base_dir_ = workspace_path_.parent_path().parent_path().parent_path();
@@ -278,4 +278,4 @@ void MemoryManager::write_file_content(const std::filesystem::path& filepath,
     file << content;
 }
 
-} // namespace quantclaw
+} // namespace ravbot

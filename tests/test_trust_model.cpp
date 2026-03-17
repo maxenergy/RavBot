@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/security/trust_model.hpp"
+#include "ravbot/security/trust_model.hpp"
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <thread>
 
-namespace quantclaw {
+namespace ravbot {
 
 class TrustModelTest : public ::testing::Test {
  protected:
@@ -223,4 +223,4 @@ TEST_F(TrustModelTest, ConcurrentAccess) {
   }
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

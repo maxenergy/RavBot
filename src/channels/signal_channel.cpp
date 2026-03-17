@@ -1,14 +1,14 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/signal_channel.hpp"
+#include "ravbot/channels/signal_channel.hpp"
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include <thread>
 #include <algorithm>
 
-namespace quantclaw {
+namespace ravbot {
 
 SignalChannel::SignalChannel(const SignalConfig& config, std::shared_ptr<spdlog::logger> logger)
     : config_(config), logger_(logger) {}
@@ -251,4 +251,4 @@ bool SignalChannel::IsAllowed(const std::string& sender_id) const {
                     sender_id) != config_.allowed_senders.end();
 }
 
-} // namespace quantclaw
+} // namespace ravbot

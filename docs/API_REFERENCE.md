@@ -1,8 +1,8 @@
-# QuantClaw API Reference
+# RavBot API Reference
 
 ## 概述
 
-QuantClaw 提供了完整的 C++ API 用于构建 AI Agent 应用。本文档涵盖了核心类和方法的使用说明。
+RavBot 提供了完整的 C++ API 用于构建 AI Agent 应用。本文档涵盖了核心类和方法的使用说明。
 
 ## 核心模块
 
@@ -12,7 +12,7 @@ QuantClaw 提供了完整的 C++ API 用于构建 AI Agent 应用。本文档涵
 
 Agent 执行循环的核心类,负责处理用户请求并协调各个组件。
 
-**头文件**: `quantclaw/core/agent_loop.hpp`
+**头文件**: `ravbot/core/agent_loop.hpp`
 
 **主要方法**:
 
@@ -30,7 +30,7 @@ AgentStats GetStats() const;
 **使用示例**:
 
 ```cpp
-#include "quantclaw/core/agent_loop.hpp"
+#include "ravbot/core/agent_loop.hpp"
 
 auto memory_manager = std::make_shared<MemoryManager>(workspace_dir, logger);
 auto skill_loader = std::make_shared<SkillLoader>(logger);
@@ -54,7 +54,7 @@ std::cout << response.content << std::endl;
 
 管理 Agent 的工作空间和文件系统操作。
 
-**头文件**: `quantclaw/core/memory_manager.hpp`
+**头文件**: `ravbot/core/memory_manager.hpp`
 
 **主要方法**:
 
@@ -78,7 +78,7 @@ std::vector<SearchResult> SearchFiles(const std::string& pattern);
 
 管理用户会话和对话历史。
 
-**头文件**: `quantclaw/session/session_manager.hpp`
+**头文件**: `ravbot/session/session_manager.hpp`
 
 **主要方法**:
 
@@ -105,7 +105,7 @@ std::vector<std::string> ListSessions();
 
 管理多个 LLM 提供商并支持故障转移。
 
-**头文件**: `quantclaw/providers/provider_registry.hpp`
+**头文件**: `ravbot/providers/provider_registry.hpp`
 
 **主要方法**:
 
@@ -151,7 +151,7 @@ registry->AddFallbackProvider("openai");
 
 管理可用的工具和函数调用。
 
-**头文件**: `quantclaw/tools/tool_registry.hpp`
+**头文件**: `ravbot/tools/tool_registry.hpp`
 
 **主要方法**:
 
@@ -175,7 +175,7 @@ std::vector<std::string> ListTools() const;
 
 WebSocket RPC 服务器,提供远程访问接口。
 
-**头文件**: `quantclaw/gateway/gateway_server.hpp`
+**头文件**: `ravbot/gateway/gateway_server.hpp`
 
 **主要方法**:
 
@@ -218,7 +218,7 @@ server->Start();
 
 WebSocket RPC 客户端,用于连接到 Gateway Server。
 
-**头文件**: `quantclaw/gateway/gateway_client.hpp`
+**头文件**: `ravbot/gateway/gateway_client.hpp`
 
 **主要方法**:
 
@@ -258,16 +258,16 @@ if (client->Connect()) {
 
 ## 配置系统
 
-### QuantClawConfig
+### RavBotConfig
 
 全局配置结构。
 
-**头文件**: `quantclaw/config.hpp`
+**头文件**: `ravbot/config.hpp`
 
 **主要字段**:
 
 ```cpp
-struct QuantClawConfig {
+struct RavBotConfig {
     struct AgentConfig {
         std::string model;              // LLM 模型名称
         int max_iterations;             // 最大迭代次数
@@ -295,17 +295,17 @@ struct QuantClawConfig {
 **加载配置**:
 
 ```cpp
-#include "quantclaw/config.hpp"
+#include "ravbot/config.hpp"
 
 // 从文件加载
-auto config = QuantClawConfig::LoadFromFile("config.json");
+auto config = RavBotConfig::LoadFromFile("config.json");
 
 // 从 JSON 加载
 nlohmann::json j = /* ... */;
-auto config = QuantClawConfig::FromJson(j);
+auto config = RavBotConfig::FromJson(j);
 
 // 验证配置
-auto errors = QuantClawConfig::Validate(j);
+auto errors = RavBotConfig::Validate(j);
 if (!errors.empty()) {
     for (const auto& error : errors) {
         std::cerr << "Config error: " << error << std::endl;
@@ -319,7 +319,7 @@ if (!errors.empty()) {
 
 动态插件加载和管理。
 
-**头文件**: `quantclaw/plugins/plugin_system.hpp`
+**头文件**: `ravbot/plugins/plugin_system.hpp`
 
 **主要方法**:
 
@@ -343,7 +343,7 @@ PluginManifest GetPluginInfo(const std::string& plugin_id) const;
 
 安全审计日志记录。
 
-**头文件**: `quantclaw/security/audit_logger.hpp`
+**头文件**: `ravbot/security/audit_logger.hpp`
 
 **主要方法**:
 
@@ -370,7 +370,7 @@ std::vector<AuditLogEntry> Export(const ExportOptions& options);
 
 LLM 提供商错误分类。
 
-**头文件**: `quantclaw/providers/provider_error.hpp`
+**头文件**: `ravbot/providers/provider_error.hpp`
 
 **错误类型**:
 
@@ -491,7 +491,7 @@ config.agent.max_context_tokens = 100000;
 
 ## 参考链接
 
-- [GitHub Repository](https://github.com/yourusername/quantclaw)
+- [GitHub Repository](https://github.com/yourusername/ravbot)
 - [配置示例](../config.example.json)
 - [性能报告](../tests/performance/PERFORMANCE_REPORT.md)
 - [测试报告](../tests/COMPREHENSIVE_TEST_REPORT.md)

@@ -1,9 +1,9 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/tools/browser_tool.hpp"
+#include "ravbot/tools/browser_tool.hpp"
 
-#include "quantclaw/common/parse_util.hpp"
+#include "ravbot/common/parse_util.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -14,7 +14,7 @@
 #include <thread>
 #include <httplib.h>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- SsrfPolicy ---
 
@@ -823,4 +823,4 @@ bool BrowserSessionManager::is_session_idle(const std::shared_ptr<BrowserSession
   return idle_time > lifecycle_config_.idle_timeout_seconds;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

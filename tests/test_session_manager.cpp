@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>
 #include <memory>
-#include "quantclaw/session/session_manager.hpp"
+#include "ravbot/session/session_manager.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 #include "test_helpers.hpp"
@@ -13,12 +13,12 @@
 class SessionManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_session_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_session_test");
 
         auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
         logger_ = std::make_shared<spdlog::logger>("test", null_sink);
 
-        session_mgr_ = std::make_unique<quantclaw::SessionManager>(test_dir_, logger_);
+        session_mgr_ = std::make_unique<ravbot::SessionManager>(test_dir_, logger_);
     }
 
     void TearDown() override {
@@ -30,7 +30,7 @@ protected:
 
     std::filesystem::path test_dir_;
     std::shared_ptr<spdlog::logger> logger_;
-    std::unique_ptr<quantclaw::SessionManager> session_mgr_;
+    std::unique_ptr<ravbot::SessionManager> session_mgr_;
 };
 
 // --- get_or_create ---
@@ -111,7 +111,7 @@ TEST_F(SessionManagerTest, HistoryOfNonexistentSession) {
 TEST_F(SessionManagerTest, AppendMessageWithUsage) {
     session_mgr_->GetOrCreate("test:usage");
 
-    quantclaw::UsageInfo usage;
+    ravbot::UsageInfo usage;
     usage.input_tokens = 100;
     usage.output_tokens = 50;
     session_mgr_->AppendMessage("test:usage", "assistant", "Response", usage);
@@ -182,7 +182,7 @@ TEST_F(SessionManagerTest, PersistenceAcrossReloads) {
 
     // Destroy and recreate
     session_mgr_.reset();
-    session_mgr_ = std::make_unique<quantclaw::SessionManager>(test_dir_, logger_);
+    session_mgr_ = std::make_unique<ravbot::SessionManager>(test_dir_, logger_);
 
     auto sessions = session_mgr_->ListSessions();
     ASSERT_EQ(sessions.size(), 1u);
@@ -197,7 +197,7 @@ TEST_F(SessionManagerTest, PersistenceAcrossReloads) {
 // --- ContentBlock ---
 
 TEST(ContentBlockTest, MakeText) {
-    auto block = quantclaw::ContentBlock::MakeText("hello");
+    auto block = ravbot::ContentBlock::MakeText("hello");
     EXPECT_EQ(block.type, "text");
     EXPECT_EQ(block.text, "hello");
 
@@ -207,7 +207,7 @@ TEST(ContentBlockTest, MakeText) {
 }
 
 TEST(ContentBlockTest, MakeToolUse) {
-    auto block = quantclaw::ContentBlock::MakeToolUse("t1", "read", {{"path", "/tmp"}});
+    auto block = ravbot::ContentBlock::MakeToolUse("t1", "read", {{"path", "/tmp"}});
     EXPECT_EQ(block.type, "tool_use");
     EXPECT_EQ(block.id, "t1");
     EXPECT_EQ(block.name, "read");
@@ -218,7 +218,7 @@ TEST(ContentBlockTest, MakeToolUse) {
 }
 
 TEST(ContentBlockTest, MakeToolResult) {
-    auto block = quantclaw::ContentBlock::MakeToolResult("t1", "file contents");
+    auto block = ravbot::ContentBlock::MakeToolResult("t1", "file contents");
     EXPECT_EQ(block.type, "tool_result");
     EXPECT_EQ(block.tool_use_id, "t1");
 
@@ -228,9 +228,9 @@ TEST(ContentBlockTest, MakeToolResult) {
 }
 
 TEST(ContentBlockTest, Roundtrip) {
-    auto original = quantclaw::ContentBlock::MakeText("roundtrip test");
+    auto original = ravbot::ContentBlock::MakeText("roundtrip test");
     auto j = original.ToJson();
-    auto parsed = quantclaw::ContentBlock::FromJson(j);
+    auto parsed = ravbot::ContentBlock::FromJson(j);
 
     EXPECT_EQ(parsed.type, original.type);
     EXPECT_EQ(parsed.text, original.text);
@@ -289,16 +289,16 @@ TEST_F(SessionManagerTest, ToolCallMessageRoundtrip) {
     session_mgr_->GetOrCreate("test:toolcall");
 
     // Append assistant message with tool_use
-    quantclaw::SessionMessage assistant_msg;
+    ravbot::SessionMessage assistant_msg;
     assistant_msg.role = "assistant";
-    assistant_msg.content.push_back(quantclaw::ContentBlock::MakeText("Let me check."));
-    assistant_msg.content.push_back(quantclaw::ContentBlock::MakeToolUse("t1", "read_file", {{"path", "/tmp/test"}}));
+    assistant_msg.content.push_back(ravbot::ContentBlock::MakeText("Let me check."));
+    assistant_msg.content.push_back(ravbot::ContentBlock::MakeToolUse("t1", "read_file", {{"path", "/tmp/test"}}));
     session_mgr_->AppendMessage("test:toolcall", assistant_msg);
 
     // Append user message with tool_result
-    quantclaw::SessionMessage result_msg;
+    ravbot::SessionMessage result_msg;
     result_msg.role = "user";
-    result_msg.content.push_back(quantclaw::ContentBlock::MakeToolResult("t1", "file contents here"));
+    result_msg.content.push_back(ravbot::ContentBlock::MakeToolResult("t1", "file contents here"));
     session_mgr_->AppendMessage("test:toolcall", result_msg);
 
     auto history = session_mgr_->GetHistory("test:toolcall");
@@ -323,14 +323,14 @@ TEST_F(SessionManagerTest, ToolCallMessageRoundtrip) {
 }
 
 TEST(SessionMessageTest, JsonlRoundtrip) {
-    quantclaw::SessionMessage msg;
+    ravbot::SessionMessage msg;
     msg.role = "assistant";
-    msg.content.push_back(quantclaw::ContentBlock::MakeText("Hello!"));
+    msg.content.push_back(ravbot::ContentBlock::MakeText("Hello!"));
     msg.timestamp = "2026-02-23T10:00:00Z";
-    msg.usage = quantclaw::UsageInfo{10, 5};
+    msg.usage = ravbot::UsageInfo{10, 5};
 
     auto j = msg.ToJsonl();
-    auto parsed = quantclaw::SessionMessage::FromJsonl(j);
+    auto parsed = ravbot::SessionMessage::FromJsonl(j);
 
     EXPECT_EQ(parsed.role, "assistant");
     ASSERT_EQ(parsed.content.size(), 1u);
@@ -344,54 +344,54 @@ TEST(SessionMessageTest, JsonlRoundtrip) {
 // --- Session key normalization (OpenClaw format) ---
 
 TEST(SessionKeyTest, ParseValidKey) {
-    auto parsed = quantclaw::ParseAgentSessionKey("agent:main:main");
+    auto parsed = ravbot::ParseAgentSessionKey("agent:main:main");
     ASSERT_TRUE(parsed.has_value());
     EXPECT_EQ(parsed->agent_id, "main");
     EXPECT_EQ(parsed->rest, "main");
 }
 
 TEST(SessionKeyTest, ParseKeyWithMultipleColons) {
-    auto parsed = quantclaw::ParseAgentSessionKey("agent:main:dm:user1:extra");
+    auto parsed = ravbot::ParseAgentSessionKey("agent:main:dm:user1:extra");
     ASSERT_TRUE(parsed.has_value());
     EXPECT_EQ(parsed->agent_id, "main");
     EXPECT_EQ(parsed->rest, "dm:user1:extra");
 }
 
 TEST(SessionKeyTest, ParseInvalidKeyNoAgent) {
-    EXPECT_FALSE(quantclaw::ParseAgentSessionKey("test:session").has_value());
+    EXPECT_FALSE(ravbot::ParseAgentSessionKey("test:session").has_value());
 }
 
 TEST(SessionKeyTest, ParseInvalidKeyTooFewParts) {
-    EXPECT_FALSE(quantclaw::ParseAgentSessionKey("agent:main").has_value());
+    EXPECT_FALSE(ravbot::ParseAgentSessionKey("agent:main").has_value());
 }
 
 TEST(SessionKeyTest, ParseEmptyKey) {
-    EXPECT_FALSE(quantclaw::ParseAgentSessionKey("").has_value());
+    EXPECT_FALSE(ravbot::ParseAgentSessionKey("").has_value());
 }
 
 TEST(SessionKeyTest, NormalizeAlreadyValid) {
-    EXPECT_EQ(quantclaw::NormalizeSessionKey("agent:main:main"), "agent:main:main");
+    EXPECT_EQ(ravbot::NormalizeSessionKey("agent:main:main"), "agent:main:main");
 }
 
 TEST(SessionKeyTest, NormalizePlainKey) {
-    EXPECT_EQ(quantclaw::NormalizeSessionKey("my-session"), "agent:main:my-session");
+    EXPECT_EQ(ravbot::NormalizeSessionKey("my-session"), "agent:main:my-session");
 }
 
 TEST(SessionKeyTest, NormalizeLowercases) {
-    EXPECT_EQ(quantclaw::NormalizeSessionKey("agent:Main:MyChat"), "agent:main:mychat");
+    EXPECT_EQ(ravbot::NormalizeSessionKey("agent:Main:MyChat"), "agent:main:mychat");
 }
 
 TEST(SessionKeyTest, NormalizeEmptyKey) {
-    EXPECT_EQ(quantclaw::NormalizeSessionKey(""), "agent:main:main");
+    EXPECT_EQ(ravbot::NormalizeSessionKey(""), "agent:main:main");
 }
 
 TEST(SessionKeyTest, NormalizeWithWhitespace) {
-    EXPECT_EQ(quantclaw::NormalizeSessionKey("  agent:main:test  "), "agent:main:test");
+    EXPECT_EQ(ravbot::NormalizeSessionKey("  agent:main:test  "), "agent:main:test");
 }
 
 TEST(SessionKeyTest, BuildMainSessionKey) {
-    EXPECT_EQ(quantclaw::BuildMainSessionKey(), "agent:main:main");
-    EXPECT_EQ(quantclaw::BuildMainSessionKey("alpha"), "agent:alpha:main");
+    EXPECT_EQ(ravbot::BuildMainSessionKey(), "agent:main:main");
+    EXPECT_EQ(ravbot::BuildMainSessionKey("alpha"), "agent:alpha:main");
 }
 
 TEST_F(SessionManagerTest, PlainKeyNormalizedOnCreate) {

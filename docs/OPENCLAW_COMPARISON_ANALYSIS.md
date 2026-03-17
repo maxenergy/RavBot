@@ -1,4 +1,4 @@
-# QuantClaw vs OpenClaw 工具执行对比分析
+# RavBot vs OpenClaw 工具执行对比分析
 
 ## 测试用例
 **用户查询**: "请你搜索github找openclaw的技能的top20列表"
@@ -26,7 +26,7 @@
 
 ---
 
-## QuantClaw 行为 ❌ 错误
+## RavBot 行为 ❌ 错误
 
 ### 响应过程
 ```
@@ -52,7 +52,7 @@
 
 ### 问题定位
 
-**QuantClaw 的问题**:
+**RavBot 的问题**:
 1. **LLM 没有返回 `tool_calls` 格式**
 2. **直接返回了文本响应**
 3. **Lookup guard 没有触发**
@@ -77,19 +77,19 @@ if (!forced_lookup_retry &&
     response_looks_like_unfulfilled_lookup_preamble(response.content)) {  // ❌ 可能这里失败
 ```
 
-**问题**: `response_looks_like_unfulfilled_lookup_preamble()` 可能没有识别出 QuantClaw 的响应模式。
+**问题**: `response_looks_like_unfulfilled_lookup_preamble()` 可能没有识别出 RavBot 的响应模式。
 
 让我检查这个函数：
 
 ```cpp
 static bool response_looks_like_unfulfilled_lookup_preamble(const std::string& text) {
   // 检查是否包含"让我搜索"、"我来搜索"等模式
-  // 但 QuantClaw 的响应是"我来搜索 GitHub 上的 OpenClaw 技能仓库："
+  // 但 RavBot 的响应是"我来搜索 GitHub 上的 OpenClaw 技能仓库："
   // 然后直接给出了"没找到"的结论
 }
 ```
 
-**QuantClaw 的响应模式**:
+**RavBot 的响应模式**:
 - 开头：✅ "我来搜索 GitHub 上的 OpenClaw 技能仓库："（符合 preamble 模式）
 - 中间：❌ "搜索结果显示没有找到..."（直接给出结论，不符合 preamble 模式）
 
@@ -97,7 +97,7 @@ static bool response_looks_like_unfulfilled_lookup_preamble(const std::string& t
 
 ---
 
-## OpenClaw vs QuantClaw 架构差异
+## OpenClaw vs RavBot 架构差异
 
 ### OpenClaw 的优势
 
@@ -114,7 +114,7 @@ static bool response_looks_like_unfulfilled_lookup_preamble(const std::string& t
    - 可能有更多的检测模式
    - 可能有更强的强制重试逻辑
 
-### QuantClaw 的问题
+### RavBot 的问题
 
 1. **Prompt 优先级不够**
    - 工具使用指令可能被其他内容稀释
@@ -212,7 +212,7 @@ std::string PromptBuilder::BuildFull(const std::string& /*agent_id*/) const {
 
 ### 方案 3: 修改 AGENTS.md 使用更强的语言 ⭐⭐⭐
 
-**修改**: `/home/rogers/.quantclaw/agents/main/workspace/AGENTS.md`
+**修改**: `/home/rogers/.ravbot/agents/main/workspace/AGENTS.md`
 
 在文件开头添加：
 
@@ -297,7 +297,7 @@ if (request.messages.empty() || request.messages[0].role != "user") {
 
 ## 预期效果
 
-实施所有方案后，QuantClaw 应该：
+实施所有方案后，RavBot 应该：
 1. ✅ 检测到搜索意图
 2. ✅ 调用 web_search 或 github_search_repos 工具
 3. ✅ 返回真实的搜索结果
@@ -307,7 +307,7 @@ if (request.messages.empty() || request.messages[0].role != "user") {
 
 ## 总结
 
-**核心问题**: QuantClaw 的 LLM 没有调用工具，而是直接返回了文本响应。
+**核心问题**: RavBot 的 LLM 没有调用工具，而是直接返回了文本响应。
 
 **根本原因**:
 1. Prompt 指令不够强

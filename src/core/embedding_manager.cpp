@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/embedding_manager.hpp"
+#include "ravbot/core/embedding_manager.hpp"
 
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
-namespace quantclaw {
+namespace ravbot {
 
 EmbeddingManager::EmbeddingManager(
     std::shared_ptr<EmbeddingProviderRegistry> registry,
@@ -284,4 +284,4 @@ bool EmbeddingManager::GetFromCache(const std::string& text,
   return false;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

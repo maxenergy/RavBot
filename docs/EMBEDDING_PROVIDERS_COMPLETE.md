@@ -93,13 +93,13 @@
 ## 代码统计
 
 ### 新增文件
-1. `include/quantclaw/core/embedding_provider.hpp` (80 行)
+1. `include/ravbot/core/embedding_provider.hpp` (80 行)
 2. `src/core/embedding_provider.cpp` (90 行)
-3. `include/quantclaw/core/mock_embedding_provider.hpp` (39 行)
+3. `include/ravbot/core/mock_embedding_provider.hpp` (39 行)
 4. `src/core/mock_embedding_provider.cpp` (57 行)
-5. `include/quantclaw/core/openai_embedding_provider.hpp` (59 行)
+5. `include/ravbot/core/openai_embedding_provider.hpp` (59 行)
 6. `src/core/openai_embedding_provider.cpp` (180 行)
-7. `include/quantclaw/core/anthropic_embedding_provider.hpp` (63 行)
+7. `include/ravbot/core/anthropic_embedding_provider.hpp` (63 行)
 8. `src/core/anthropic_embedding_provider.cpp` (200 行)
 9. `tests/test_embedding_provider.cpp` (183 行)
 10. `tests/test_openai_embedding_provider.cpp` (160 行)

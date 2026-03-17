@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/providers/provider_error.hpp"
+#include "ravbot/providers/provider_error.hpp"
 
 #include <string_view>
 
-namespace quantclaw {
+namespace ravbot {
 
 std::string ProviderErrorKindToString(ProviderErrorKind kind) {
   switch (kind) {
@@ -96,4 +96,4 @@ ProviderErrorKind ClassifyHttpError(int http_status,
   return ProviderErrorKind::kUnknown;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

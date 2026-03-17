@@ -1,7 +1,7 @@
-Source: quantclaw
+Source: ravbot
 Section: utils
 Priority: optional
-Maintainer: QuantClaw Team <team@quantclaw.io>
+Maintainer: RavBot Team <team@ravbot.io>
 Build-Depends: debhelper-compat (= 13),
                cmake (>= 3.20),
                g++ (>= 7),
@@ -14,11 +14,11 @@ Build-Depends: debhelper-compat (= 13),
                nodejs (>= 18),
                npm
 Standards-Version: 4.6.2
-Homepage: https://quantclaw.github.io
-Vcs-Git: https://github.com/QuantClaw/QuantClaw.git
-Vcs-Browser: https://github.com/QuantClaw/QuantClaw
+Homepage: https://ravbot.github.io
+Vcs-Git: https://github.com/RavBot/RavBot.git
+Vcs-Browser: https://github.com/RavBot/RavBot
 
-Package: quantclaw
+Package: ravbot
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
          libssl3,
@@ -27,7 +27,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
          zlib1g,
          nodejs (>= 18)
 Description: High-performance personal AI assistant in C++17
- QuantClaw is a native C++ implementation of the OpenClaw ecosystem,
+ RavBot is a native C++ implementation of the OpenClaw ecosystem,
  built for performance and low memory footprint while staying fully
  compatible with OpenClaw workspace files, skills, and the WebSocket
  RPC protocol.

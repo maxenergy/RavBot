@@ -1,4 +1,4 @@
-# OpenClaw vs QuantClaw 深度对比分析
+# OpenClaw vs RavBot 深度对比分析
 
 ## 用户报告的问题
 
@@ -21,7 +21,7 @@
 [包含详细分类、统计表格、资源链接]
 ```
 
-### QuantClaw 输出 ❌
+### RavBot 输出 ❌
 
 ```
 1. **VoltAgent/awesome-openclaw-skills** ⭐ 0  ← 错误！应该是 37,265
@@ -59,7 +59,7 @@ export function createWebSearchTool(config: WebSearchConfig) {
 - 支持多个搜索引擎：Brave, Perplexity, Grok, Gemini, Kimi
 - 返回网页搜索结果（包含 GitHub 页面）
 
-#### QuantClaw
+#### RavBot
 ```cpp
 // src/tools/tool_registry.cpp
 register_tool("github_search_repos",
@@ -73,11 +73,11 @@ register_tool("github_search_repos",
 - 直接调用 `gh CLI`
 - 返回 GitHub API 官方数据
 
-**结论**: OpenClaw 使用 web_search，QuantClaw 使用 github_search_repos。两者数据来源不同。
+**结论**: OpenClaw 使用 web_search，RavBot 使用 github_search_repos。两者数据来源不同。
 
 ### 2. 数据解析流程
 
-#### QuantClaw 的数据流
+#### RavBot 的数据流
 
 ```
 用户消息
@@ -114,7 +114,7 @@ $ gh search repos "awesome-openclaw-skills" --json name,stargazersCount
 
 ✅ gh CLI 返回正确
 
-让我验证 QuantClaw 的解析：
+让我验证 RavBot 的解析：
 
 ```cpp
 // src/tools/tool_registry.cpp:1592
@@ -183,7 +183,7 @@ When the user asks to search or find something:
 - Include relevant links and resources
 ```
 
-#### QuantClaw System Prompt (当前)
+#### RavBot System Prompt (当前)
 
 ```
 ## CRITICAL: Tool Usage Rules
@@ -195,7 +195,7 @@ When the user asks you to search:
 3. **PRESENT the actual results to the user**
 ```
 
-**差异**: OpenClaw 强调"整理和增强"，QuantClaw 只强调"调用工具"。
+**差异**: OpenClaw 强调"整理和增强"，RavBot 只强调"调用工具"。
 
 ## 解决方案
 

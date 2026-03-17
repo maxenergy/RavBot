@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-成功从 OpenClaw 同步了 3 个 P1 优先级功能，提高了 QuantClaw 的可配置性、可靠性和安全性。所有功能已测试验证并准备提交。
+成功从 OpenClaw 同步了 3 个 P1 优先级功能，提高了 RavBot 的可配置性、可靠性和安全性。所有功能已测试验证并准备提交。
 
 ---
 
@@ -25,9 +25,9 @@
 - 默认值：80% 超时阈值、5 个最大超时、3 次连续检测
 
 **修改文件**:
-- `include/quantclaw/config.hpp` - 添加配置字段
+- `include/ravbot/config.hpp` - 添加配置字段
 - `src/core/config.cpp` - 添加配置解析
-- `include/quantclaw/gateway/gateway_server.hpp` - 添加配置方法和字段
+- `include/ravbot/gateway/gateway_server.hpp` - 添加配置方法和字段
 - `src/gateway/gateway_server.cpp` - 使用配置值替代硬编码
 - `src/cli/gateway_commands.cpp` - 应用配置
 
@@ -62,7 +62,7 @@
 - 持久化到 `sessions.json` 文件
 
 **修改文件**:
-- `include/quantclaw/session/session_manager.hpp` - 添加字段和方法
+- `include/ravbot/session/session_manager.hpp` - 添加字段和方法
 - `src/session/session_manager.cpp` - 实现持久化逻辑
 - `src/gateway/rpc_handlers.cpp` - 在 compact 时增加计数
 
@@ -97,9 +97,9 @@
 - 支持配置最大尝试次数和锁定时长
 
 **修改文件**:
-- `include/quantclaw/config.hpp` - 添加配置字段
+- `include/ravbot/config.hpp` - 添加配置字段
 - `src/core/config.cpp` - 添加配置解析
-- `include/quantclaw/gateway/gateway_server.hpp` - 添加锁定状态和方法
+- `include/ravbot/gateway/gateway_server.hpp` - 添加锁定状态和方法
 - `src/gateway/gateway_server.cpp` - 实现锁定逻辑
 - `src/cli/gateway_commands.cpp` - 应用配置
 
@@ -130,13 +130,13 @@
 
 ### 编译测试
 ```bash
-cmake --build build --target quantclaw
+cmake --build build --target ravbot
 ```
 **结果**: ✅ 编译成功，无错误
 
 ### 功能测试
 ```bash
-./build/quantclaw --version
+./build/ravbot --version
 ```
 **结果**: ✅ 程序正常运行
 

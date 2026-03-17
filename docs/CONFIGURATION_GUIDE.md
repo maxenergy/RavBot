@@ -1,8 +1,8 @@
-# QuantClaw Configuration Guide
+# RavBot Configuration Guide
 
 ## 概述
 
-QuantClaw 使用 JSON5 格式的配置文件,支持注释和灵活的语法。配置文件通常位于 `~/.quantclaw/config.json` 或项目根目录的 `config.json`。
+RavBot 使用 JSON5 格式的配置文件,支持注释和灵活的语法。配置文件通常位于 `~/.ravbot/config.json` 或项目根目录的 `config.json`。
 
 ## 配置文件结构
 
@@ -74,11 +74,11 @@ QuantClaw 使用 JSON5 格式的配置文件,支持注释和灵活的语法。�
 
   // 系统配置
   "system": {
-    "workspace_dir": "~/.quantclaw/workspace",
-    "sessions_dir": "~/.quantclaw/sessions",
-    "plugins_dir": "~/.quantclaw/plugins",
+    "workspace_dir": "~/.ravbot/workspace",
+    "sessions_dir": "~/.ravbot/sessions",
+    "plugins_dir": "~/.ravbot/plugins",
     "log_level": "info",
-    "log_file": "~/.quantclaw/logs/quantclaw.log"
+    "log_file": "~/.ravbot/logs/ravbot.log"
   },
 
   // 安全配置
@@ -102,7 +102,7 @@ QuantClaw 使用 JSON5 格式的配置文件,支持注释和灵活的语法。�
 
     "audit": {
       "enabled": true,
-      "log_dir": "~/.quantclaw/logs/audit"
+      "log_dir": "~/.ravbot/logs/audit"
     }
   },
 
@@ -273,17 +273,17 @@ Slack Bot 配置:
 
 #### system.workspace_dir
 - **类型**: string
-- **默认值**: "~/.quantclaw/workspace"
+- **默认值**: "~/.ravbot/workspace"
 - **说明**: Agent 工作空间目录
 
 #### system.sessions_dir
 - **类型**: string
-- **默认值**: "~/.quantclaw/sessions"
+- **默认值**: "~/.ravbot/sessions"
 - **说明**: 会话存储目录
 
 #### system.plugins_dir
 - **类型**: string
-- **默认值**: "~/.quantclaw/plugins"
+- **默认值**: "~/.ravbot/plugins"
 - **说明**: 插件目录
 
 #### system.log_level
@@ -294,7 +294,7 @@ Slack Bot 配置:
 
 #### system.log_file
 - **类型**: string
-- **默认值**: "~/.quantclaw/logs/quantclaw.log"
+- **默认值**: "~/.ravbot/logs/ravbot.log"
 - **说明**: 日志文件路径
 
 ### 6. Security 配置
@@ -395,16 +395,16 @@ MCP (Model Context Protocol) 服务器配置:
 使用 CLI 验证配置文件:
 
 ```bash
-quantclaw config validate config.json
+ravbot config validate config.json
 ```
 
 或在代码中验证:
 
 ```cpp
-#include "quantclaw/config.hpp"
+#include "ravbot/config.hpp"
 
 auto config_json = /* 加载 JSON */;
-auto errors = QuantClawConfig::Validate(config_json);
+auto errors = RavBotConfig::Validate(config_json);
 
 if (!errors.empty()) {
     for (const auto& error : errors) {
@@ -415,20 +415,20 @@ if (!errors.empty()) {
 
 ## 配置合并
 
-QuantClaw 支持配置合并,按以下优先级:
+RavBot 支持配置合并,按以下优先级:
 
 1. 命令行参数
 2. 环境变量
 3. 项目配置文件 (`./config.json`)
-4. 用户配置文件 (`~/.quantclaw/config.json`)
+4. 用户配置文件 (`~/.ravbot/config.json`)
 5. 默认配置
 
 使用 `Merge()` 方法合并配置:
 
 ```cpp
-auto base_config = QuantClawConfig::LoadFromFile("base.json");
-auto override_config = QuantClawConfig::LoadFromFile("override.json");
-auto merged = QuantClawConfig::Merge(base_config.ToJson(), override_config.ToJson());
+auto base_config = RavBotConfig::LoadFromFile("base.json");
+auto override_config = RavBotConfig::LoadFromFile("override.json");
+auto merged = RavBotConfig::Merge(base_config.ToJson(), override_config.ToJson());
 ```
 
 ## 最佳实践

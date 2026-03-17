@@ -1,6 +1,6 @@
 # 核心特性
 
-QuantClaw 将强大的 AI 能力与本地优先执行和健壮的错误处理相结合。
+RavBot 将强大的 AI 能力与本地优先执行和健壮的错误处理相结合。
 
 ## 🧠 智能对话
 
@@ -12,7 +12,7 @@ QuantClaw 将强大的 AI 能力与本地优先执行和健壮的错误处理相
 - **记忆集成**：自动从知识库中检索上下文
 
 ```bash
-quantclaw agent "帮我分析这段代码"
+ravbot agent "帮我分析这段代码"
 ```
 
 ## 💾 持久记忆系统
@@ -34,9 +34,9 @@ quantclaw agent "帮我分析这段代码"
 ### 记忆操作
 
 ```bash
-quantclaw memory search "用户偏好"
-quantclaw memory search "近期事件" --limit 10
-quantclaw memory status
+ravbot memory search "用户偏好"
+ravbot memory search "近期事件" --limit 10
+ravbot memory status
 ```
 
 ### 自动上下文裁剪
@@ -73,8 +73,8 @@ quantclaw memory status
 
 ```bash
 # 工作空间文件位于
-ls ~/.quantclaw/agents/main/workspace/
-cat ~/.quantclaw/agents/main/workspace/MEMORY.md
+ls ~/.ravbot/agents/main/workspace/
+cat ~/.ravbot/agents/main/workspace/MEMORY.md
 ```
 
 ### 代码补丁
@@ -103,8 +103,8 @@ cat ~/.quantclaw/agents/main/workspace/MEMORY.md
 ### 技能管理
 
 ```bash
-quantclaw skills list              # 列出已加载技能
-quantclaw skills install NAME      # 安装技能依赖
+ravbot skills list              # 列出已加载技能
+ravbot skills install NAME      # 安装技能依赖
 ```
 
 ## 🔄 多 Provider LLM 支持
@@ -171,10 +171,10 @@ RBAC 在网关层强制执行。
 ## 📊 用量追踪
 
 ```bash
-quantclaw sessions list       # 会话列表
-quantclaw memory status       # 记忆索引统计
-quantclaw logs               # 实时日志
-quantclaw health             # 网关健康状态
+ravbot sessions list       # 会话列表
+ravbot memory status       # 记忆索引统计
+ravbot logs               # 实时日志
+ravbot health             # 网关健康状态
 ```
 
 ## 💬 频道适配器
@@ -211,9 +211,9 @@ quantclaw health             # 网关健康状态
 计划和触发自动化：
 
 ```bash
-quantclaw cron add "daily-report" "0 9 * * *" "发送每日摘要"
-quantclaw cron list
-quantclaw cron remove TASK_ID
+ravbot cron add "daily-report" "0 9 * * *" "发送每日摘要"
+ravbot cron list
+ravbot cron remove TASK_ID
 ```
 
 ## 📊 性能优化

@@ -1,14 +1,14 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/embedding_manager.hpp"
-#include "quantclaw/core/local_embedding_provider.hpp"
-#include "quantclaw/core/mock_embedding_provider.hpp"
+#include "ravbot/core/embedding_manager.hpp"
+#include "ravbot/core/local_embedding_provider.hpp"
+#include "ravbot/core/mock_embedding_provider.hpp"
 
 #include <gtest/gtest.h>
 #include <memory>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 class EmbeddingManagerTest : public ::testing::Test {
  protected:

@@ -1,11 +1,11 @@
-# QuantClaw 与 OpenClaw 同步开发任务列表
+# RavBot 与 OpenClaw 同步开发任务列表
 
 ## 项目信息
 
-- **项目名称**: QuantClaw 与 OpenClaw 同步开发
+- **项目名称**: RavBot 与 OpenClaw 同步开发
 - **开始日期**: 2026-03-14
 - **预计完成**: 2026-06-14 (3 个月)
-- **团队**: quantclaw-sync-team
+- **团队**: ravbot-sync-team
 
 ## Phase 1: Gateway 核心改进 (P0) - Week 1-3
 
@@ -25,7 +25,7 @@
 4. 实现请求超时清理
 
 **文件清单**:
-- `include/quantclaw/gateway/gateway_server.hpp`
+- `include/ravbot/gateway/gateway_server.hpp`
 - `src/gateway/gateway_server.cpp`
 - `src/gateway/rpc_handlers.cpp`
 - `tests/test_gateway_timeout.cpp`
@@ -60,7 +60,7 @@
 4. 实现状态转换逻辑
 
 **文件清单**:
-- `include/quantclaw/gateway/gateway_server.hpp`
+- `include/ravbot/gateway/gateway_server.hpp`
 - `src/gateway/gateway_server.cpp`
 - `src/gateway/rpc_handlers.cpp`
 - `tests/test_gateway_health.cpp`
@@ -96,7 +96,7 @@
 4. 添加自动停止机制
 
 **文件清单**:
-- `include/quantclaw/channels/telegram_typing_manager.hpp`
+- `include/ravbot/channels/telegram_typing_manager.hpp`
 - `src/channels/telegram_typing_manager.cpp`
 - `src/channels/telegram_channel.cpp`
 - `tests/test_telegram_typing.cpp`
@@ -166,7 +166,7 @@
 4. 添加安全检查
 
 **文件清单**:
-- `include/quantclaw/channels/telegram_webhook.hpp`
+- `include/ravbot/channels/telegram_webhook.hpp`
 - `src/channels/telegram_webhook.cpp`
 - `tests/test_telegram_webhook.cpp`
 
@@ -237,7 +237,7 @@
 5. 实现错误处理
 
 **文件清单**:
-- `include/quantclaw/providers/google_provider.hpp`
+- `include/ravbot/providers/google_provider.hpp`
 - `src/providers/google_provider.cpp`
 - `tests/test_google_provider.cpp`
 
@@ -274,7 +274,7 @@
 5. 实现故障转移
 
 **文件清单**:
-- `include/quantclaw/providers/qwen_provider.hpp`
+- `include/ravbot/providers/qwen_provider.hpp`
 - `src/providers/qwen_provider.cpp`
 - `tests/test_qwen_provider.cpp`
 

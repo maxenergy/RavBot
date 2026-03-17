@@ -1,4 +1,4 @@
-// Copyright 2024 QuantClaw Contributors
+// Copyright 2024 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 // ---------------------------------------------------------------------------
@@ -8,7 +8,7 @@
 // by a single '\n'.  The C++ parent process (SidecarManager) acts as the
 // TCP *server* and the sidecar connects as a *client*.
 //
-// The C++ parent passes the bound port via QUANTCLAW_PORT.  The sidecar
+// The C++ parent passes the bound port via RAVBOT_PORT.  The sidecar
 // connects to 127.0.0.1:PORT using Node.js's standard net module — no
 // additional npm dependencies required, and works identically on Linux,
 // macOS, and Windows.

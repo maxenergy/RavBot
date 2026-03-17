@@ -4,7 +4,7 @@ set -e
 case "$1" in
     configure)
         # Verify sidecar installation
-        if [ -f /usr/share/quantclaw/sidecar/dist/index.js ]; then
+        if [ -f /usr/share/ravbot/sidecar/dist/index.js ]; then
             echo "✓ Sidecar installed successfully"
         else
             echo "⚠ Warning: Sidecar not found, plugin system may not work"
@@ -17,26 +17,26 @@ case "$1" in
 
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  QuantClaw has been installed successfully!"
+        echo "  RavBot has been installed successfully!"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
         echo "Next steps:"
         echo "  1. Run the onboarding wizard:"
-        echo "     quantclaw onboard"
+        echo "     ravbot onboard"
         echo ""
         echo "  2. Start the gateway:"
-        echo "     quantclaw gateway"
+        echo "     ravbot gateway"
         echo ""
         echo "  3. Or install as system service:"
-        echo "     quantclaw gateway install"
-        echo "     systemctl start quantclaw"
-        echo "     systemctl enable quantclaw"
+        echo "     ravbot gateway install"
+        echo "     systemctl start ravbot"
+        echo "     systemctl enable ravbot"
         echo ""
-        echo "Configuration will be stored in: ~/.quantclaw/"
+        echo "Configuration will be stored in: ~/.ravbot/"
         echo ""
         echo "Plugin system (Node.js Sidecar) is ready for OpenClaw plugins."
         echo ""
-        echo "For more information, visit: https://quantclaw.github.io"
+        echo "For more information, visit: https://ravbot.github.io"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
         ;;

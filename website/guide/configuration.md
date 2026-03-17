@@ -1,10 +1,10 @@
 # Configuration Guide
 
-Configure QuantClaw for your specific use case.
+Configure RavBot for your specific use case.
 
 ## Configuration File
 
-QuantClaw stores its configuration at `~/.quantclaw/quantclaw.json` (JSON5 format — comments and trailing commas are supported).
+RavBot stores its configuration at `~/.ravbot/ravbot.json` (JSON5 format — comments and trailing commas are supported).
 
 A full annotated example is available in `config.example.json` in the repository root.
 
@@ -50,7 +50,7 @@ A full annotated example is available in `config.example.json` in the repository
   "security": {
     "sandbox": {
       "enabled": true,
-      "allowedPaths": ["~/.quantclaw/agents/main/workspace"],
+      "allowedPaths": ["~/.ravbot/agents/main/workspace"],
       "deniedPaths": ["/etc", "/sys", "/proc"]
     }
   },
@@ -139,7 +139,7 @@ Each key under `providers` defines a named provider:
 | `controlUi.enabled` | `true` | Enable the web dashboard |
 | `controlUi.port` | `18801` | HTTP port for dashboard and REST API |
 
-**Note:** QuantClaw uses ports `18800-18801` (different from OpenClaw's `18789-18790`), so both can run simultaneously.
+**Note:** RavBot uses ports `18800-18801` (different from OpenClaw's `18789-18790`), so both can run simultaneously.
 
 ## Channel Configuration (`channels`)
 
@@ -189,7 +189,7 @@ Each key under `providers` defines a named provider:
   "security": {
     "sandbox": {
       "enabled": true,
-      "allowedPaths": ["~/.quantclaw/agents/main/workspace"],
+      "allowedPaths": ["~/.ravbot/agents/main/workspace"],
       "deniedPaths": ["/etc", "/sys", "/proc"]
     }
   }
@@ -199,7 +199,7 @@ Each key under `providers` defines a named provider:
 | Key | Default | Description |
 |-----|---------|-------------|
 | `sandbox.enabled` | `true` | Enable filesystem sandbox |
-| `sandbox.allowedPaths` | `["~/.quantclaw/agents/main/workspace"]` | Paths the agent may read/write |
+| `sandbox.allowedPaths` | `["~/.ravbot/agents/main/workspace"]` | Paths the agent may read/write |
 | `sandbox.deniedPaths` | `["/etc", "/sys", "/proc"]` | Paths always blocked |
 
 ## MCP Configuration (`mcp`)
@@ -230,7 +230,7 @@ Each key under `providers` defines a named provider:
 
 **Log levels:** `trace`, `debug`, `info`, `warn`, `error`
 
-Log files are stored at `~/.quantclaw/logs/`. The main log (`quantclaw.log`) is size-rotated automatically; the gateway service log (`gateway.log`) is time-pruned at startup.
+Log files are stored at `~/.ravbot/logs/`. The main log (`ravbot.log`) is size-rotated automatically; the gateway service log (`gateway.log`) is time-pruned at startup.
 
 ## Environment Variable Substitution
 
@@ -253,25 +253,25 @@ Configuration supports `${VAR}` substitution from the shell environment:
 
 ```bash
 # View full config
-quantclaw config get
+ravbot config get
 
 # Get a specific value (dot-path)
-quantclaw config get llm.model
+ravbot config get llm.model
 
 # Change a value
-quantclaw config set llm.model "anthropic/claude-sonnet-4-6"
+ravbot config set llm.model "anthropic/claude-sonnet-4-6"
 
 # Remove a key
-quantclaw config unset llm.temperature
+ravbot config unset llm.temperature
 
 # Validate syntax and structure
-quantclaw config validate
+ravbot config validate
 
 # Show configuration schema
-quantclaw config schema
+ravbot config schema
 
 # Hot-reload config (no gateway restart needed)
-quantclaw config reload
+ravbot config reload
 ```
 
 ## Common Setups

@@ -1,4 +1,4 @@
-# QuantClaw 端到端功能验证报告
+# RavBot 端到端功能验证报告
 
 **日期**: 2026-03-15
 **状态**: ✅ 验证通过 - 所有核心功能正常
@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-完成了 QuantClaw 的完整端到端功能验证,确认所有核心功能正常工作。系统从之前的完全不可用状态恢复到稳定运行,GitHub 搜索功能与 OpenClaw 完全对等。
+完成了 RavBot 的完整端到端功能验证,确认所有核心功能正常工作。系统从之前的完全不可用状态恢复到稳定运行,GitHub 搜索功能与 OpenClaw 完全对等。
 
 ---
 
@@ -73,8 +73,8 @@
 | 系统 | 搜索关键词 | 结果 |
 |------|-----------|------|
 | OpenClaw | `"awesome-openclaw-skills"` | ✅ 正确 |
-| QuantClaw (修复前) | `"openclaw"` | ❌ 错误 |
-| QuantClaw (修复后) | `"awesome-openclaw-skills"` | ✅ 正确 |
+| RavBot (修复前) | `"openclaw"` | ❌ 错误 |
+| RavBot (修复后) | `"awesome-openclaw-skills"` | ✅ 正确 |
 
 ---
 
@@ -247,7 +247,7 @@ LLM: github_search_repos({"query": "awesome-openclaw-skills"})
 Result: VoltAgent/awesome-openclaw-skills (37,405 stars)
 ```
 
-**QuantClaw (修复后)**:
+**RavBot (修复后)**:
 ```
 User: "搜索github找openclaw的技能的top20列表"
 LLM: github_search_repos({"query": "awesome-openclaw-skills"})
@@ -258,7 +258,7 @@ Result: VoltAgent/awesome-openclaw-skills (37,481 stars)
 
 ### 功能对比
 
-| 功能 | OpenClaw | QuantClaw |
+| 功能 | OpenClaw | RavBot |
 |------|----------|-----------|
 | 搜索关键词策略 | ✅ 精确 | ✅ 精确 |
 | 工具执行 | ✅ 正常 | ✅ 正常 |
@@ -268,7 +268,7 @@ Result: VoltAgent/awesome-openclaw-skills (37,481 stars)
 | 内存使用 | 🟡 ~600MB | ✅ ~450MB |
 | CPU 使用 | 🟡 ~10% | ✅ ~5% |
 
-**结论**: ✅ **QuantClaw 功能对等,性能更优**
+**结论**: ✅ **RavBot 功能对等,性能更优**
 
 ---
 
@@ -440,7 +440,7 @@ Result: VoltAgent/awesome-openclaw-skills (37,481 stars)
 **仓库**: VoltAgent/awesome-openclaw-skills
 
 **数据对比**:
-| 数据项 | OpenClaw | QuantClaw | 状态 |
+| 数据项 | OpenClaw | RavBot | 状态 |
 |--------|----------|-----------|------|
 | Stars | 37,405 | 37,481 | ✅ 正确 (时间差异) |
 | Owner | VoltAgent | VoltAgent | ✅ 一致 |
@@ -456,8 +456,8 @@ Result: VoltAgent/awesome-openclaw-skills (37,481 stars)
 ### 进程状态
 
 ```bash
-$ ps aux | grep quantclaw
-rogers   1460023  0.8  0.0 664820 26564 ?  Ssl  12:53  quantclaw gateway
+$ ps aux | grep ravbot
+rogers   1460023  0.8  0.0 664820 26564 ?  Ssl  12:53  ravbot gateway
 ```
 
 **验证点**:
@@ -469,7 +469,7 @@ rogers   1460023  0.8  0.0 664820 26564 ?  Ssl  12:53  quantclaw gateway
 
 ```bash
 $ lsof -i :18800
-quantclaw 1460023 rogers 7u IPv4 TCP *:18800 (LISTEN)
+ravbot 1460023 rogers 7u IPv4 TCP *:18800 (LISTEN)
 ```
 
 **验证点**:
@@ -479,7 +479,7 @@ quantclaw 1460023 rogers 7u IPv4 TCP *:18800 (LISTEN)
 ### 日志健康
 
 ```bash
-$ tail ~/.quantclaw/logs/gateway.log
+$ tail ~/.ravbot/logs/gateway.log
 [info] Sent response to Telegram chat 7259603376
 ```
 
@@ -524,7 +524,7 @@ $ tail ~/.quantclaw/logs/gateway.log
 
 ### 功能对等性
 
-| 功能 | OpenClaw | QuantClaw | 对等性 |
+| 功能 | OpenClaw | RavBot | 对等性 |
 |------|----------|-----------|--------|
 | GitHub 搜索 | ✅ | ✅ | 100% |
 | 搜索策略 | ✅ | ✅ | 100% |
@@ -534,14 +534,14 @@ $ tail ~/.quantclaw/logs/gateway.log
 
 ### 性能对比
 
-| 指标 | OpenClaw | QuantClaw | 优势 |
+| 指标 | OpenClaw | RavBot | 优势 |
 |------|----------|-----------|------|
 | 响应时间 | ~20s | ~23s | OpenClaw +15% |
-| 内存使用 | ~600MB | ~450MB | QuantClaw -25% |
-| CPU 使用 | ~10% | ~5% | QuantClaw -50% |
-| 启动时间 | ~3s | ~1s | QuantClaw -67% |
+| 内存使用 | ~600MB | ~450MB | RavBot -25% |
+| CPU 使用 | ~10% | ~5% | RavBot -50% |
+| 启动时间 | ~3s | ~1s | RavBot -67% |
 
-**结论**: ✅ **QuantClaw 功能对等,性能更优**
+**结论**: ✅ **RavBot 功能对等,性能更优**
 
 ---
 

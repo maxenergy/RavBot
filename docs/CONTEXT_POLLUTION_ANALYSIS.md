@@ -1,14 +1,14 @@
-# QuantClaw 上下文污染问题分析报告
+# RavBot 上下文污染问题分析报告
 
 ## 问题描述
 
-用户报告在多轮对话后,QuantClaw 出现答非所问的问题:
+用户报告在多轮对话后,RavBot 出现答非所问的问题:
 - 用户要求:"我需要你帮我找github上的obsidian相关的长效记忆"
-- QuantClaw 实际搜索:"你有什么技能?"(一个旧问题)
+- RavBot 实际搜索:"你有什么技能?"(一个旧问题)
 
 ## 根本原因
 
-通过分析实际运行日志(`/home/rogers/.quantclaw/logs/quantclaw_2026-03-12.log`),发现:
+通过分析实际运行日志(`/home/rogers/.ravbot/logs/ravbot_2026-03-12.log`),发现:
 
 ### 1. LLM 收到的上下文过长
 完整对话历史包含:

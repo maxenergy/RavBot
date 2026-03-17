@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/hnsw_index.hpp"
+#include "ravbot/core/hnsw_index.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -10,7 +10,7 @@
 // Include hnswlib headers
 #include "hnswlib/hnswlib.h"
 
-namespace quantclaw {
+namespace ravbot {
 
 HNSWIndex::HNSWIndex(const HNSWConfig& config,
                      std::shared_ptr<spdlog::logger> logger)
@@ -475,4 +475,4 @@ int HNSWIndex::GetSize() const {
   return static_cast<int>(hnsw->cur_element_count);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/whatsapp_channel.hpp"
+#include "ravbot/channels/whatsapp_channel.hpp"
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include <thread>
 
-namespace quantclaw {
+namespace ravbot {
 
 WhatsAppChannel::WhatsAppChannel(const std::string& channel_id,
                                  const std::string& api_key,
@@ -120,4 +120,4 @@ std::string WhatsAppChannel::MakeApiRequest(const std::string& endpoint,
     return response_data;
 }
 
-} // namespace quantclaw
+} // namespace ravbot

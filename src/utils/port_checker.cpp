@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/utils/port_checker.hpp"
+#include "ravbot/utils/port_checker.hpp"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -14,7 +14,7 @@
 #include <memory>
 #include <sstream>
 
-namespace quantclaw {
+namespace ravbot {
 namespace utils {
 
 bool PortChecker::IsPortAvailable(int port) {
@@ -146,4 +146,4 @@ bool PortChecker::CanBindToPort(int port) {
 }
 
 }  // namespace utils
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -249,7 +249,7 @@ void GoogleProvider::ChatCompletionStream(
 
 ### 已存在文件
 
-1. `include/quantclaw/providers/google_provider.hpp`
+1. `include/ravbot/providers/google_provider.hpp`
    - GoogleProvider 类定义
    - 已完整实现
 
@@ -303,7 +303,7 @@ void GoogleProvider::ChatCompletionStream(
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | Google Provider | ✅ | ✅ | 完成 |
 | Gemini API 集成 | ✅ | ✅ | 完成 |
@@ -438,7 +438,7 @@ provider->ChatCompletionStream(request, [](const ChatCompletionResponse& chunk) 
 6. ✅ 100% 测试覆盖率
 7. ✅ 已注册到 Provider Registry
 
-该功能使 QuantClaw 能够使用 Google Gemini 模型,扩展了 LLM 提供商选择,提升了系统的灵活性和可靠性。
+该功能使 RavBot 能够使用 Google Gemini 模型,扩展了 LLM 提供商选择,提升了系统的灵活性和可靠性。
 
 ---
 

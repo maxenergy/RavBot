@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/deduplication_store.hpp"
+#include "ravbot/channels/deduplication_store.hpp"
 
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-namespace quantclaw {
+namespace ravbot {
 
 DeduplicationStore::DeduplicationStore(const std::filesystem::path& store_path,
                                          std::shared_ptr<spdlog::logger> logger)
@@ -147,4 +147,4 @@ void DeduplicationStore::Load() {
                 watermark_, processed_ids_.size());
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -1,6 +1,6 @@
 # 文档概览
 
-QuantClaw 完整文档导航。
+RavBot 完整文档导航。
 
 ## 入门
 
@@ -28,9 +28,9 @@ QuantClaw 完整文档导航。
 
 ## 外部资源
 
-- **GitHub 仓库**：[QuantClaw/QuantClaw](https://github.com/QuantClaw/QuantClaw)
-- **Issues**：[报告 Bug](https://github.com/QuantClaw/QuantClaw/issues)
-- **Discussions**：[社区讨论](https://github.com/QuantClaw/QuantClaw/discussions)
+- **GitHub 仓库**：[RavBot/RavBot](https://github.com/RavBot/RavBot)
+- **Issues**：[报告 Bug](https://github.com/RavBot/RavBot/issues)
+- **Discussions**：[社区讨论](https://github.com/RavBot/RavBot/discussions)
 - **OpenClaw 参考**：[openclaw/openclaw](https://github.com/openclaw/openclaw)
 
 ## 关键路径快速参考
@@ -38,8 +38,8 @@ QuantClaw 完整文档导航。
 ### 文件路径
 
 ```
-~/.quantclaw/
-├── quantclaw.json              # 配置文件
+~/.ravbot/
+├── ravbot.json              # 配置文件
 ├── skills/                     # 全局技能目录
 └── agents/main/
     ├── workspace/
@@ -66,14 +66,14 @@ QuantClaw 完整文档导航。
 ### 常用命令速查
 
 ```bash
-quantclaw onboard --quick       # 初始化
-quantclaw gateway start         # 后台启动网关
-quantclaw agent "你好！"        # 发送消息
-quantclaw eval "2+2"           # 一次性查询
-quantclaw sessions list        # 查看会话
-quantclaw memory search "..."  # 搜索记忆
-quantclaw health               # 健康检查
-quantclaw config get           # 查看配置
-quantclaw doctor               # 诊断
-quantclaw dashboard            # 打开 Web UI
+ravbot onboard --quick       # 初始化
+ravbot gateway start         # 后台启动网关
+ravbot agent "你好！"        # 发送消息
+ravbot eval "2+2"           # 一次性查询
+ravbot sessions list        # 查看会话
+ravbot memory search "..."  # 搜索记忆
+ravbot health               # 健康检查
+ravbot config get           # 查看配置
+ravbot doctor               # 诊断
+ravbot dashboard            # 打开 Web UI
 ```

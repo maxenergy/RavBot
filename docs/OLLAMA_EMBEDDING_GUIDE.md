@@ -2,7 +2,7 @@
 
 ## 概述
 
-OllamaEmbeddingProvider 允许 QuantClaw 使用本地运行的 Ollama 服务进行文本嵌入。Ollama 是一个轻量级的本地 LLM 运行工具，支持多种开源嵌入模型。
+OllamaEmbeddingProvider 允许 RavBot 使用本地运行的 Ollama 服务进行文本嵌入。Ollama 是一个轻量级的本地 LLM 运行工具，支持多种开源嵌入模型。
 
 ## 优势
 
@@ -118,8 +118,8 @@ ollama pull all-minilm
 ### C++ 代码
 
 ```cpp
-#include "quantclaw/core/ollama_embedding_provider.hpp"
-#include "quantclaw/core/embedding_config.hpp"
+#include "ravbot/core/ollama_embedding_provider.hpp"
+#include "ravbot/core/embedding_config.hpp"
 
 // 方法 1: 直接创建
 auto provider = std::make_shared<OllamaEmbeddingProvider>(

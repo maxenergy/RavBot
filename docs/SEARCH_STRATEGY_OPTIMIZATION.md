@@ -1,4 +1,4 @@
-# QuantClaw 搜索策略优化完成报告
+# RavBot 搜索策略优化完成报告
 
 ## 完成时间
 2026-03-14 22:36
@@ -6,7 +6,7 @@
 ## 问题回顾
 
 ### 之前的问题
-1. ✅ **已解决**: QuantClaw 不执行工具 → Lookup Guard 修复后已解决
+1. ✅ **已解决**: RavBot 不执行工具 → Lookup Guard 修复后已解决
 2. ⚠️ **当前问题**: 搜索关键词不够精确，结果与 OpenClaw 不同
 
 ### 测试结果对比
@@ -16,7 +16,7 @@
 - 找到 VoltAgent/awesome-openclaw-skills (37,157 stars)
 - 返回 20 个技能列表
 
-**QuantClaw (修复前)** ❌:
+**RavBot (修复前)** ❌:
 - 搜索 "openclaw"
 - 找到 OpenCopilot、ChatDev 等不相关项目
 - 没有找到技能列表
@@ -27,7 +27,7 @@
 
 ### 优化内容
 
-**文件**: `/home/rogers/.quantclaw/agents/main/workspace/AGENTS.md`
+**文件**: `/home/rogers/.ravbot/agents/main/workspace/AGENTS.md`
 
 **新增部分**: "Search Strategy for GitHub"
 
@@ -109,10 +109,10 @@ CORRECT: Search for "awesome-openclaw-skills" → Gets skill collections
 
 ```bash
 # 实时监控
-tail -f /tmp/quantclaw_gateway.log | grep -E "Lookup guard|tool|search"
+tail -f /tmp/ravbot_gateway.log | grep -E "Lookup guard|tool|search"
 
 # 检查搜索关键词
-grep "github_search_repos\|web_search" /tmp/quantclaw_gateway.log | tail -5
+grep "github_search_repos\|web_search" /tmp/ravbot_gateway.log | tail -5
 ```
 
 ---
@@ -127,12 +127,12 @@ grep "github_search_repos\|web_search" /tmp/quantclaw_gateway.log | tail -5
 
 2. **检查 AGENTS.md 是否加载**
    ```bash
-   grep "Search Strategy" /home/rogers/.quantclaw/agents/main/workspace/AGENTS.md
+   grep "Search Strategy" /home/rogers/.ravbot/agents/main/workspace/AGENTS.md
    ```
 
 3. **检查日志**
    ```bash
-   tail -100 /tmp/quantclaw_gateway.log
+   tail -100 /tmp/ravbot_gateway.log
    ```
 
 ### 下一步方案
@@ -198,7 +198,7 @@ grep "github_search_repos\|web_search" /tmp/quantclaw_gateway.log | tail -5
 
 ### 已完成的工作 🎉
 
-1. ✅ **核心问题已解决**: QuantClaw 现在会实际执行工具
+1. ✅ **核心问题已解决**: RavBot 现在会实际执行工具
 2. ✅ **Lookup Guard 工作正常**: 检测并强制重试
 3. ✅ **搜索策略已优化**: 添加了详细的关键词指导
 
@@ -219,7 +219,7 @@ grep "github_search_repos\|web_search" /tmp/quantclaw_gateway.log | tail -5
 
 ## 对比 OpenClaw
 
-| 方面 | OpenClaw | QuantClaw (当前) | 目标 |
+| 方面 | OpenClaw | RavBot (当前) | 目标 |
 |------|----------|-----------------|------|
 | 工具执行 | ✅ | ✅ | **已达成** |
 | Lookup Guard | ✅ | ✅ | **已达成** |

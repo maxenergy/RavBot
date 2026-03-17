@@ -1,4 +1,4 @@
-const KEY = "quantclaw.control.settings.v1";
+const KEY = "ravbot.control.settings.v1";
 
 import { isSupportedLocale } from "../i18n/index.ts";
 import type { ThemeMode } from "./theme.ts";

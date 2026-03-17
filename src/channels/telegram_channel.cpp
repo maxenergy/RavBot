@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/telegram_channel.hpp"
+#include "ravbot/channels/telegram_channel.hpp"
 #include <curl/curl.h>
 #include <chrono>
 #include <thread>
@@ -9,7 +9,7 @@
 #include <fstream>
 #include <filesystem>
 
-namespace quantclaw {
+namespace ravbot {
 
 namespace {
 
@@ -547,7 +547,7 @@ std::string TelegramChannel::ExtractUserId(const nlohmann::json& user) const {
 }
 
 void TelegramChannel::LoadLastUpdateId() {
-    std::string state_file = std::string(std::getenv("HOME")) + "/.quantclaw/telegram_state.json";
+    std::string state_file = std::string(std::getenv("HOME")) + "/.ravbot/telegram_state.json";
     try {
         if (std::filesystem::exists(state_file)) {
             std::ifstream file(state_file);
@@ -564,7 +564,7 @@ void TelegramChannel::LoadLastUpdateId() {
 }
 
 void TelegramChannel::SaveLastUpdateId() {
-    std::string state_file = std::string(std::getenv("HOME")) + "/.quantclaw/telegram_state.json";
+    std::string state_file = std::string(std::getenv("HOME")) + "/.ravbot/telegram_state.json";
     try {
         nlohmann::json state;
         state["last_update_id"] = last_update_id_;
@@ -871,4 +871,4 @@ std::string TelegramChannel::DownloadFileContent(const std::string& url) {
     return response_data;
 }
 
-} // namespace quantclaw
+} // namespace ravbot

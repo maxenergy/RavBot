@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/plugins/sidecar_manager.hpp"
+#include "ravbot/plugins/sidecar_manager.hpp"
 
 #include <algorithm>
 #include <fstream>
 
-namespace quantclaw {
+namespace ravbot {
 
 namespace {
 constexpr int kMaxBackoffMs = 60000;
@@ -55,7 +55,7 @@ bool SidecarManager::Start(const Options& opts) {
 
   if (opts_.pid_file.empty()) {
     std::string home = platform::home_directory();
-    opts_.pid_file = home + "/.quantclaw/sidecar.pid";
+    opts_.pid_file = home + "/.ravbot/sidecar.pid";
   }
 
   if (!spawn_sidecar()) {
@@ -311,9 +311,9 @@ bool SidecarManager::spawn_sidecar() {
 
   // Build env vars — pass port instead of socket path.
   std::vector<std::string> env;
-  env.push_back("QUANTCLAW_PORT=" + std::to_string(port));
+  env.push_back("RAVBOT_PORT=" + std::to_string(port));
   if (!opts_.plugin_config.is_null()) {
-    env.push_back("QUANTCLAW_PLUGIN_CONFIG=" + opts_.plugin_config.dump());
+    env.push_back("RAVBOT_PLUGIN_CONFIG=" + opts_.plugin_config.dump());
   }
 
   // Spawn child process
@@ -407,4 +407,4 @@ int SidecarManager::next_backoff_ms() {
   return std::min(backoff, kMaxBackoffMs);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

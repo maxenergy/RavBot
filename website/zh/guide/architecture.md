@@ -1,6 +1,6 @@
 # 架构说明
 
-QuantClaw 的架构专为性能、可靠性和可扩展性设计。
+RavBot 的架构专为性能、可靠性和可扩展性设计。
 
 ## 系统架构
 
@@ -153,7 +153,7 @@ Node.js 子进程负责：
 
 ### IPC 通信
 
-- **TCP 协议**：`127.0.0.1:QUANTCLAW_PORT`
+- **TCP 协议**：`127.0.0.1:RAVBOT_PORT`
 - **JSON-RPC**：请求/响应消息
 - **NDJSON 帧格式**：每条消息 = 一个 JSON 对象 + `\n`
 - **错误处理**：Sidecar 崩溃后优雅恢复
@@ -216,35 +216,35 @@ Node.js 子进程负责：
 ### 单机前台模式
 
 ```bash
-quantclaw onboard --quick      # 初始化
-quantclaw gateway              # 前台运行网关
-quantclaw agent "你好！"       # 发送消息
+ravbot onboard --quick      # 初始化
+ravbot gateway              # 前台运行网关
+ravbot agent "你好！"       # 发送消息
 ```
 
 ### 网关 Daemon
 
 ```bash
-quantclaw gateway install      # 安装为系统服务
-quantclaw gateway start        # 启动
-quantclaw agent "你好！"       # 通过网关连接
+ravbot gateway install      # 安装为系统服务
+ravbot gateway start        # 启动
+ravbot agent "你好！"       # 通过网关连接
 ```
 
 ### Docker 容器
 
 ```bash
 docker run -d \
-  --name quantclaw \
+  --name ravbot \
   -p 18800:18800 \
   -p 18801:18801 \
   -e OPENAI_API_KEY=sk-... \
-  -v quantclaw_data:/home/quantclaw/.quantclaw \
-  quantclaw:latest
+  -v ravbot_data:/home/ravbot/.ravbot \
+  ravbot:latest
 ```
 
 ### 生产（Docker Compose）
 
 ```bash
-docker compose -f scripts/docker-compose.yml up -d quantclaw
+docker compose -f scripts/docker-compose.yml up -d ravbot
 ```
 
 ---

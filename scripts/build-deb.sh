@@ -10,7 +10,7 @@ VERSION=$(cat "$SCRIPT_DIR/DOCKER_VERSION" 2>/dev/null || echo "0.3.0")
 cd "$PROJECT_ROOT"
 
 echo "=========================================="
-echo "Building QuantClaw DEB Package"
+echo "Building RavBot DEB Package"
 echo "Version: $VERSION"
 echo "=========================================="
 
@@ -40,8 +40,8 @@ sudo apt-get install -y \
 # Clean previous builds
 echo ""
 echo "Cleaning previous builds..."
-rm -rf debian/quantclaw
-rm -f ../quantclaw_*.deb ../quantclaw_*.changes ../quantclaw_*.buildinfo
+rm -rf debian/ravbot
+rm -f ../ravbot_*.deb ../ravbot_*.changes ../ravbot_*.buildinfo
 
 # Build the package
 echo ""
@@ -52,15 +52,15 @@ dpkg-buildpackage -us -uc -b
 echo ""
 echo "Moving package to dist/..."
 mkdir -p dist
-mv ../quantclaw_*.deb dist/
-mv ../quantclaw_*.changes dist/ 2>/dev/null || true
-mv ../quantclaw_*.buildinfo dist/ 2>/dev/null || true
+mv ../ravbot_*.deb dist/
+mv ../ravbot_*.changes dist/ 2>/dev/null || true
+mv ../ravbot_*.buildinfo dist/ 2>/dev/null || true
 
 # Generate checksums
 echo ""
 echo "Generating checksums..."
 cd dist
-for file in quantclaw_*.deb; do
+for file in ravbot_*.deb; do
     if [ -f "$file" ]; then
         sha256sum "$file" > "$file.sha256"
         echo "SHA256: $(cat "$file.sha256")"
@@ -72,13 +72,13 @@ echo "=========================================="
 echo "Build completed successfully!"
 echo "=========================================="
 echo ""
-echo "Package location: dist/quantclaw_${VERSION}-1_$(dpkg --print-architecture).deb"
+echo "Package location: dist/ravbot_${VERSION}-1_$(dpkg --print-architecture).deb"
 echo ""
 echo "To install:"
-echo "  sudo dpkg -i dist/quantclaw_${VERSION}-1_$(dpkg --print-architecture).deb"
+echo "  sudo dpkg -i dist/ravbot_${VERSION}-1_$(dpkg --print-architecture).deb"
 echo "  sudo apt-get install -f  # Install missing dependencies"
 echo ""
 echo "To test installation:"
-echo "  quantclaw --version"
-echo "  quantclaw onboard"
+echo "  ravbot --version"
+echo "  ravbot onboard"
 echo ""

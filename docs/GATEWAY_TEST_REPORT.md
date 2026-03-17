@@ -1,11 +1,11 @@
-# QuantClaw Gateway 测试报告
+# RavBot Gateway 测试报告
 
 测试日期：2026-03-11
-版本：QuantClaw v0.3.0 (build eae3b0e)
+版本：RavBot v0.3.0 (build eae3b0e)
 
 ## 测试概述
 
-对 QuantClaw Gateway 进行了全面的功能测试，验证了主程序、Gateway 服务器和 RPC 方法的正常运行。
+对 RavBot Gateway 进行了全面的功能测试，验证了主程序、Gateway 服务器和 RPC 方法的正常运行。
 
 ## 测试环境
 
@@ -13,7 +13,7 @@
 - **编译器**：GCC 13
 - **构建类型**：Release (-O2)
 - **Gateway 端口**：18800
-- **配置文件**：~/.quantclaw/quantclaw.json
+- **配置文件**：~/.ravbot/ravbot.json
 
 ## 测试结果
 
@@ -21,14 +21,14 @@
 
 #### 版本检查
 ```bash
-$ ./quantclaw --version
-quantclaw 0.3.0 (build eae3b0e 2026-03-11)
+$ ./ravbot --version
+ravbot 0.3.0 (build eae3b0e 2026-03-11)
 ```
 **状态**：✅ 通过
 
 #### 帮助信息
 ```bash
-$ ./quantclaw --help
+$ ./ravbot --help
 ```
 **输出**：显示完整的命令列表和使用说明
 **状态**：✅ 通过
@@ -57,14 +57,14 @@ $ ./quantclaw --help
 
 #### 启动 Gateway
 ```bash
-$ ./quantclaw gateway start
+$ ./ravbot gateway start
 [info] Gateway started
 ```
 **状态**：✅ 通过
 
 #### 健康检查
 ```bash
-$ ./quantclaw health
+$ ./ravbot health
 Gateway: ok
 Version: 0.3.0
 Uptime:  11s
@@ -73,7 +73,7 @@ Uptime:  11s
 
 #### 状态查询
 ```bash
-$ ./quantclaw status
+$ ./ravbot status
 Gateway Status:
   Running:     yes
   Port:        18800
@@ -86,7 +86,7 @@ Gateway Status:
 
 #### 停止 Gateway
 ```bash
-$ ./quantclaw gateway stop
+$ ./ravbot gateway stop
 [info] Gateway stopped
 ```
 **状态**：✅ 通过
@@ -251,7 +251,7 @@ $ ./quantclaw gateway stop
 
 #### 4.1 models list
 ```bash
-$ ./quantclaw models list
+$ ./ravbot models list
 Current: claude-sonnet-4-6
 
 Available models:
@@ -266,23 +266,23 @@ Available models:
 
 #### 4.2 sessions list
 ```bash
-$ ./quantclaw sessions list
+$ ./ravbot sessions list
 No sessions found
 ```
 **状态**：✅ 通过
 
 #### 4.3 config get
 ```bash
-$ ./quantclaw config get agent.model
+$ ./ravbot config get agent.model
 "claude-sonnet-4-6"
 ```
 **状态**：✅ 通过
 
 #### 4.4 skills list
 ```bash
-$ ./quantclaw skills list
+$ ./ravbot skills list
 Skills (5):
-  🎨 skill-creator - Guide for creating new QuantClaw skills
+  🎨 skill-creator - Guide for creating new RavBot skills
   🐙 github - Interact with GitHub via gh CLI
   🔍 search - Web search with automatic provider fallback
   🌦️ weather - Check current weather using wttr.in
@@ -292,7 +292,7 @@ Skills (5):
 
 #### 4.5 cron list
 ```bash
-$ ./quantclaw cron list
+$ ./ravbot cron list
 No cron jobs
 ```
 **状态**：✅ 通过
@@ -377,7 +377,7 @@ No cron jobs
 
 ## 结论
 
-QuantClaw v0.3.0 的主程序和 Gateway 服务器功能完整，所有核心 RPC 方法工作正常。
+RavBot v0.3.0 的主程序和 Gateway 服务器功能完整，所有核心 RPC 方法工作正常。
 
 ### 关键成就
 - ✅ 所有 25 个测试项目通过
@@ -396,5 +396,5 @@ QuantClaw v0.3.0 的主程序和 Gateway 服务器功能完整，所有核心 RP
 
 **测试人员**：自动化测试
 **测试日期**：2026-03-11
-**版本**：QuantClaw v0.3.0 (build eae3b0e)
+**版本**：RavBot v0.3.0 (build eae3b0e)
 **状态**：✅ 全部通过

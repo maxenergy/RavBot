@@ -1,7 +1,7 @@
 # Telegram Bot 连接问题诊断报告
 
 **报告时间:** 2026-03-16 18:46
-**问题:** Telegram bot (@amdquantclawbot) 无响应
+**问题:** Telegram bot (@amdravbotbot) 无响应
 
 ## 问题分析
 
@@ -114,7 +114,7 @@ ssh -L 18802:127.0.0.1:18802 kaifa@192.168.1.104
 }
 
 # 3. 启动本地 Gateway（连接到远程）
-quantclaw gateway
+ravbot gateway
 ```
 
 **优点:**
@@ -133,7 +133,7 @@ export HTTP_PROXY=http://proxy-server:port
 export HTTPS_PROXY=http://proxy-server:port
 
 # 3. 重启 Gateway
-quantclaw gateway
+ravbot gateway
 ```
 
 ### 方案 3: 开放本地 API 端口
@@ -175,14 +175,14 @@ sudo ufw allow 8991/tcp
 ssh -N -L 18802:127.0.0.1:18802 kaifa@192.168.1.104
 
 # 终端 2: 修改本地配置并启动
-# (需要修改 quantclaw.json)
-quantclaw gateway
+# (需要修改 ravbot.json)
+ravbot gateway
 ```
 
 ## 测试验证
 
 成功后应该能够：
-- ✅ 在 Telegram 与 @amdquantclawbot 对话
+- ✅ 在 Telegram 与 @amdravbotbot 对话
 - ✅ Bot 能够响应消息
 - ✅ 消息通过本地 Gateway → SSH 隧道 → 远程 Gateway 处理
 - ✅ 远程 Gateway 使用本地 API 生成回复

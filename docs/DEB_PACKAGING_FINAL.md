@@ -9,15 +9,15 @@
 1. ✅ **Node.js 为必需依赖** - `Depends: nodejs (>= 18)`
 2. ✅ **自动编译 Sidecar** - 构建时编译 TypeScript → JavaScript
 3. ✅ **打包 Sidecar** - 包含编译后的 `dist/` 和 `node_modules/`
-4. ✅ **用户数据在 `~/.quantclaw/`** - 不创建专用系统用户
+4. ✅ **用户数据在 `~/.ravbot/`** - 不创建专用系统用户
 5. ✅ **完整插件支持** - Tools, Hooks, Services, Providers, Commands, HTTP Routes
 
 ## 📦 DEB 包内容
 
 ### 系统文件
 ```
-/usr/bin/quantclaw                          # C++ 主程序
-/usr/share/quantclaw/
+/usr/bin/ravbot                          # C++ 主程序
+/usr/share/ravbot/
 ├── skills/                                 # 内置技能
 │   ├── search/
 │   ├── weather/
@@ -37,15 +37,15 @@
 
 ### 用户文件
 ```
-~/.quantclaw/
-├── quantclaw.json                          # 配置
+~/.ravbot/
+├── ravbot.json                          # 配置
 ├── agents/main/
 │   ├── workspace/                          # 工作区
 │   └── sessions/                           # 会话
 ├── logs/                                   # 日志
 └── plugins/                                # 用户插件
     └── my-plugin/
-        ├── quantclaw.plugin.json
+        ├── ravbot.plugin.json
         └── index.js
 ```
 
@@ -63,18 +63,18 @@
   ↓
 4. 打包 DEB (dpkg-buildpackage)
   ↓
-5. 输出: dist/quantclaw_0.3.0-1_amd64.deb
+5. 输出: dist/ravbot_0.3.0-1_amd64.deb
 ```
 
 ### 安装时
 ```bash
-sudo dpkg -i quantclaw_*.deb
+sudo dpkg -i ravbot_*.deb
   ↓
 1. 安装 C++ 二进制到 /usr/bin/
   ↓
-2. 安装 Sidecar 到 /usr/share/quantclaw/sidecar/
+2. 安装 Sidecar 到 /usr/share/ravbot/sidecar/
   ↓
-3. 安装 Skills 到 /usr/share/quantclaw/skills/
+3. 安装 Skills 到 /usr/share/ravbot/skills/
   ↓
 4. 安装 Systemd 服务文件
   ↓
@@ -86,23 +86,23 @@ sudo dpkg -i quantclaw_*.deb
 ### 基本使用
 ```bash
 # 1. 安装
-sudo dpkg -i quantclaw_0.3.0-1_amd64.deb
+sudo dpkg -i ravbot_0.3.0-1_amd64.deb
 
 # 2. 初始化
-quantclaw onboard
+ravbot onboard
 
 # 3. 运行
-quantclaw gateway
+ravbot gateway
 
 # 4. 配置
-quantclaw config set providers.openai.apiKey "sk-..."
+ravbot config set providers.openai.apiKey "sk-..."
 ```
 
 ### 使用插件
 ```bash
 # 1. 创建插件
-mkdir -p ~/.quantclaw/plugins/my-plugin
-cat > ~/.quantclaw/plugins/my-plugin/quantclaw.plugin.json << 'EOF'
+mkdir -p ~/.ravbot/plugins/my-plugin
+cat > ~/.ravbot/plugins/my-plugin/ravbot.plugin.json << 'EOF'
 {
   "name": "my-plugin",
   "version": "1.0.0",
@@ -111,13 +111,13 @@ cat > ~/.quantclaw/plugins/my-plugin/quantclaw.plugin.json << 'EOF'
 EOF
 
 # 2. 启用插件
-quantclaw config set plugins.allow '["my-plugin"]'
+ravbot config set plugins.allow '["my-plugin"]'
 
 # 3. 重启
-quantclaw gateway restart
+ravbot gateway restart
 
 # 4. 验证
-quantclaw plugins list
+ravbot plugins list
 ```
 
 ## 📊 架构说明
@@ -127,11 +127,11 @@ quantclaw plugins list
 │                    运行时架构                                │
 └─────────────────────────────────────────────────────────────┘
 
-用户运行: quantclaw gateway
+用户运行: ravbot gateway
     ↓
 ┌──────────────────────┐
 │   C++ 主进程          │
-│   /usr/bin/quantclaw │
+│   /usr/bin/ravbot │
 ├──────────────────────┤
 │ • Agent Loop         │
 │ • LLM Provider       │
@@ -153,7 +153,7 @@ quantclaw plugins list
     ↓ (加载用户插件)
 ┌──────────────────────┐
 │   用户插件            │
-│   ~/.quantclaw/      │
+│   ~/.ravbot/      │
 │   plugins/my-plugin/ │
 ├──────────────────────┤
 │ • Tools              │
@@ -213,7 +213,7 @@ C++ 主进程                    Node.js Sidecar
     ├──────────────────────────────>
     │                              │
     │ 2. 环境变量                   │
-    │    QUANTCLAW_PORT=18802      │
+    │    RAVBOT_PORT=18802      │
     ├──────────────────────────────>
     │                              │
     │ 3. TCP 连接                   │
@@ -269,22 +269,22 @@ C++ 主进程                    Node.js Sidecar
 ./scripts/build-deb-local.sh
 
 # 2. 测试包结构
-./scripts/test-deb.sh dist/quantclaw_*.deb
+./scripts/test-deb.sh dist/ravbot_*.deb
 
 # 3. 安装测试
-sudo dpkg -i dist/quantclaw_*.deb
+sudo dpkg -i dist/ravbot_*.deb
 
 # 4. 功能测试
-quantclaw onboard
-quantclaw gateway
-quantclaw plugins list
+ravbot onboard
+ravbot gateway
+ravbot plugins list
 ```
 
 ### 插件测试
 ```bash
 # 1. 创建测试插件
-mkdir -p ~/.quantclaw/plugins/test-plugin
-cat > ~/.quantclaw/plugins/test-plugin/index.js << 'EOF'
+mkdir -p ~/.ravbot/plugins/test-plugin
+cat > ~/.ravbot/plugins/test-plugin/index.js << 'EOF'
 export const tools = [{
   name: "test_tool",
   description: "Test tool",
@@ -294,11 +294,11 @@ export const tools = [{
 EOF
 
 # 2. 启用插件
-quantclaw config set plugins.allow '["test-plugin"]'
+ravbot config set plugins.allow '["test-plugin"]'
 
 # 3. 重启并测试
-quantclaw gateway restart
-quantclaw agent "Use test_tool"
+ravbot gateway restart
+ravbot agent "Use test_tool"
 ```
 
 ## 📊 性能指标
@@ -323,15 +323,15 @@ quantclaw agent "Use test_tool"
 2. ✅ Node.js Sidecar (插件运行时)
 3. ✅ 完整的 OpenClaw 插件兼容性
 4. ✅ 自动编译和打包
-5. ✅ 用户数据在 `~/.quantclaw/`
+5. ✅ 用户数据在 `~/.ravbot/`
 6. ✅ 完整的文档和示例
 
 **可以直接使用:**
 ```bash
 ./scripts/build-deb-local.sh
-sudo dpkg -i dist/quantclaw_*.deb
-quantclaw onboard
-quantclaw gateway
+sudo dpkg -i dist/ravbot_*.deb
+ravbot onboard
+ravbot gateway
 ```
 
 **插件系统已就绪,支持所有 OpenClaw 插件功能!**

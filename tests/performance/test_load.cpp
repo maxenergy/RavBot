@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -9,69 +9,69 @@
 #include <chrono>
 #include <filesystem>
 
-#include "quantclaw/gateway/gateway_server.hpp"
-#include "quantclaw/gateway/gateway_client.hpp"
-#include "quantclaw/core/agent_loop.hpp"
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/session/session_manager.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
-#include "quantclaw/providers/llm_provider.hpp"
-#include "quantclaw/config.hpp"
-#include "quantclaw/core/skill_loader.hpp"
-#include "quantclaw/core/prompt_builder.hpp"
-#include "quantclaw/plugins/plugin_system.hpp"
+#include "ravbot/gateway/gateway_server.hpp"
+#include "ravbot/gateway/gateway_client.hpp"
+#include "ravbot/core/agent_loop.hpp"
+#include "ravbot/core/memory_manager.hpp"
+#include "ravbot/session/session_manager.hpp"
+#include "ravbot/tools/tool_registry.hpp"
+#include "ravbot/providers/llm_provider.hpp"
+#include "ravbot/config.hpp"
+#include "ravbot/core/skill_loader.hpp"
+#include "ravbot/core/prompt_builder.hpp"
+#include "ravbot/plugins/plugin_system.hpp"
 #include "../test_helpers.hpp"
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
-namespace quantclaw::gateway {
+namespace ravbot::gateway {
     class CommandQueue;
     void register_rpc_handlers(
         GatewayServer& server,
-        std::shared_ptr<quantclaw::SessionManager> session_manager,
-        std::shared_ptr<quantclaw::AgentLoop> agent_loop,
-        std::shared_ptr<quantclaw::PromptBuilder> prompt_builder,
-        std::shared_ptr<quantclaw::ToolRegistry> tool_registry,
-        const quantclaw::QuantClawConfig& config,
+        std::shared_ptr<ravbot::SessionManager> session_manager,
+        std::shared_ptr<ravbot::AgentLoop> agent_loop,
+        std::shared_ptr<ravbot::PromptBuilder> prompt_builder,
+        std::shared_ptr<ravbot::ToolRegistry> tool_registry,
+        const ravbot::RavBotConfig& config,
         std::shared_ptr<spdlog::logger> logger,
         std::function<void()> reload_fn = nullptr,
-        std::shared_ptr<quantclaw::ProviderRegistry> provider_registry = nullptr,
-        std::shared_ptr<quantclaw::SkillLoader> skill_loader = nullptr,
-        std::shared_ptr<quantclaw::CronScheduler> cron_scheduler = nullptr,
-        std::shared_ptr<quantclaw::ExecApprovalManager> exec_approval_mgr = nullptr,
+        std::shared_ptr<ravbot::ProviderRegistry> provider_registry = nullptr,
+        std::shared_ptr<ravbot::SkillLoader> skill_loader = nullptr,
+        std::shared_ptr<ravbot::CronScheduler> cron_scheduler = nullptr,
+        std::shared_ptr<ravbot::ExecApprovalManager> exec_approval_mgr = nullptr,
         PluginSystem* plugin_system = nullptr,
-        quantclaw::gateway::CommandQueue* command_queue = nullptr,
+        ravbot::gateway::CommandQueue* command_queue = nullptr,
         std::string log_file_path = {});
 }
 
 // --- Mock LLM Provider for Load Testing ---
 
-class LoadTestMockProvider : public quantclaw::LLMProvider {
+class LoadTestMockProvider : public ravbot::LLMProvider {
 public:
     std::atomic<int> request_count{0};
     int response_delay_ms = 10;  // 模拟响应延迟
 
-    quantclaw::ChatCompletionResponse ChatCompletion(
-        const quantclaw::ChatCompletionRequest& /*request*/) override {
+    ravbot::ChatCompletionResponse ChatCompletion(
+        const ravbot::ChatCompletionRequest& /*request*/) override {
         request_count++;
         if (response_delay_ms > 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(response_delay_ms));
         }
-        quantclaw::ChatCompletionResponse resp;
+        ravbot::ChatCompletionResponse resp;
         resp.content = "Load test response";
         resp.finish_reason = "stop";
         return resp;
     }
 
     void ChatCompletionStream(
-        const quantclaw::ChatCompletionRequest& /*request*/,
-        std::function<void(const quantclaw::ChatCompletionResponse&)> callback) override {
+        const ravbot::ChatCompletionRequest& /*request*/,
+        std::function<void(const ravbot::ChatCompletionResponse&)> callback) override {
         request_count++;
         if (response_delay_ms > 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(response_delay_ms));
         }
-        quantclaw::ChatCompletionResponse resp;
+        ravbot::ChatCompletionResponse resp;
         resp.content = "Load test response";
         resp.is_stream_end = true;
         resp.finish_reason = "stop";
@@ -87,7 +87,7 @@ public:
 class LoadTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_load_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_load_test");
         workspace_dir_ = test_dir_ / "workspace";
         sessions_dir_ = test_dir_ / "sessions";
         std::filesystem::create_directories(workspace_dir_);
@@ -101,23 +101,23 @@ protected:
         config_.gateway.port = port_;
         config_.gateway.auth.mode = "none";
 
-        memory_manager_ = std::make_shared<quantclaw::MemoryManager>(workspace_dir_, logger_);
-        skill_loader_ = std::make_shared<quantclaw::SkillLoader>(logger_);
-        tool_registry_ = std::make_shared<quantclaw::ToolRegistry>(logger_);
+        memory_manager_ = std::make_shared<ravbot::MemoryManager>(workspace_dir_, logger_);
+        skill_loader_ = std::make_shared<ravbot::SkillLoader>(logger_);
+        tool_registry_ = std::make_shared<ravbot::ToolRegistry>(logger_);
         tool_registry_->RegisterBuiltinTools();
 
         mock_provider_ = std::make_shared<LoadTestMockProvider>();
-        agent_loop_ = std::make_shared<quantclaw::AgentLoop>(
+        agent_loop_ = std::make_shared<ravbot::AgentLoop>(
             memory_manager_, skill_loader_, tool_registry_, mock_provider_, config_.agent, logger_);
 
-        session_manager_ = std::make_shared<quantclaw::SessionManager>(sessions_dir_, logger_);
-        prompt_builder_ = std::make_shared<quantclaw::PromptBuilder>(
+        session_manager_ = std::make_shared<ravbot::SessionManager>(sessions_dir_, logger_);
+        prompt_builder_ = std::make_shared<ravbot::PromptBuilder>(
             memory_manager_, skill_loader_, tool_registry_);
 
-        server_ = std::make_unique<quantclaw::gateway::GatewayServer>(port_, logger_);
+        server_ = std::make_unique<ravbot::gateway::GatewayServer>(port_, logger_);
         server_->SetAuth(config_.gateway.auth.mode, config_.gateway.auth.token);
 
-        quantclaw::gateway::register_rpc_handlers(
+        ravbot::gateway::register_rpc_handlers(
             *server_, session_manager_, agent_loop_, prompt_builder_,
             tool_registry_, config_, logger_);
 
@@ -135,20 +135,20 @@ protected:
         }
     }
 
-    int port_ = quantclaw::test::FindFreePort();
+    int port_ = ravbot::test::FindFreePort();
     std::filesystem::path test_dir_;
     std::filesystem::path workspace_dir_;
     std::filesystem::path sessions_dir_;
     std::shared_ptr<spdlog::logger> logger_;
-    quantclaw::QuantClawConfig config_;
-    std::shared_ptr<quantclaw::MemoryManager> memory_manager_;
-    std::shared_ptr<quantclaw::SkillLoader> skill_loader_;
-    std::shared_ptr<quantclaw::ToolRegistry> tool_registry_;
+    ravbot::RavBotConfig config_;
+    std::shared_ptr<ravbot::MemoryManager> memory_manager_;
+    std::shared_ptr<ravbot::SkillLoader> skill_loader_;
+    std::shared_ptr<ravbot::ToolRegistry> tool_registry_;
     std::shared_ptr<LoadTestMockProvider> mock_provider_;
-    std::shared_ptr<quantclaw::AgentLoop> agent_loop_;
-    std::shared_ptr<quantclaw::SessionManager> session_manager_;
-    std::shared_ptr<quantclaw::PromptBuilder> prompt_builder_;
-    std::unique_ptr<quantclaw::gateway::GatewayServer> server_;
+    std::shared_ptr<ravbot::AgentLoop> agent_loop_;
+    std::shared_ptr<ravbot::SessionManager> session_manager_;
+    std::shared_ptr<ravbot::PromptBuilder> prompt_builder_;
+    std::unique_ptr<ravbot::gateway::GatewayServer> server_;
 };
 
 // ======================================================================
@@ -168,7 +168,7 @@ TEST_F(LoadTest, ConcurrentConnections_10Clients) {
         threads.emplace_back([this, &success_count, &failure_count, i]() {
             try {
                 std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-                auto client = std::make_unique<quantclaw::gateway::GatewayClient>(
+                auto client = std::make_unique<ravbot::gateway::GatewayClient>(
                     url, "", logger_);
 
                 if (client->Connect(5000)) {
@@ -208,7 +208,7 @@ TEST_F(LoadTest, ConcurrentConnections_10Clients) {
 // Requirements: Performance Requirements - 测试高频消息处理
 TEST_F(LoadTest, HighFrequencyMessages_10MessagesPerSecond) {
     std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-    auto client = std::make_unique<quantclaw::gateway::GatewayClient>(url, "", logger_);
+    auto client = std::make_unique<ravbot::gateway::GatewayClient>(url, "", logger_);
     ASSERT_TRUE(client->Connect(5000));
 
     const int num_messages = 20;
@@ -247,7 +247,7 @@ TEST_F(LoadTest, HighFrequencyMessages_10MessagesPerSecond) {
 // Requirements: Performance Requirements - 测试简单请求响应时间
 TEST_F(LoadTest, SimpleRequestResponseTime) {
     std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-    auto client = std::make_unique<quantclaw::gateway::GatewayClient>(url, "", logger_);
+    auto client = std::make_unique<ravbot::gateway::GatewayClient>(url, "", logger_);
     ASSERT_TRUE(client->Connect(5000));
 
     // 预热
@@ -299,7 +299,7 @@ TEST_F(LoadTest, ComplexRequestResponseTime) {
     mock_provider_->response_delay_ms = 100;  // 模拟 LLM 延迟
 
     std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-    auto client = std::make_unique<quantclaw::gateway::GatewayClient>(url, "", logger_);
+    auto client = std::make_unique<ravbot::gateway::GatewayClient>(url, "", logger_);
     ASSERT_TRUE(client->Connect(5000));
 
     const int num_requests = 10;
@@ -337,7 +337,7 @@ TEST_F(LoadTest, ComplexRequestResponseTime) {
 // Requirements: Performance Requirements - 测试吞吐量
 TEST_F(LoadTest, Throughput_RequestsPerSecond) {
     std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-    auto client = std::make_unique<quantclaw::gateway::GatewayClient>(url, "", logger_);
+    auto client = std::make_unique<ravbot::gateway::GatewayClient>(url, "", logger_);
     ASSERT_TRUE(client->Connect(5000));
 
     const int duration_seconds = 5;

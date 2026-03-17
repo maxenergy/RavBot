@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/providers/anthropic_provider.hpp"
+#include "ravbot/providers/anthropic_provider.hpp"
 
 #include <sstream>
 #include <fstream>
@@ -11,9 +11,9 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
-#include "quantclaw/providers/provider_error.hpp"
+#include "ravbot/providers/provider_error.hpp"
 
-namespace quantclaw {
+namespace ravbot {
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb,
                             std::string* userp) {
@@ -379,10 +379,10 @@ AnthropicProvider::ChatCompletion(const ChatCompletionRequest& request) {
 
   // Save payload to file for debugging if it's the problematic size
   if (json_payload.size() > 20000 && json_payload.size() < 30000) {
-    std::ofstream debug_file("/tmp/quantclaw_error_payload.json");
+    std::ofstream debug_file("/tmp/ravbot_error_payload.json");
     debug_file << json_payload;
     debug_file.close();
-    logger_->warn("Saved potentially problematic payload to /tmp/quantclaw_error_payload.json");
+    logger_->warn("Saved potentially problematic payload to /tmp/ravbot_error_payload.json");
   }
 
   // Validate message alternation (Anthropic requires alternating user/assistant)
@@ -717,4 +717,4 @@ std::vector<std::string> AnthropicProvider::GetSupportedModels() const {
   return {"claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"};
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

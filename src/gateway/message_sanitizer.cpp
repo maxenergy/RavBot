@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/gateway/message_sanitizer.hpp"
+#include "ravbot/gateway/message_sanitizer.hpp"
 
 #include <algorithm>
 #include <regex>
 
-namespace quantclaw {
+namespace ravbot {
 
 MessageSanitizer::MessageSanitizer() {
   // 定义已知的边界标记模式
@@ -235,4 +235,4 @@ nlohmann::json MessageSanitizer::SanitizeMetadata(const nlohmann::json& metadata
   return sanitized;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

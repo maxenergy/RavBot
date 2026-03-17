@@ -10,7 +10,7 @@
 - **状态**: ✅ 已配置
 
 ### 配置位置
-1. **配置文件**: `~/.quantclaw/quantclaw.json`
+1. **配置文件**: `~/.ravbot/ravbot.json`
    ```json
    {
      "providers": {
@@ -21,7 +21,7 @@
    }
    ```
 
-2. **环境变量**: `~/.quantclaw/env.sh`
+2. **环境变量**: `~/.ravbot/env.sh`
    ```bash
    export TAVILY_API_KEY="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"
    ```
@@ -103,7 +103,7 @@ Bot：[自动搜索科技新闻]
 echo $TAVILY_API_KEY
 
 # 查看日志
-./quantclaw logs | grep -i tavily
+./ravbot logs | grep -i tavily
 ```
 
 ### 2. API Key 错误
@@ -157,7 +157,7 @@ export PERPLEXITY_API_KEY="..."
 
 - [Tavily 官网](https://tavily.com)
 - [Tavily API 文档](https://docs.tavily.com)
-- [QuantClaw 搜索工具](../src/tools/tool_registry.cpp:892-1160)
+- [RavBot 搜索工具](../src/tools/tool_registry.cpp:892-1160)
 
 ---
 

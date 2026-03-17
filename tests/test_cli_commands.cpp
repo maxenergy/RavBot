@@ -1,25 +1,25 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <memory>
 #include <sstream>
 #include <cstdio>
-#include "quantclaw/cli/cli_manager.hpp"
-#include "quantclaw/cli/agent_commands.hpp"
-#include "quantclaw/cli/session_commands.hpp"
-#include "quantclaw/cli/gateway_commands.hpp"
-#include "quantclaw/providers/llm_provider.hpp"
-#include "quantclaw/session/session_manager.hpp"
+#include "ravbot/cli/cli_manager.hpp"
+#include "ravbot/cli/agent_commands.hpp"
+#include "ravbot/cli/session_commands.hpp"
+#include "ravbot/cli/gateway_commands.hpp"
+#include "ravbot/providers/llm_provider.hpp"
+#include "ravbot/session/session_manager.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
-using namespace quantclaw::cli;
+using namespace ravbot::cli;
 
-namespace quantclaw::cli {
-std::string ExtractLastAssistantText(const std::vector<quantclaw::Message>& messages);
-std::vector<quantclaw::Message> BuildLlmHistoryFromSessionHistory(
-    const std::vector<quantclaw::SessionMessage>& history_msgs);
+namespace ravbot::cli {
+std::string ExtractLastAssistantText(const std::vector<ravbot::Message>& messages);
+std::vector<ravbot::Message> BuildLlmHistoryFromSessionHistory(
+    const std::vector<ravbot::SessionMessage>& history_msgs);
 }
 
 // Helper: convert vector<string> to argc/argv suitable for CLIManager::run
@@ -112,25 +112,25 @@ protected:
 };
 
 TEST_F(CLIManagerTest, VersionFlag) {
-    ArgHelper args{"quantclaw", "--version"};
+    ArgHelper args{"ravbot", "--version"};
     auto output = capture_stdout([&]() {
         int ret = cli_->Run(args.argc(), args.argv());
         EXPECT_EQ(ret, 0);
     });
-    EXPECT_NE(output.find("quantclaw"), std::string::npos);
+    EXPECT_NE(output.find("ravbot"), std::string::npos);
 }
 
 TEST_F(CLIManagerTest, VersionShortFlag) {
-    ArgHelper args{"quantclaw", "-v"};
+    ArgHelper args{"ravbot", "-v"};
     auto output = capture_stdout([&]() {
         int ret = cli_->Run(args.argc(), args.argv());
         EXPECT_EQ(ret, 0);
     });
-    EXPECT_NE(output.find("quantclaw"), std::string::npos);
+    EXPECT_NE(output.find("ravbot"), std::string::npos);
 }
 
 TEST_F(CLIManagerTest, HelpFlag) {
-    ArgHelper args{"quantclaw", "--help"};
+    ArgHelper args{"ravbot", "--help"};
     auto output = capture_stdout([&]() {
         int ret = cli_->Run(args.argc(), args.argv());
         EXPECT_EQ(ret, 0);
@@ -140,7 +140,7 @@ TEST_F(CLIManagerTest, HelpFlag) {
 }
 
 TEST_F(CLIManagerTest, HelpShortFlag) {
-    ArgHelper args{"quantclaw", "-h"};
+    ArgHelper args{"ravbot", "-h"};
     auto output = capture_stdout([&]() {
         int ret = cli_->Run(args.argc(), args.argv());
         EXPECT_EQ(ret, 0);
@@ -149,7 +149,7 @@ TEST_F(CLIManagerTest, HelpShortFlag) {
 }
 
 TEST_F(CLIManagerTest, NoArgsShowsHelp) {
-    ArgHelper args{"quantclaw"};
+    ArgHelper args{"ravbot"};
     auto output = capture_stdout([&]() {
         int ret = cli_->Run(args.argc(), args.argv());
         EXPECT_EQ(ret, 1);
@@ -158,7 +158,7 @@ TEST_F(CLIManagerTest, NoArgsShowsHelp) {
 }
 
 TEST_F(CLIManagerTest, UnknownCommandReturnsError) {
-    ArgHelper args{"quantclaw", "nonexistent"};
+    ArgHelper args{"ravbot", "nonexistent"};
     auto err = capture_stderr([&]() {
         int ret = cli_->Run(args.argc(), args.argv());
         EXPECT_EQ(ret, 1);
@@ -167,19 +167,19 @@ TEST_F(CLIManagerTest, UnknownCommandReturnsError) {
 }
 
 TEST_F(CLIManagerTest, CommandDispatchByName) {
-    ArgHelper args{"quantclaw", "test"};
+    ArgHelper args{"ravbot", "test"};
     cli_->Run(args.argc(), args.argv());
     EXPECT_TRUE(handler_called_);
 }
 
 TEST_F(CLIManagerTest, CommandDispatchByAlias) {
-    ArgHelper args{"quantclaw", "t"};
+    ArgHelper args{"ravbot", "t"};
     cli_->Run(args.argc(), args.argv());
     EXPECT_TRUE(handler_called_);
 }
 
 TEST_F(CLIManagerTest, CommandReceivesSubArgs) {
-    ArgHelper args{"quantclaw", "test", "--foo", "bar"};
+    ArgHelper args{"ravbot", "test", "--foo", "bar"};
     cli_->Run(args.argc(), args.argv());
     EXPECT_TRUE(handler_called_);
     // handler gets argc-1 (argv[0]="test", argv[1]="--foo", argv[2]="bar")
@@ -195,7 +195,7 @@ TEST_F(CLIManagerTest, MultipleCommands) {
         }
     });
 
-    ArgHelper args{"quantclaw", "other"};
+    ArgHelper args{"ravbot", "other"};
     int ret = cli_->Run(args.argc(), args.argv());
     EXPECT_TRUE(second_called);
     EXPECT_EQ(ret, 42);
@@ -281,41 +281,41 @@ TEST_F(GatewayCommandsTest, Construction) {
 }
 
 TEST_F(GatewayCommandsTest, ExtractLastAssistantTextReturnsFinalAssistantMessage) {
-    std::vector<quantclaw::Message> messages;
+    std::vector<ravbot::Message> messages;
     messages.emplace_back("assistant", "让我用更具体的英文关键词重新搜索：");
     messages.emplace_back("user", "tool result payload");
     messages.emplace_back("assistant", "这是最终答案");
 
-    EXPECT_EQ(quantclaw::cli::ExtractLastAssistantText(messages), "这是最终答案");
+    EXPECT_EQ(ravbot::cli::ExtractLastAssistantText(messages), "这是最终答案");
 }
 
 TEST_F(GatewayCommandsTest, ExtractLastAssistantTextSkipsEmptyAssistantMessages) {
-    std::vector<quantclaw::Message> messages;
+    std::vector<ravbot::Message> messages;
     messages.emplace_back("assistant", "");
     messages.emplace_back("assistant", "最终回复");
 
-    EXPECT_EQ(quantclaw::cli::ExtractLastAssistantText(messages), "最终回复");
+    EXPECT_EQ(ravbot::cli::ExtractLastAssistantText(messages), "最终回复");
 }
 
 TEST_F(GatewayCommandsTest, BuildLlmHistoryDropsTrailingCurrentUserMessage) {
-    std::vector<quantclaw::SessionMessage> history;
+    std::vector<ravbot::SessionMessage> history;
 
-    quantclaw::SessionMessage first_user;
+    ravbot::SessionMessage first_user;
     first_user.role = "user";
-    first_user.content.push_back(quantclaw::ContentBlock::MakeText("old question"));
+    first_user.content.push_back(ravbot::ContentBlock::MakeText("old question"));
     history.push_back(first_user);
 
-    quantclaw::SessionMessage assistant;
+    ravbot::SessionMessage assistant;
     assistant.role = "assistant";
-    assistant.content.push_back(quantclaw::ContentBlock::MakeText("old answer"));
+    assistant.content.push_back(ravbot::ContentBlock::MakeText("old answer"));
     history.push_back(assistant);
 
-    quantclaw::SessionMessage current_user;
+    ravbot::SessionMessage current_user;
     current_user.role = "user";
-    current_user.content.push_back(quantclaw::ContentBlock::MakeText("new question"));
+    current_user.content.push_back(ravbot::ContentBlock::MakeText("new question"));
     history.push_back(current_user);
 
-    auto llm_history = quantclaw::cli::BuildLlmHistoryFromSessionHistory(history);
+    auto llm_history = ravbot::cli::BuildLlmHistoryFromSessionHistory(history);
 
     ASSERT_EQ(llm_history.size(), 2u);
     EXPECT_EQ(llm_history[0].role, "user");
@@ -324,34 +324,34 @@ TEST_F(GatewayCommandsTest, BuildLlmHistoryDropsTrailingCurrentUserMessage) {
 }
 
 TEST_F(GatewayCommandsTest, BuildLlmHistoryKeepsPriorToolResultTurnStructure) {
-    std::vector<quantclaw::SessionMessage> history;
+    std::vector<ravbot::SessionMessage> history;
 
-    quantclaw::SessionMessage old_user;
+    ravbot::SessionMessage old_user;
     old_user.role = "user";
-    old_user.content.push_back(quantclaw::ContentBlock::MakeText("old question"));
+    old_user.content.push_back(ravbot::ContentBlock::MakeText("old question"));
     history.push_back(old_user);
 
-    quantclaw::SessionMessage tool_use;
+    ravbot::SessionMessage tool_use;
     tool_use.role = "assistant";
-    tool_use.content.push_back(quantclaw::ContentBlock::MakeToolUse("tool-1", "web_search", nlohmann::json::object()));
+    tool_use.content.push_back(ravbot::ContentBlock::MakeToolUse("tool-1", "web_search", nlohmann::json::object()));
     history.push_back(tool_use);
 
-    quantclaw::SessionMessage tool_result;
+    ravbot::SessionMessage tool_result;
     tool_result.role = "user";
-    tool_result.content.push_back(quantclaw::ContentBlock::MakeToolResult("tool-1", "result"));
+    tool_result.content.push_back(ravbot::ContentBlock::MakeToolResult("tool-1", "result"));
     history.push_back(tool_result);
 
-    quantclaw::SessionMessage final_assistant;
+    ravbot::SessionMessage final_assistant;
     final_assistant.role = "assistant";
-    final_assistant.content.push_back(quantclaw::ContentBlock::MakeText("final answer"));
+    final_assistant.content.push_back(ravbot::ContentBlock::MakeText("final answer"));
     history.push_back(final_assistant);
 
-    quantclaw::SessionMessage current_user;
+    ravbot::SessionMessage current_user;
     current_user.role = "user";
-    current_user.content.push_back(quantclaw::ContentBlock::MakeText("new question"));
+    current_user.content.push_back(ravbot::ContentBlock::MakeText("new question"));
     history.push_back(current_user);
 
-    auto llm_history = quantclaw::cli::BuildLlmHistoryFromSessionHistory(history);
+    auto llm_history = ravbot::cli::BuildLlmHistoryFromSessionHistory(history);
 
     ASSERT_EQ(llm_history.size(), 4u);
     EXPECT_EQ(llm_history[0].role, "user");

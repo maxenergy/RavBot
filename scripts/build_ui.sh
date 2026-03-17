@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-UI_DIR="${HOME}/.quantclaw/ui"
+UI_DIR="${HOME}/.ravbot/ui"
 # Resolve the repo root relative to this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-echo "Building QuantClaw UI from local source..."
+echo "Building RavBot UI from local source..."
 
 cd "${REPO_ROOT}/ui"
 
@@ -34,7 +34,7 @@ cp -r dist/* "$UI_DIR/"
 
 # Inject gateway config into index.html
 tmp_index_html="$(mktemp "${UI_DIR}/index.html.XXXXXX")"
-sed 's|<head>|<head><script>window.__QUANTCLAW_GATEWAY_WS_PORT=18800;</script>|' "$UI_DIR/index.html" > "$tmp_index_html"
+sed 's|<head>|<head><script>window.__RAVBOT_GATEWAY_WS_PORT=18800;</script>|' "$UI_DIR/index.html" > "$tmp_index_html"
 mv "$tmp_index_html" "$UI_DIR/index.html"
 
 echo "Done. Dashboard UI installed at $UI_DIR"

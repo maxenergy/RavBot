@@ -1,7 +1,7 @@
 {
-  "name": "@quantclaw/sidecar",
+  "name": "@ravbot/sidecar",
   "version": "0.1.0",
-  "description": "QuantClaw Node.js sidecar for loading OpenClaw-compatible plugins",
+  "description": "RavBot Node.js sidecar for loading OpenClaw-compatible plugins",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

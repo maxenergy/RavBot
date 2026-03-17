@@ -23,17 +23,17 @@ Detailed installation instructions for different platforms and use cases.
 #### Using Pre-built Binary
 ```bash
 # Download the latest binary
-wget https://github.com/QuantClaw/QuantClaw/releases/download/v1.0.0/quantclaw-linux-x64.tar.gz
+wget https://github.com/RavBot/RavBot/releases/download/v1.0.0/ravbot-linux-x64.tar.gz
 
 # Extract
-tar xzf quantclaw-linux-x64.tar.gz
+tar xzf ravbot-linux-x64.tar.gz
 
 # Install to system path
-sudo mv quantclaw /usr/local/bin/
-chmod +x /usr/local/bin/quantclaw
+sudo mv ravbot /usr/local/bin/
+chmod +x /usr/local/bin/ravbot
 
 # Verify
-quantclaw --version
+ravbot --version
 ```
 
 #### Build from Source
@@ -49,8 +49,8 @@ sudo apt-get install -y \
   libspdlog-dev
 
 # Clone repository
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd quantclaw
+git clone https://github.com/RavBot/RavBot.git
+cd ravbot
 
 # Build
 mkdir build && cd build
@@ -61,24 +61,24 @@ cmake --build . -j$(nproc)
 sudo cmake --install .
 
 # Run tests
-./quantclaw_tests
+./ravbot_tests
 ```
 
 #### Using Docker
 ```bash
 # Pull image
-docker pull quantclaw:latest
+docker pull ravbot:latest
 
 # Run container
 docker run -d \
-  --name quantclaw \
+  --name ravbot \
   -p 18800:18800 \
   -p 18801:18801 \
-  -v quantclaw_data:/home/quantclaw/.quantclaw \
-  quantclaw:latest
+  -v ravbot_data:/home/ravbot/.ravbot \
+  ravbot:latest
 
 # View logs
-docker logs quantclaw
+docker logs ravbot
 ```
 
 ### Fedora/CentOS/RHEL
@@ -89,8 +89,8 @@ sudo dnf groupinstall "Development Tools" -y
 sudo dnf install cmake openssl-devel nlohmann_json-devel spdlog-devel -y
 
 # Build from source
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd quantclaw
+git clone https://github.com/RavBot/RavBot.git
+cd ravbot
 mkdir build && cd build
 cmake ..
 cmake --build . -j$(nproc)
@@ -101,11 +101,11 @@ sudo cmake --install .
 
 ```bash
 # Install from AUR (if available)
-yay -S quantclaw
+yay -S ravbot
 
 # Or build from source
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd quantclaw
+git clone https://github.com/RavBot/RavBot.git
+cd ravbot
 mkdir build && cd build
 cmake ..
 make -j$(nproc)
@@ -130,7 +130,7 @@ Follow the Ubuntu/Linux instructions above within WSL2:
 ```bash
 wsl
 cd ~
-git clone https://github.com/QuantClaw/QuantClaw.git
+git clone https://github.com/RavBot/RavBot.git
 # ... follow Linux build steps
 ```
 
@@ -138,7 +138,7 @@ git clone https://github.com/QuantClaw/QuantClaw.git
 ```powershell
 # Forward WSL2 port to Windows
 # In WSL2 terminal:
-quantclaw gateway
+ravbot gateway
 
 # In PowerShell (Windows):
 # open http://localhost:18801
@@ -154,8 +154,8 @@ quantclaw gateway
 #### Build Process
 ```batch
 REM Clone repository
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd quantclaw
+git clone https://github.com/RavBot/RavBot.git
+cd ravbot
 
 REM Create build directory
 mkdir build
@@ -168,7 +168,7 @@ REM Build
 cmake --build . --config Release -j %NUMBER_OF_PROCESSORS%
 
 REM Tests
-Release\quantclaw_tests.exe
+Release\ravbot_tests.exe
 ```
 
 #### Install Dependencies (vcpkg)
@@ -183,28 +183,28 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\path\to\vcpkg\scripts\buildsystems\vcpkg.cmak
 ### Docker on Windows
 ```powershell
 # Pull and run Docker container
-docker pull quantclaw:latest
+docker pull ravbot:latest
 
 docker run -d `
-  --name quantclaw `
+  --name ravbot `
   -p 18800:18800 `
   -p 18801:18801 `
-  -v quantclaw_data:/home/quantclaw/.quantclaw `
-  quantclaw:latest
+  -v ravbot_data:/home/ravbot/.ravbot `
+  ravbot:latest
 
 # View logs
-docker logs quantclaw
+docker logs ravbot
 
 # Stop container
-docker stop quantclaw
+docker stop ravbot
 ```
 
 ## macOS Installation
 
 ### Using Homebrew (if tap available)
 ```bash
-brew tap quantclaw/quantclaw
-brew install quantclaw
+brew tap ravbot/ravbot
+brew install ravbot
 ```
 
 ### Build from Source
@@ -220,15 +220,15 @@ sudo port install cmake openssl nlohmann_json spdlog
 
 #### Build
 ```bash
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd quantclaw
+git clone https://github.com/RavBot/RavBot.git
+cd ravbot
 
 mkdir build && cd build
 cmake -DOPENSSL_DIR=$(brew --prefix openssl) ..
 cmake --build . -j $(sysctl -n hw.ncpu)
 
 # Run tests
-./quantclaw_tests
+./ravbot_tests
 
 # Install
 sudo cmake --install .
@@ -240,10 +240,10 @@ sudo cmake --install .
 
 ```bash
 # Interactive setup (recommended)
-quantclaw onboard
+ravbot onboard
 
 # Quick setup (use defaults)
-quantclaw onboard --quick
+ravbot onboard --quick
 ```
 
 During setup, you'll configure:
@@ -256,52 +256,52 @@ During setup, you'll configure:
 
 ```bash
 # Check version
-quantclaw --version
+ravbot --version
 
 # Run tests
-quantclaw status
+ravbot status
 
 # Test basic functionality
-quantclaw run "Hello, what's your name?"
+ravbot run "Hello, what's your name?"
 ```
 
 ### Configure Environment (Optional)
 
 ```bash
 # Set default agent
-export QUANTCLAW_AGENT_ID=main
+export RAVBOT_AGENT_ID=main
 
 # Set configuration directory
-export QUANTCLAW_CONFIG_DIR=~/.quantclaw
+export RAVBOT_CONFIG_DIR=~/.ravbot
 
 # Set log level
-export QUANTCLAW_LOG_LEVEL=debug
+export RAVBOT_LOG_LEVEL=debug
 
 # Set gateway port
-export QUANTCLAW_GATEWAY_PORT=18800
+export RAVBOT_GATEWAY_PORT=18800
 ```
 
-## Updating QuantClaw
+## Updating RavBot
 
 ### From Binary
 ```bash
 # Download new version
-wget https://github.com/QuantClaw/QuantClaw/releases/download/v1.1.0/quantclaw-linux-x64.tar.gz
+wget https://github.com/RavBot/RavBot/releases/download/v1.1.0/ravbot-linux-x64.tar.gz
 
 # Backup old binary
-cp /usr/local/bin/quantclaw /usr/local/bin/quantclaw.backup
+cp /usr/local/bin/ravbot /usr/local/bin/ravbot.backup
 
 # Install new version
-tar xzf quantclaw-linux-x64.tar.gz
-sudo mv quantclaw /usr/local/bin/
+tar xzf ravbot-linux-x64.tar.gz
+sudo mv ravbot /usr/local/bin/
 
 # Verify
-quantclaw --version
+ravbot --version
 ```
 
 ### From Source
 ```bash
-cd quantclaw
+cd ravbot
 git pull origin main
 cd build
 cmake --build . -j$(nproc)
@@ -311,22 +311,22 @@ sudo cmake --install .
 ### From Homebrew
 ```bash
 brew update
-brew upgrade quantclaw
+brew upgrade ravbot
 ```
 
 ### Docker
 ```bash
-docker pull quantclaw:latest
-docker stop quantclaw
-docker rm quantclaw
+docker pull ravbot:latest
+docker stop ravbot
+docker rm ravbot
 
 # Re-run with new image
 docker run -d \
-  --name quantclaw \
+  --name ravbot \
   -p 18800:18800 \
   -p 18801:18801 \
-  -v quantclaw_data:/home/quantclaw/.quantclaw \
-  quantclaw:latest
+  -v ravbot_data:/home/ravbot/.ravbot \
+  ravbot:latest
 ```
 
 ## Troubleshooting
@@ -366,7 +366,7 @@ brew install gcc                       # macOS
 **Port already in use**
 ```bash
 # Change gateway port
-quantclaw gateway --port 9000
+ravbot gateway --port 9000
 
 # Or find and kill process using port 18800
 lsof -i :18800
@@ -375,21 +375,21 @@ kill -9 <PID>
 
 **Permission denied errors**
 ```bash
-# Ensure ~/.quantclaw is writable
-chmod 700 ~/.quantclaw
-chmod 600 ~/.quantclaw/*
+# Ensure ~/.ravbot is writable
+chmod 700 ~/.ravbot
+chmod 600 ~/.ravbot/*
 ```
 
 **Configuration issues**
 ```bash
 # Validate configuration
-quantclaw config validate
+ravbot config validate
 
 # View schema
-quantclaw config schema
+ravbot config schema
 
 # Reset to defaults
-quantclaw onboard --reset
+ravbot onboard --reset
 ```
 
 ## Uninstallation
@@ -397,27 +397,27 @@ quantclaw onboard --reset
 ### Binary Installation
 ```bash
 # Remove binary
-sudo rm /usr/local/bin/quantclaw
+sudo rm /usr/local/bin/ravbot
 
 # Remove configuration (optional)
-rm -rf ~/.quantclaw
+rm -rf ~/.ravbot
 ```
 
 ### Docker
 ```bash
-docker stop quantclaw
-docker rm quantclaw
-docker rmi quantclaw:latest
+docker stop ravbot
+docker rm ravbot
+docker rmi ravbot:latest
 ```
 
 ### From Source
 ```bash
-cd quantclaw/build
+cd ravbot/build
 sudo cmake --uninstall
 
 # Or manually
-sudo rm /usr/local/bin/quantclaw
-sudo rm -rf /usr/local/include/quantclaw
+sudo rm /usr/local/bin/ravbot
+sudo rm -rf /usr/local/include/ravbot
 ```
 
 ---

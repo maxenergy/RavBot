@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/providers/failover_resolver.hpp"
-#include "quantclaw/providers/provider_registry.hpp"
+#include "ravbot/providers/failover_resolver.hpp"
+#include "ravbot/providers/provider_registry.hpp"
 
 #include <optional>
 
-namespace quantclaw {
+namespace ravbot {
 
 FailoverResolver::FailoverResolver(ProviderRegistry* registry,
                                    std::shared_ptr<spdlog::logger> logger)
@@ -241,4 +241,4 @@ void FailoverResolver::ResetCooldowns() {
   logger_->info("All cooldowns have been reset");
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

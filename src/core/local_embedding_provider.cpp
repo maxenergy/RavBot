@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/local_embedding_provider.hpp"
+#include "ravbot/core/local_embedding_provider.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -10,7 +10,7 @@
 #include <sstream>
 #include <unordered_set>
 
-namespace quantclaw {
+namespace ravbot {
 
 LocalEmbeddingProvider::LocalEmbeddingProvider(
     int dimension,
@@ -286,4 +286,4 @@ void LocalEmbeddingProvider::InitializeDefaultProjection() {
   logger_->info("Initialized default projection with {} common words", vocab_size);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

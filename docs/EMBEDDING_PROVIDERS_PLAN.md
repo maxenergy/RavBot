@@ -1,4 +1,4 @@
-# QuantClaw Embedding 提供商 - Phase 3 实施计划
+# RavBot Embedding 提供商 - Phase 3 实施计划
 
 ## 目标
 
@@ -85,7 +85,7 @@ class EmbeddingProviderRegistry {
 ## 实施步骤
 
 ### Step 1: 核心接口 (30 分钟)
-- [ ] 创建 `include/quantclaw/core/embedding_provider.hpp`
+- [ ] 创建 `include/ravbot/core/embedding_provider.hpp`
 - [ ] 定义 `EmbeddingProvider` 基类
 - [ ] 定义 `EmbeddingProviderRegistry` 类
 

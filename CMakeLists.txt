@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(quantclaw VERSION 0.3.0 LANGUAGES CXX)
+project(ravbot VERSION 0.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -75,7 +75,7 @@ if(NOT EXISTS ${HNSWLIB_INCLUDE_DIR}/hnswlib/hnswlib.h)
 endif()
 
 # Source files - explicitly listed
-set(QUANTCLAW_CORE_SOURCES
+set(RAVBOT_CORE_SOURCES
     # Core
     src/core/agent_loop.cpp
     src/core/config.cpp
@@ -101,6 +101,7 @@ set(QUANTCLAW_CORE_SOURCES
     src/core/ollama_embedding_provider.cpp
     src/core/embedding_manager.cpp
     src/core/embedding_config.cpp
+    src/core/structured_memory.cpp
     # Providers
     src/providers/curl_raii.cpp
     src/providers/openai_provider.cpp
@@ -178,12 +179,12 @@ set(QUANTCLAW_CORE_SOURCES
 
 # Platform-specific sources (process + service abstractions)
 if(WIN32)
-    list(APPEND QUANTCLAW_CORE_SOURCES
+    list(APPEND RAVBOT_CORE_SOURCES
         src/platform/process_win32.cpp
         src/platform/service_win32.cpp
     )
 else()
-    list(APPEND QUANTCLAW_CORE_SOURCES
+    list(APPEND RAVBOT_CORE_SOURCES
         src/platform/process_unix.cpp
         src/platform/service_unix.cpp
     )
@@ -194,18 +195,18 @@ endif()
 execute_process(
     COMMAND git rev-parse --short HEAD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    OUTPUT_VARIABLE QC_GIT_COMMIT
+    OUTPUT_VARIABLE RB_GIT_COMMIT
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_QUIET
 )
-if(NOT QC_GIT_COMMIT)
-    set(QC_GIT_COMMIT "unknown")
+if(NOT RB_GIT_COMMIT)
+    set(RB_GIT_COMMIT "unknown")
 endif()
-string(TIMESTAMP QC_BUILD_DATE "%Y-%m-%d")
+string(TIMESTAMP RB_BUILD_DATE "%Y-%m-%d")
 
-add_library(quantclaw_core STATIC ${QUANTCLAW_CORE_SOURCES})
+add_library(ravbot_core STATIC ${RAVBOT_CORE_SOURCES})
 
-target_include_directories(quantclaw_core
+target_include_directories(ravbot_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${HNSWLIB_INCLUDE_DIR}>
@@ -213,17 +214,17 @@ target_include_directories(quantclaw_core
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_compile_definitions(quantclaw_core PUBLIC
-    QUANTCLAW_VERSION="${PROJECT_VERSION}"
-    QUANTCLAW_BUILD_DATE="${QC_BUILD_DATE}"
-    QUANTCLAW_GIT_COMMIT="${QC_GIT_COMMIT}"
+target_compile_definitions(ravbot_core PUBLIC
+    RAVBOT_VERSION="${PROJECT_VERSION}"
+    RAVBOT_BUILD_DATE="${RB_BUILD_DATE}"
+    RAVBOT_GIT_COMMIT="${RB_GIT_COMMIT}"
 )
 
-target_compile_definitions(quantclaw_core PUBLIC
+target_compile_definitions(ravbot_core PUBLIC
     CPPHTTPLIB_OPENSSL_SUPPORT
 )
 
-target_link_libraries(quantclaw_core
+target_link_libraries(ravbot_core
     PUBLIC
         spdlog::spdlog
         nlohmann_json::nlohmann_json
@@ -238,26 +239,26 @@ target_link_libraries(quantclaw_core
 
 # WinSock2 required by ipc_tcp.cpp on Windows
 if(WIN32)
-    target_link_libraries(quantclaw_core PUBLIC ws2_32)
+    target_link_libraries(ravbot_core PUBLIC ws2_32)
 endif()
 
-add_executable(quantclaw src/main.cpp)
-target_link_libraries(quantclaw PRIVATE quantclaw_core)
-target_include_directories(quantclaw PRIVATE
+add_executable(ravbot src/main.cpp)
+target_link_libraries(ravbot PRIVATE ravbot_core)
+target_include_directories(ravbot PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(quantclaw_core PRIVATE -Wall -Wextra -O2)
-    target_compile_options(quantclaw PRIVATE -Wall -Wextra -O2)
+    target_compile_options(ravbot_core PRIVATE -Wall -Wextra -O2)
+    target_compile_options(ravbot PRIVATE -Wall -Wextra -O2)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(quantclaw_core PRIVATE /W4 /O2)
-    target_compile_options(quantclaw PRIVATE /W4 /O2)
+    target_compile_options(ravbot_core PRIVATE /W4 /O2)
+    target_compile_options(ravbot PRIVATE /W4 /O2)
 endif()
 
-install(TARGETS quantclaw DESTINATION bin)
+install(TARGETS ravbot DESTINATION bin)
 
 # --- Tests ---
 if(BUILD_TESTS)
@@ -346,24 +347,28 @@ if(BUILD_TESTS)
         tests/test_message_sanitizer.cpp
         tests/performance/test_load.cpp
         tests/performance/test_memory.cpp
+        # P1.3 / P1.4 / P2.1 / P2.2 new tests
+        tests/test_context_pruner.cpp
+        tests/test_turn_validator.cpp
+        tests/test_vector_database.cpp
     )
 
-    add_executable(quantclaw_tests ${TEST_SOURCES})
-    target_link_libraries(quantclaw_tests PRIVATE
-        quantclaw_core
+    add_executable(ravbot_tests ${TEST_SOURCES})
+    target_link_libraries(ravbot_tests PRIVATE
+        ravbot_core
         GTest::gtest_main
     )
-    target_include_directories(quantclaw_tests PRIVATE
+    target_include_directories(ravbot_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
 
     include(GoogleTest)
-    gtest_discover_tests(quantclaw_tests)
+    gtest_discover_tests(ravbot_tests)
 
     # Debug executable for HNSW testing
     add_executable(debug_hnsw tests/debug_hnsw_hang.cpp)
-    target_link_libraries(debug_hnsw PRIVATE quantclaw_core)
+    target_link_libraries(debug_hnsw PRIVATE ravbot_core)
     target_include_directories(debug_hnsw PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src

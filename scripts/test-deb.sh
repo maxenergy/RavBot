@@ -34,12 +34,12 @@ echo "Total files: $(dpkg-deb --contents "$DEB_FILE" | wc -l)"
 # 3. Check control files
 echo ""
 echo "3. Control Files:"
-dpkg-deb --control "$DEB_FILE" /tmp/quantclaw-control-$$
-ls -la /tmp/quantclaw-control-$$
+dpkg-deb --control "$DEB_FILE" /tmp/ravbot-control-$$
+ls -la /tmp/ravbot-control-$$
 echo ""
 echo "postinst script:"
-cat /tmp/quantclaw-control-$$/postinst | head -20
-rm -rf /tmp/quantclaw-control-$$
+cat /tmp/ravbot-control-$$/postinst | head -20
+rm -rf /tmp/ravbot-control-$$
 
 # 4. Check dependencies
 echo ""
@@ -60,10 +60,10 @@ dpkg-deb --validate "$DEB_FILE" && echo "✓ Package is valid" || echo "✗ Pack
 echo ""
 echo "7. Required Files Check:"
 REQUIRED_FILES=(
-    "./usr/bin/quantclaw"
-    "./lib/systemd/system/quantclaw.service"
-    "./usr/share/quantclaw/skills"
-    "./usr/share/quantclaw/sidecar"
+    "./usr/bin/ravbot"
+    "./lib/systemd/system/ravbot.service"
+    "./usr/share/ravbot/skills"
+    "./usr/share/ravbot/sidecar"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do

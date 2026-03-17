@@ -109,11 +109,11 @@ if (serpapi_key && *serpapi_key) {
 ## 📝 配置文件
 
 ### 环境变量配置
-**文件**: `~/.quantclaw/env.sh`
+**文件**: `~/.ravbot/env.sh`
 
 ```bash
 #!/bin/bash
-# QuantClaw 环境变量配置
+# RavBot 环境变量配置
 
 # Tavily API Key (网络搜索)
 export TAVILY_API_KEY="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"
@@ -127,7 +127,7 @@ export SERPAPI_API_KEY="327952340b074e7c67a9ddf46eb5f7c3d59d82df4c6a3f1646748878
 ```
 
 ### Telegram Bot 配置
-**文件**: `~/.quantclaw/quantclaw.json`
+**文件**: `~/.ravbot/ravbot.json`
 
 ```json
 {
@@ -157,7 +157,7 @@ export SERPAPI_API_KEY="327952340b074e7c67a9ddf46eb5f7c3d59d82df4c6a3f1646748878
 ```
 
 ### Anthropic Provider 配置
-**文件**: `~/.quantclaw/quantclaw.json`
+**文件**: `~/.ravbot/ravbot.json`
 
 ```json
 {
@@ -181,18 +181,18 @@ export SERPAPI_API_KEY="327952340b074e7c67a9ddf46eb5f7c3d59d82df4c6a3f1646748878
 
 ### 启动 Gateway
 ```bash
-cd /home/rogers/source/develop/QuantClaw/build
-source ~/.quantclaw/env.sh
-./quantclaw gateway run --port 18800
+cd /home/rogers/source/develop/RavBot/build
+source ~/.ravbot/env.sh
+./ravbot gateway run --port 18800
 ```
 
 ### 验证运行状态
 ```bash
 # 查看进程
-ps aux | grep quantclaw
+ps aux | grep ravbot
 
 # 查看日志
-tail -f ~/.quantclaw/logs/gateway.log
+tail -f ~/.ravbot/logs/gateway.log
 
 # 查看端口
 ss -tlnp | grep 18800
@@ -268,8 +268,8 @@ ss -tlnp | grep 18800
 - [Telegram Bot 配置](TELEGRAM_BOT_SETUP.md)
 - [Telegram Agent 集成](TELEGRAM_AGENT_INTEGRATION.md)
 - [Tavily 搜索配置](TAVILY_SEARCH_SETUP.md)
-- [Agent Loop 文档](../include/quantclaw/core/agent_loop.hpp)
-- [Tool Registry 文档](../include/quantclaw/tools/tool_registry.hpp)
+- [Agent Loop 文档](../include/ravbot/core/agent_loop.hpp)
+- [Tool Registry 文档](../include/ravbot/tools/tool_registry.hpp)
 
 ## 🎯 下一步
 

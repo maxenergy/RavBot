@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>
 #include <memory>
-#include "quantclaw/tools/tool_registry.hpp"
+#include "ravbot/tools/tool_registry.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 #include "test_helpers.hpp"
@@ -13,12 +13,12 @@
 class ToolRegistryTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_tools_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_tools_test");
 
         auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
         logger_ = std::make_shared<spdlog::logger>("test", null_sink);
 
-        tool_registry_ = std::make_unique<quantclaw::ToolRegistry>(logger_);
+        tool_registry_ = std::make_unique<ravbot::ToolRegistry>(logger_);
         tool_registry_->RegisterBuiltinTools();
     }
 
@@ -30,7 +30,7 @@ protected:
 
     std::filesystem::path test_dir_;
     std::shared_ptr<spdlog::logger> logger_;
-    std::unique_ptr<quantclaw::ToolRegistry> tool_registry_;
+    std::unique_ptr<ravbot::ToolRegistry> tool_registry_;
 };
 
 TEST_F(ToolRegistryTest, AllBuiltinToolsRegistered) {
@@ -47,13 +47,13 @@ TEST_F(ToolRegistryTest, AllBuiltinToolsRegistered) {
 TEST_F(ToolRegistryTest, ReadFileTool) {
     auto test_file = test_dir_ / "test.txt";
     std::ofstream file(test_file);
-    file << "Hello, QuantClaw!";
+    file << "Hello, RavBot!";
     file.close();
 
     nlohmann::json params = {{"path", test_file.string()}};
     std::string result = tool_registry_->ExecuteTool("read", params);
 
-    EXPECT_EQ(result, "Hello, QuantClaw!");
+    EXPECT_EQ(result, "Hello, RavBot!");
 }
 
 TEST_F(ToolRegistryTest, ReadNonExistentFile) {
@@ -66,7 +66,7 @@ TEST_F(ToolRegistryTest, WriteFileTool) {
     auto test_file = test_dir_ / "output.txt";
     nlohmann::json params = {
         {"path", test_file.string()},
-        {"content", "This is written by QuantClaw!"}
+        {"content", "This is written by RavBot!"}
     };
 
     std::string result = tool_registry_->ExecuteTool("write", params);
@@ -76,7 +76,7 @@ TEST_F(ToolRegistryTest, WriteFileTool) {
     std::ifstream file(test_file);
     std::string content((std::istreambuf_iterator<char>(file)),
                         std::istreambuf_iterator<char>());
-    EXPECT_EQ(content, "This is written by QuantClaw!");
+    EXPECT_EQ(content, "This is written by RavBot!");
 }
 
 TEST_F(ToolRegistryTest, EditFileTool) {
@@ -231,7 +231,7 @@ TEST_F(ToolRegistryTest, SchemasHaveRequiredFields) {
 // --- empty registry ---
 
 TEST_F(ToolRegistryTest, EmptyRegistryNoTools) {
-    auto empty = std::make_unique<quantclaw::ToolRegistry>(logger_);
+    auto empty = std::make_unique<ravbot::ToolRegistry>(logger_);
     EXPECT_TRUE(empty->GetToolSchemas().empty());
     EXPECT_FALSE(empty->HasTool("read"));
 }

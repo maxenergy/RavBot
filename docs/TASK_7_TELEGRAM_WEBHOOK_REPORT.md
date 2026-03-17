@@ -197,7 +197,7 @@ void TelegramChannel::Start() {
 
 ### 修改文件
 
-1. `include/quantclaw/channels/telegram_channel.hpp`
+1. `include/ravbot/channels/telegram_channel.hpp`
    - 添加 Webhook 配置字段
    - 添加 Webhook 方法声明
 
@@ -250,7 +250,7 @@ void TelegramChannel::Start() {
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | Webhook 设置 | ✅ | ✅ | 完成 |
 | Webhook 删除 | ✅ | ✅ | 完成 |
@@ -301,7 +301,7 @@ channel->Start();
 
 ```cpp
 // 创建 WebServer
-auto web_server = std::make_shared<quantclaw::web::WebServer>(8443, logger);
+auto web_server = std::make_shared<ravbot::web::WebServer>(8443, logger);
 
 // 添加 Webhook 路由
 web_server->AddRawRoute("/telegram/webhook", "POST",
@@ -437,7 +437,7 @@ channel->Start();
 5. ✅ 100% 测试覆盖率
 6. ✅ 详细的使用文档
 
-该功能使 QuantClaw 能够使用更高效的 Webhook 模式接收 Telegram 消息,降低延迟和资源消耗,提升用户体验。
+该功能使 RavBot 能够使用更高效的 Webhook 模式接收 Telegram 消息,降低延迟和资源消耗,提升用户体验。
 
 ---
 

@@ -1,8 +1,8 @@
-# GitHub Copilot Instructions for QuantClaw
+# GitHub Copilot Instructions for RavBot
 
 ## Project Overview
 
-QuantClaw is a high-performance C++17 agent gateway server — a reimplementation of
+RavBot is a high-performance C++17 agent gateway server — a reimplementation of
 [OpenClaw](https://github.com/OpenClaw) with the same CLI and session/plugin
 ecosystem compatibility.
 
@@ -10,7 +10,7 @@ ecosystem compatibility.
 
 - **C++17** throughout (no C++20 features)
 - Google C++ Style Guide (enforced by `.clang-tidy` and `clang-format-14`)
-- All new public APIs must live under the `quantclaw::` namespace
+- All new public APIs must live under the `ravbot::` namespace
 
 ## Architecture Highlights
 
@@ -19,7 +19,7 @@ ecosystem compatibility.
 - `src/session/session_manager.cpp` — JSONL transcript storage with `shared_mutex` read/write split
 - `src/providers/` — multi-provider LLM abstraction with exponential-backoff failover
 - `sidecar/` — Node.js sidecar process (TypeScript) for plugin/skill execution over TCP IPC
-- `include/quantclaw/common/` — shared utilities: `try.hpp`, `defer.hpp`, `string_util.hpp`,
+- `include/ravbot/common/` — shared utilities: `try.hpp`, `defer.hpp`, `string_util.hpp`,
   `parse_util.hpp`, `noncopyable.hpp`
 
 ## Review Priorities

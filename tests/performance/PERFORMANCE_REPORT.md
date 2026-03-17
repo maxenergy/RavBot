@@ -1,4 +1,4 @@
-# QuantClaw Performance Analysis Report
+# RavBot Performance Analysis Report
 
 ## 测试日期
 2026-03-13
@@ -103,7 +103,7 @@
 
 ## 结论
 
-QuantClaw 的性能表现**远超预期目标**,在所有测试指标上都达到了优秀水平:
+RavBot 的性能表现**远超预期目标**,在所有测试指标上都达到了优秀水平:
 
 - 响应时间: 超出目标 19-49 倍
 - 吞吐量: 超出目标 29-34 倍

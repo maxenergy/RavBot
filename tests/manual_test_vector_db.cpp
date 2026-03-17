@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/vector_database.hpp"
+#include "ravbot/core/vector_database.hpp"
 
 #include <iostream>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 int main() {
   auto logger = spdlog::stdout_color_mt("test");

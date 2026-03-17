@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -6,13 +6,13 @@
 #include <fstream>
 #include <thread>
 #include <chrono>
-#include "quantclaw/config.hpp"
-#include "quantclaw/core/agent_loop.hpp"
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
-#include "quantclaw/providers/llm_provider.hpp"
-#include "quantclaw/providers/provider_registry.hpp"
-#include "quantclaw/core/skill_loader.hpp"
+#include "ravbot/config.hpp"
+#include "ravbot/core/agent_loop.hpp"
+#include "ravbot/core/memory_manager.hpp"
+#include "ravbot/tools/tool_registry.hpp"
+#include "ravbot/providers/llm_provider.hpp"
+#include "ravbot/providers/provider_registry.hpp"
+#include "ravbot/core/skill_loader.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 #include "test_helpers.hpp"
@@ -20,7 +20,7 @@
 class ConfigTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_config_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_config_test");
     }
 
     void TearDown() override {
@@ -67,7 +67,7 @@ TEST_F(ConfigTest, ParseLegacyFormat) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
 
     EXPECT_EQ(config.agent.model, "gpt-4-turbo");
     EXPECT_EQ(config.agent.max_iterations, 15);
@@ -114,7 +114,7 @@ TEST_F(ConfigTest, ParseOpenClawFormat) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
 
     EXPECT_EQ(config.agent.model, "anthropic/claude-sonnet-4-6");
     EXPECT_EQ(config.agent.max_iterations, 15);
@@ -134,7 +134,7 @@ TEST_F(ConfigTest, ParseOpenClawFormat) {
 // --- Defaults ---
 
 TEST_F(ConfigTest, EmptyConfigUsesDefaults) {
-    auto config = quantclaw::QuantClawConfig::FromJson({});
+    auto config = ravbot::RavBotConfig::FromJson({});
 
     EXPECT_EQ(config.agent.model, "anthropic/claude-sonnet-4-6");
     EXPECT_EQ(config.agent.max_iterations, 32);
@@ -152,7 +152,7 @@ TEST_F(ConfigTest, PartialAgentConfig) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
 
     EXPECT_EQ(config.agent.model, "gpt-3.5-turbo");
     EXPECT_EQ(config.agent.max_iterations, 32);
@@ -162,7 +162,7 @@ TEST_F(ConfigTest, PartialAgentConfig) {
 // --- Gateway config ---
 
 TEST_F(ConfigTest, GatewayConfigDefaults) {
-    quantclaw::GatewayConfig gw;
+    ravbot::GatewayConfig gw;
     EXPECT_EQ(gw.port, 18800);
     EXPECT_EQ(gw.bind, "loopback");
     EXPECT_EQ(gw.auth.mode, "token");
@@ -177,7 +177,7 @@ TEST_F(ConfigTest, GatewayConfigFromJson) {
         {"controlUi", {{"enabled", false}}}
     };
 
-    auto gw = quantclaw::GatewayConfig::FromJson(j);
+    auto gw = ravbot::GatewayConfig::FromJson(j);
     EXPECT_EQ(gw.port, 9999);
     EXPECT_EQ(gw.bind, "0.0.0.0");
     EXPECT_EQ(gw.auth.mode, "none");
@@ -187,7 +187,7 @@ TEST_F(ConfigTest, GatewayConfigFromJson) {
 // --- File loading ---
 
 TEST_F(ConfigTest, LoadFromFile) {
-    auto config_path = test_dir_ / "quantclaw.json";
+    auto config_path = test_dir_ / "ravbot.json";
     std::ofstream f(config_path);
     f << R"({
         "agent": {"model": "test-model"},
@@ -195,14 +195,14 @@ TEST_F(ConfigTest, LoadFromFile) {
     })";
     f.close();
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path.string());
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path.string());
     EXPECT_EQ(config.agent.model, "test-model");
     EXPECT_EQ(config.gateway.port, 12345);
 }
 
 TEST_F(ConfigTest, LoadFromMissingFile) {
     EXPECT_THROW(
-        quantclaw::QuantClawConfig::LoadFromFile("/nonexistent/config.json"),
+        ravbot::RavBotConfig::LoadFromFile("/nonexistent/config.json"),
         std::runtime_error
     );
 }
@@ -211,15 +211,15 @@ TEST_F(ConfigTest, LoadFromMissingFile) {
 
 TEST_F(ConfigTest, ExpandHome) {
     std::string path = "~/test/path";
-    std::string expanded = quantclaw::QuantClawConfig::ExpandHome(path);
+    std::string expanded = ravbot::RavBotConfig::ExpandHome(path);
 
     EXPECT_NE(expanded.substr(0, 2), "~/");
     EXPECT_TRUE(expanded.find("/test/path") != std::string::npos);
 }
 
 TEST_F(ConfigTest, DefaultConfigPath) {
-    std::string path = quantclaw::QuantClawConfig::DefaultConfigPath();
-    EXPECT_TRUE(path.find(".quantclaw/quantclaw.json") != std::string::npos);
+    std::string path = ravbot::RavBotConfig::DefaultConfigPath();
+    EXPECT_TRUE(path.find(".ravbot/ravbot.json") != std::string::npos);
 }
 
 // --- Auth token parsing ---
@@ -230,7 +230,7 @@ TEST_F(ConfigTest, GatewayAuthTokenFromJson) {
         {"token", "secret-auth-token-123"}
     };
 
-    auto auth = quantclaw::GatewayAuthConfig::FromJson(j);
+    auto auth = ravbot::GatewayAuthConfig::FromJson(j);
     EXPECT_EQ(auth.mode, "token");
     EXPECT_EQ(auth.token, "secret-auth-token-123");
 }
@@ -238,7 +238,7 @@ TEST_F(ConfigTest, GatewayAuthTokenFromJson) {
 TEST_F(ConfigTest, GatewayAuthTokenDefaultsEmpty) {
     nlohmann::json j = {{"mode", "token"}};
 
-    auto auth = quantclaw::GatewayAuthConfig::FromJson(j);
+    auto auth = ravbot::GatewayAuthConfig::FromJson(j);
     EXPECT_EQ(auth.mode, "token");
     EXPECT_TRUE(auth.token.empty());
 }
@@ -246,7 +246,7 @@ TEST_F(ConfigTest, GatewayAuthTokenDefaultsEmpty) {
 TEST_F(ConfigTest, GatewayAuthNoneMode) {
     nlohmann::json j = {{"mode", "none"}};
 
-    auto auth = quantclaw::GatewayAuthConfig::FromJson(j);
+    auto auth = ravbot::GatewayAuthConfig::FromJson(j);
     EXPECT_EQ(auth.mode, "none");
 }
 
@@ -258,7 +258,7 @@ TEST_F(ConfigTest, FullConfigWithAuthToken) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
     EXPECT_EQ(config.gateway.auth.mode, "token");
     EXPECT_EQ(config.gateway.auth.token, "my-secret");
 }
@@ -272,7 +272,7 @@ TEST_F(ConfigTest, MCPConfigParsing) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
     ASSERT_EQ(config.mcp.servers.size(), 1u);
     EXPECT_EQ(config.mcp.servers[0].name, "test-server");
     EXPECT_EQ(config.mcp.servers[0].url, "http://localhost:3000");
@@ -292,7 +292,7 @@ TEST_F(ConfigTest, SkillsConfigParsing) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
 
     ASSERT_EQ(config.skills.load.extra_dirs.size(), 2u);
     EXPECT_EQ(config.skills.load.extra_dirs[0], "/path/to/skills");
@@ -306,7 +306,7 @@ TEST_F(ConfigTest, SkillsConfigParsing) {
 }
 
 TEST_F(ConfigTest, SkillsConfigDefaults) {
-    auto config = quantclaw::QuantClawConfig::FromJson({});
+    auto config = ravbot::RavBotConfig::FromJson({});
 
     EXPECT_TRUE(config.skills.load.extra_dirs.empty());
     EXPECT_TRUE(config.skills.entries.empty());
@@ -337,24 +337,24 @@ TEST_F(ConfigTest, ConfigFileWatcher_DetectsChange) {
     EXPECT_NE(mtime1, mtime2);
 
     // Verify the updated content loads correctly
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path.string());
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path.string());
     EXPECT_EQ(config.agent.model, "updated-model");
 }
 
 // --- Config reload propagates to AgentLoop ---
 
 // Minimal mock for this test
-class ConfigReloadMockLLM : public quantclaw::LLMProvider {
+class ConfigReloadMockLLM : public ravbot::LLMProvider {
 public:
-    quantclaw::ChatCompletionResponse ChatCompletion(const quantclaw::ChatCompletionRequest&) override {
-        quantclaw::ChatCompletionResponse resp;
+    ravbot::ChatCompletionResponse ChatCompletion(const ravbot::ChatCompletionRequest&) override {
+        ravbot::ChatCompletionResponse resp;
         resp.content = "mock";
         resp.finish_reason = "stop";
         return resp;
     }
-    void ChatCompletionStream(const quantclaw::ChatCompletionRequest&,
-                                std::function<void(const quantclaw::ChatCompletionResponse&)> cb) override {
-        quantclaw::ChatCompletionResponse end;
+    void ChatCompletionStream(const ravbot::ChatCompletionRequest&,
+                                std::function<void(const ravbot::ChatCompletionResponse&)> cb) override {
+        ravbot::ChatCompletionResponse end;
         end.content = "mock";
         end.is_stream_end = true;
         cb(end);
@@ -370,24 +370,24 @@ TEST_F(ConfigTest, ConfigReload_PropagatesChanges) {
     auto workspace_dir = test_dir_ / "workspace";
     std::filesystem::create_directories(workspace_dir);
 
-    auto memory_manager = std::make_shared<quantclaw::MemoryManager>(workspace_dir, logger);
-    auto skill_loader = std::make_shared<quantclaw::SkillLoader>(logger);
-    auto tool_registry = std::make_shared<quantclaw::ToolRegistry>(logger);
+    auto memory_manager = std::make_shared<ravbot::MemoryManager>(workspace_dir, logger);
+    auto skill_loader = std::make_shared<ravbot::SkillLoader>(logger);
+    auto tool_registry = std::make_shared<ravbot::ToolRegistry>(logger);
     auto mock_llm = std::make_shared<ConfigReloadMockLLM>();
 
-    quantclaw::AgentConfig initial_config;
+    ravbot::AgentConfig initial_config;
     initial_config.model = "initial-model";
     initial_config.max_iterations = 5;
     initial_config.temperature = 0.5;
 
-    auto agent_loop = std::make_shared<quantclaw::AgentLoop>(
+    auto agent_loop = std::make_shared<ravbot::AgentLoop>(
         memory_manager, skill_loader, tool_registry, mock_llm, initial_config, logger);
 
     EXPECT_EQ(agent_loop->GetConfig().model, "initial-model");
     EXPECT_EQ(agent_loop->GetConfig().max_iterations, 5);
 
     // Simulate reload: set new config
-    quantclaw::AgentConfig new_config;
+    ravbot::AgentConfig new_config;
     new_config.model = "reloaded-model";
     new_config.max_iterations = 20;
     new_config.temperature = 0.9;
@@ -410,9 +410,9 @@ TEST_F(ConfigTest, SetValue_CreatesNewKey) {
         f << "{}";
     }
 
-    quantclaw::QuantClawConfig::SetValue(config_path, "agent.model", "gpt-4o");
+    ravbot::RavBotConfig::SetValue(config_path, "agent.model", "gpt-4o");
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.agent.model, "gpt-4o");
 }
 
@@ -424,9 +424,9 @@ TEST_F(ConfigTest, SetValue_OverwritesExisting) {
         f << R"({"agent": {"model": "old-model", "temperature": 0.5}})";
     }
 
-    quantclaw::QuantClawConfig::SetValue(config_path, "agent.model", "new-model");
+    ravbot::RavBotConfig::SetValue(config_path, "agent.model", "new-model");
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.agent.model, "new-model");
     EXPECT_DOUBLE_EQ(config.agent.temperature, 0.5);  // Other fields preserved
 }
@@ -439,9 +439,9 @@ TEST_F(ConfigTest, SetValue_CreatesIntermediateObjects) {
         f << "{}";
     }
 
-    quantclaw::QuantClawConfig::SetValue(config_path, "gateway.auth.token", "my-secret");
+    ravbot::RavBotConfig::SetValue(config_path, "gateway.auth.token", "my-secret");
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.gateway.auth.token, "my-secret");
 }
 
@@ -454,10 +454,10 @@ TEST_F(ConfigTest, SetValue_CreatesBackup) {
         f << R"({"agent": {"model": "original"}})";
     }
 
-    quantclaw::QuantClawConfig::SetValue(config_path, "agent.model", "changed");
+    ravbot::RavBotConfig::SetValue(config_path, "agent.model", "changed");
 
     EXPECT_TRUE(std::filesystem::exists(backup_path));
-    auto backup = quantclaw::QuantClawConfig::LoadFromFile(backup_path);
+    auto backup = ravbot::RavBotConfig::LoadFromFile(backup_path);
     EXPECT_EQ(backup.agent.model, "original");
 }
 
@@ -469,9 +469,9 @@ TEST_F(ConfigTest, SetValue_NumericValue) {
         f << "{}";
     }
 
-    quantclaw::QuantClawConfig::SetValue(config_path, "gateway.port", 9999);
+    ravbot::RavBotConfig::SetValue(config_path, "gateway.port", 9999);
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.gateway.port, 9999);
 }
 
@@ -483,7 +483,7 @@ TEST_F(ConfigTest, UnsetValue_RemovesKey) {
         f << R"({"agent": {"model": "gpt-4", "temperature": 0.5}})";
     }
 
-    quantclaw::QuantClawConfig::UnsetValue(config_path, "agent.temperature");
+    ravbot::RavBotConfig::UnsetValue(config_path, "agent.temperature");
 
     // Re-read raw JSON to verify the key is gone
     std::ifstream file(config_path);
@@ -503,10 +503,10 @@ TEST_F(ConfigTest, UnsetValue_NonexistentPathIsNoop) {
 
     // Should not throw
     EXPECT_NO_THROW(
-        quantclaw::QuantClawConfig::UnsetValue(config_path, "nonexistent.deep.path")
+        ravbot::RavBotConfig::UnsetValue(config_path, "nonexistent.deep.path")
     );
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.agent.model, "gpt-4");
 }
 
@@ -516,10 +516,10 @@ TEST_F(ConfigTest, SetValue_OnNonexistentFile) {
     // File doesn't exist yet
     EXPECT_FALSE(std::filesystem::exists(config_path));
 
-    quantclaw::QuantClawConfig::SetValue(config_path, "agent.model", "gpt-4o");
+    ravbot::RavBotConfig::SetValue(config_path, "agent.model", "gpt-4o");
 
     EXPECT_TRUE(std::filesystem::exists(config_path));
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.agent.model, "gpt-4o");
 }
 
@@ -537,7 +537,7 @@ TEST_F(ConfigTest, EnvVarSubstitutionInApiKey) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
     EXPECT_EQ(config.providers.at("openai").api_key, "sk-from-env-42");
 
     unsetenv("QC_TEST_API_KEY");
@@ -554,7 +554,7 @@ TEST_F(ConfigTest, EnvVarSubstitutionMissing) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
     // Missing env var → empty string
     EXPECT_EQ(config.providers.at("openai").api_key, "");
 }
@@ -571,7 +571,7 @@ TEST_F(ConfigTest, EnvVarSubstitutionMultiple) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
     EXPECT_EQ(config.providers.at("openai").base_url, "https://api.example.com/v2");
 
     unsetenv("QC_TEST_HOST");
@@ -587,7 +587,7 @@ TEST_F(ConfigTest, EnvVarSubstitutionInNestedArrays) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
     ASSERT_EQ(config.tools_permission.allow.size(), 2u);
     EXPECT_EQ(config.tools_permission.allow[1], "admin.read");
 
@@ -608,7 +608,7 @@ TEST_F(ConfigTest, Json5LineComments) {
 })";
     f.close();
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.agent.model, "gpt-4o");
     EXPECT_EQ(config.agent.max_iterations, 10);
 }
@@ -625,7 +625,7 @@ TEST_F(ConfigTest, Json5BlockComments) {
 })";
     f.close();
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.agent.model, "claude-3");
 }
 
@@ -645,7 +645,7 @@ TEST_F(ConfigTest, Json5TrailingCommas) {
 })";
     f.close();
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.agent.model, "gpt-4o");
     EXPECT_EQ(config.providers.at("openai").api_key, "sk-test");
 }
@@ -669,7 +669,7 @@ TEST_F(ConfigTest, Json5CommentsAndTrailingCommasCombined) {
 })";
     f.close();
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.agent.model, "gpt-4o");
     EXPECT_EQ(config.agent.max_iterations, 10);
     EXPECT_EQ(config.providers.at("openai").api_key, "sk-test");
@@ -687,7 +687,7 @@ TEST_F(ConfigTest, Json5UrlsInStringsNotStripped) {
 })";
     f.close();
 
-    auto config = quantclaw::QuantClawConfig::LoadFromFile(config_path);
+    auto config = ravbot::RavBotConfig::LoadFromFile(config_path);
     EXPECT_EQ(config.providers.at("openai").base_url, "https://api.openai.com/v1");
 }
 
@@ -698,7 +698,7 @@ TEST_F(ConfigTest, ModelCostFromJson) {
         {"input", 0.02}, {"output", 0.06},
         {"cacheRead", 0.001}, {"cacheWrite", 0.002}
     };
-    auto cost = quantclaw::ModelCost::FromJson(j);
+    auto cost = ravbot::ModelCost::FromJson(j);
     EXPECT_DOUBLE_EQ(cost.input, 0.02);
     EXPECT_DOUBLE_EQ(cost.output, 0.06);
     EXPECT_DOUBLE_EQ(cost.cache_read, 0.001);
@@ -706,7 +706,7 @@ TEST_F(ConfigTest, ModelCostFromJson) {
 }
 
 TEST_F(ConfigTest, ModelCostDefaults) {
-    auto cost = quantclaw::ModelCost::FromJson(nlohmann::json::object());
+    auto cost = ravbot::ModelCost::FromJson(nlohmann::json::object());
     EXPECT_DOUBLE_EQ(cost.input, 0.0);
     EXPECT_DOUBLE_EQ(cost.output, 0.0);
     EXPECT_DOUBLE_EQ(cost.cache_read, 0.0);
@@ -720,7 +720,7 @@ TEST_F(ConfigTest, ModelDefinitionFromJson) {
         {"cost", {{"input", 0.02}, {"output", 0.06}}},
         {"contextWindow", 128000}, {"maxTokens", 8192}
     };
-    auto m = quantclaw::ModelDefinition::FromJson(j);
+    auto m = ravbot::ModelDefinition::FromJson(j);
     EXPECT_EQ(m.id, "qwen3-max");
     EXPECT_EQ(m.name, "Qwen3 Max");
     EXPECT_FALSE(m.reasoning);
@@ -737,7 +737,7 @@ TEST_F(ConfigTest, ModelDefinitionWithImageInput) {
         {"id", "qwen-vl"}, {"name", "Qwen VL"},
         {"input", {"text", "image"}}, {"reasoning", true}
     };
-    auto m = quantclaw::ModelDefinition::FromJson(j);
+    auto m = ravbot::ModelDefinition::FromJson(j);
     ASSERT_EQ(m.input.size(), 2u);
     EXPECT_EQ(m.input[1], "image");
     EXPECT_TRUE(m.reasoning);
@@ -748,7 +748,7 @@ TEST_F(ConfigTest, ModelEntryConfigFromJson) {
         {"alias", "max"},
         {"params", {{"temperature", 0.5}}}
     };
-    auto e = quantclaw::ModelEntryConfig::FromJson(j);
+    auto e = ravbot::ModelEntryConfig::FromJson(j);
     EXPECT_EQ(e.alias, "max");
     EXPECT_TRUE(e.params.contains("temperature"));
 }
@@ -763,7 +763,7 @@ TEST_F(ConfigTest, ProviderConfigWithModels) {
             {{"id", "model-b"}, {"name", "Model B"}, {"reasoning", true}}
         }}
     };
-    auto p = quantclaw::ProviderConfig::FromJson(j);
+    auto p = ravbot::ProviderConfig::FromJson(j);
     EXPECT_EQ(p.api_key, "test-key");
     EXPECT_EQ(p.api, "openai-completions");
     ASSERT_EQ(p.models.size(), 2u);
@@ -792,7 +792,7 @@ TEST_F(ConfigTest, ModelsProvidersSection) {
         }},
         {"gateway", {{"port", 18850}, {"auth", {{"mode", "none"}}}}}
     };
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
 
     ASSERT_EQ(config.model_providers.count("qwen"), 1u);
     auto& qwen = config.model_providers.at("qwen");
@@ -817,7 +817,7 @@ TEST_F(ConfigTest, AgentsDefaultsModelsAliases) {
             }}
         }}
     };
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
 
     ASSERT_EQ(config.model_entries.size(), 2u);
     EXPECT_EQ(config.model_entries.at("qwen/qwen3-max").alias, "max");
@@ -837,7 +837,7 @@ TEST_F(ConfigTest, AgentsDefaultsModelObjectForm) {
             }}
         }}
     };
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
 
     EXPECT_EQ(config.agent.model, "qwen/qwen3-max");
     ASSERT_EQ(config.agent.fallbacks.size(), 2u);
@@ -875,7 +875,7 @@ TEST_F(ConfigTest, FullOpenClawMultiModelConfig) {
         {"gateway", {{"port", 18850}, {"auth", {{"mode", "none"}}}}}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
 
     // Model providers
     ASSERT_EQ(config.model_providers.count("qwen"), 1u);
@@ -901,18 +901,18 @@ TEST_F(ConfigTest, ModelCatalogFromProviderRegistry) {
     auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
     auto logger = std::make_shared<spdlog::logger>("catalog_test", null_sink);
 
-    quantclaw::ProviderRegistry registry(logger);
+    ravbot::ProviderRegistry registry(logger);
     registry.RegisterBuiltinFactories();
 
-    std::unordered_map<std::string, quantclaw::ProviderConfig> model_providers;
-    quantclaw::ProviderConfig prov;
+    std::unordered_map<std::string, ravbot::ProviderConfig> model_providers;
+    ravbot::ProviderConfig prov;
     prov.api_key = "test";
     prov.base_url = "https://example.com/v1";
     prov.api = "openai-completions";
-    prov.models.push_back(quantclaw::ModelDefinition::FromJson({
+    prov.models.push_back(ravbot::ModelDefinition::FromJson({
         {"id", "model-a"}, {"name", "Model A"}, {"contextWindow", 128000}, {"reasoning", true}
     }));
-    prov.models.push_back(quantclaw::ModelDefinition::FromJson({
+    prov.models.push_back(ravbot::ModelDefinition::FromJson({
         {"id", "model-b"}, {"name", "Model B"}, {"contextWindow", 32000}
     }));
     model_providers["test-provider"] = prov;
@@ -929,7 +929,7 @@ TEST_F(ConfigTest, ModelCatalogFromProviderRegistry) {
 }
 
 TEST_F(ConfigTest, ModelCatalogEntryToJson) {
-    quantclaw::ProviderRegistry::ModelCatalogEntry ce;
+    ravbot::ProviderRegistry::ModelCatalogEntry ce;
     ce.id = "test-model";
     ce.name = "Test Model";
     ce.provider = "test";
@@ -955,21 +955,21 @@ TEST_F(ConfigTest, LoadModelProvidersMergesWithExisting) {
     auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
     auto logger = std::make_shared<spdlog::logger>("merge_test", null_sink);
 
-    quantclaw::ProviderRegistry registry(logger);
+    ravbot::ProviderRegistry registry(logger);
     registry.RegisterBuiltinFactories();
 
     // Add an existing provider entry
-    quantclaw::ProviderEntry existing;
+    ravbot::ProviderEntry existing;
     existing.id = "qwen";
     existing.api_key = "existing-key";
     existing.base_url = "https://existing.com/v1";
     registry.AddProvider(existing);
 
     // Load model providers that overlap
-    std::unordered_map<std::string, quantclaw::ProviderConfig> model_providers;
-    quantclaw::ProviderConfig prov;
+    std::unordered_map<std::string, ravbot::ProviderConfig> model_providers;
+    ravbot::ProviderConfig prov;
     prov.api = "openai-completions";
-    prov.models.push_back(quantclaw::ModelDefinition::FromJson({
+    prov.models.push_back(ravbot::ModelDefinition::FromJson({
         {"id", "qwen3-max"}, {"name", "Qwen3 Max"}
     }));
     model_providers["qwen"] = prov;
@@ -994,7 +994,7 @@ TEST_F(ConfigTest, EnvVarNoSubstitutionWithoutDollarBrace) {
         }}
     };
 
-    auto config = quantclaw::QuantClawConfig::FromJson(json_config);
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
     EXPECT_EQ(config.providers.at("openai").api_key, "literal-string-no-vars");
 }
 
@@ -1015,14 +1015,14 @@ TEST_F(ConfigTest, Validate_ValidConfig) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     EXPECT_TRUE(errors.empty());
 }
 
 TEST_F(ConfigTest, Validate_InvalidRootType) {
     nlohmann::json json_config = nlohmann::json::array();
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "Root configuration must be a JSON object");
 }
@@ -1032,7 +1032,7 @@ TEST_F(ConfigTest, Validate_InvalidAgentType) {
         {"agent", "not-an-object"}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "agent: must be an object");
 }
@@ -1044,7 +1044,7 @@ TEST_F(ConfigTest, Validate_InvalidModelType) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "agent.model: must be a string or object");
 }
@@ -1056,7 +1056,7 @@ TEST_F(ConfigTest, Validate_InvalidMaxIterationsType) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "agent.maxIterations: must be an integer");
 }
@@ -1068,7 +1068,7 @@ TEST_F(ConfigTest, Validate_InvalidTemperatureType) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "agent.temperature: must be a number");
 }
@@ -1080,7 +1080,7 @@ TEST_F(ConfigTest, Validate_InvalidThinkingValue) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "agent.thinking: must be one of 'off', 'low', 'medium', 'high'");
 }
@@ -1092,7 +1092,7 @@ TEST_F(ConfigTest, Validate_InvalidFallbacksType) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "agent.fallbacks: must be an array");
 }
@@ -1102,7 +1102,7 @@ TEST_F(ConfigTest, Validate_InvalidProvidersType) {
         {"providers", "not-an-object"}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "providers: must be an object");
 }
@@ -1114,7 +1114,7 @@ TEST_F(ConfigTest, Validate_InvalidProviderEntryType) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "providers.openai: must be an object");
 }
@@ -1128,7 +1128,7 @@ TEST_F(ConfigTest, Validate_InvalidApiKeyType) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "providers.openai.apiKey: must be a string");
 }
@@ -1140,7 +1140,7 @@ TEST_F(ConfigTest, Validate_InvalidGatewayPortType) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "gateway.port: must be an integer");
 }
@@ -1154,7 +1154,7 @@ TEST_F(ConfigTest, Validate_InvalidChannelEnabledType) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "channels.telegram.enabled: must be a boolean");
 }
@@ -1166,7 +1166,7 @@ TEST_F(ConfigTest, Validate_InvalidLogLevel) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "system.logLevel: must be one of 'trace', 'debug', 'info', 'warn', 'error', 'critical', 'off'");
 }
@@ -1178,7 +1178,7 @@ TEST_F(ConfigTest, Validate_InvalidPermissionLevel) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "security.permissionLevel: must be one of 'auto', 'strict', 'permissive'");
 }
@@ -1195,7 +1195,7 @@ TEST_F(ConfigTest, Validate_MultipleErrors) {
         }}
     };
 
-    auto errors = quantclaw::QuantClawConfig::Validate(json_config);
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
     EXPECT_EQ(errors.size(), 4u);
 }
 
@@ -1215,7 +1215,7 @@ TEST_F(ConfigTest, Merge_SimpleOverride) {
         }}
     };
 
-    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    auto merged = ravbot::RavBotConfig::Merge(base, override);
     EXPECT_EQ(merged["agent"]["model"], "gpt-4");
     EXPECT_DOUBLE_EQ(merged["agent"]["temperature"].get<double>(), 0.5);
 }
@@ -1239,7 +1239,7 @@ TEST_F(ConfigTest, Merge_NestedOverride) {
         }}
     };
 
-    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    auto merged = ravbot::RavBotConfig::Merge(base, override);
     EXPECT_EQ(merged["gateway"]["port"], 18800);
     EXPECT_EQ(merged["gateway"]["auth"]["mode"], "token");
     EXPECT_EQ(merged["gateway"]["auth"]["token"], "new-token");
@@ -1261,7 +1261,7 @@ TEST_F(ConfigTest, Merge_AddNewKeys) {
         }}
     };
 
-    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    auto merged = ravbot::RavBotConfig::Merge(base, override);
     EXPECT_EQ(merged["agent"]["model"], "gpt-4");
     EXPECT_DOUBLE_EQ(merged["agent"]["temperature"].get<double>(), 0.9);
     EXPECT_EQ(merged["gateway"]["port"], 9999);
@@ -1275,7 +1275,7 @@ TEST_F(ConfigTest, Merge_EmptyBase) {
         }}
     };
 
-    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    auto merged = ravbot::RavBotConfig::Merge(base, override);
     EXPECT_EQ(merged["agent"]["model"], "gpt-4");
 }
 
@@ -1287,7 +1287,7 @@ TEST_F(ConfigTest, Merge_EmptyOverride) {
     };
     nlohmann::json override = nlohmann::json::object();
 
-    auto merged = quantclaw::QuantClawConfig::Merge(base, override);
+    auto merged = ravbot::RavBotConfig::Merge(base, override);
     EXPECT_EQ(merged["agent"]["model"], "gpt-4");
 }
 
@@ -1301,7 +1301,7 @@ TEST_F(ConfigTest, PrettyPrint_DefaultIndent) {
         }}
     };
 
-    std::string pretty = quantclaw::QuantClawConfig::PrettyPrint(json_config);
+    std::string pretty = ravbot::RavBotConfig::PrettyPrint(json_config);
 
     // 验证包含换行和缩进
     EXPECT_TRUE(pretty.find('\n') != std::string::npos);
@@ -1317,7 +1317,7 @@ TEST_F(ConfigTest, PrettyPrint_CustomIndent) {
         }}
     };
 
-    std::string pretty = quantclaw::QuantClawConfig::PrettyPrint(json_config, 4);
+    std::string pretty = ravbot::RavBotConfig::PrettyPrint(json_config, 4);
 
     // 验证使用 4 空格缩进
     EXPECT_TRUE(pretty.find("    ") != std::string::npos);
@@ -1326,7 +1326,7 @@ TEST_F(ConfigTest, PrettyPrint_CustomIndent) {
 TEST_F(ConfigTest, PrettyPrint_EmptyObject) {
     nlohmann::json json_config = nlohmann::json::object();
 
-    std::string pretty = quantclaw::QuantClawConfig::PrettyPrint(json_config);
+    std::string pretty = ravbot::RavBotConfig::PrettyPrint(json_config);
     EXPECT_EQ(pretty, "{}");
 }
 

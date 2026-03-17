@@ -1,3 +1,3 @@
-assets/skills/* usr/share/quantclaw/skills/
-sidecar/* usr/share/quantclaw/sidecar/
-debian/quantclaw.service usr/lib/systemd/system/
+assets/skills/* usr/share/ravbot/skills/
+sidecar/* usr/share/ravbot/sidecar/
+debian/ravbot.service usr/lib/systemd/system/

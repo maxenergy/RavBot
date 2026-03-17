@@ -1,14 +1,14 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/security/audit_logger.hpp"
+#include "ravbot/security/audit_logger.hpp"
 #include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <filesystem>
 #include <random>
 
-namespace quantclaw {
+namespace ravbot {
 
 // AuditEntry 序列化
 nlohmann::json AuditEntry::ToJson() const {
@@ -72,9 +72,9 @@ SecurityAuditLogger::SecurityAuditLogger(
   // 默认日志目录
   const char* home = std::getenv("HOME");
   if (home) {
-    log_directory_ = std::string(home) + "/.quantclaw/logs/audit";
+    log_directory_ = std::string(home) + "/.ravbot/logs/audit";
   } else {
-    log_directory_ = "/tmp/quantclaw/logs/audit";
+    log_directory_ = "/tmp/ravbot/logs/audit";
   }
 
   // 确保目录存在
@@ -434,4 +434,4 @@ AuditEventType StringToAuditEventType(const std::string& str) {
   }
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

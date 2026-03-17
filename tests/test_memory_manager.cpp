@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>
 #include <memory>
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/core/memory_search.hpp"
+#include "ravbot/core/memory_manager.hpp"
+#include "ravbot/core/memory_search.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 #include "test_helpers.hpp"
@@ -14,12 +14,12 @@
 class MemoryManagerTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_memory_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_memory_test");
 
         auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
         logger_ = std::make_shared<spdlog::logger>("test", null_sink);
 
-        memory_manager_ = std::make_unique<quantclaw::MemoryManager>(test_dir_, logger_);
+        memory_manager_ = std::make_unique<ravbot::MemoryManager>(test_dir_, logger_);
     }
 
     void TearDown() override {
@@ -30,7 +30,7 @@ protected:
 
     std::filesystem::path test_dir_;
     std::shared_ptr<spdlog::logger> logger_;
-    std::unique_ptr<quantclaw::MemoryManager> memory_manager_;
+    std::unique_ptr<ravbot::MemoryManager> memory_manager_;
 };
 
 TEST_F(MemoryManagerTest, ReadIdentityFile) {
@@ -176,10 +176,10 @@ TEST_F(MemoryManagerTest, FileWatcherDoubleStartIgnored) {
 class MemorySearchExtendedTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    test_dir_ = quantclaw::test::MakeTestDir("quantclaw_memsearch_test");
+    test_dir_ = ravbot::test::MakeTestDir("ravbot_memsearch_test");
     auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
     auto logger = std::make_shared<spdlog::logger>("memsearch_test", null_sink);
-    search_ = std::make_unique<quantclaw::MemorySearch>(logger);
+    search_ = std::make_unique<ravbot::MemorySearch>(logger);
   }
 
   void TearDown() override {
@@ -195,7 +195,7 @@ class MemorySearchExtendedTest : public ::testing::Test {
     ofs << content;
   }
 
-  std::unique_ptr<quantclaw::MemorySearch> search_;
+  std::unique_ptr<ravbot::MemorySearch> search_;
   std::filesystem::path test_dir_;
 };
 

@@ -1,11 +1,11 @@
-# QuantClaw v0.3.0 发布说明
+# RavBot v0.3.0 发布说明
 
 发布日期：2026-03-11
 构建版本：eae3b0e
 
 ## 🎉 重大里程碑
 
-QuantClaw 已成功实现与 OpenClaw 3.9 的 **92%** 功能对齐，所有核心功能 **100%** 完整实现！
+RavBot 已成功实现与 OpenClaw 3.9 的 **92%** 功能对齐，所有核心功能 **100%** 完整实现！
 
 ## ✨ 新增功能
 
@@ -142,7 +142,7 @@ QuantClaw 已成功实现与 OpenClaw 3.9 的 **92%** 功能对齐，所有核�
 
 ## 🎯 生产就绪
 
-QuantClaw v0.3.0 已达到 **生产就绪** 状态：
+RavBot v0.3.0 已达到 **生产就绪** 状态：
 
 - ✅ 所有核心功能完整
 - ✅ 100% 测试通过
@@ -180,17 +180,17 @@ QuantClaw v0.3.0 已达到 **生产就绪** 状态：
 
 ## 🙏 致谢
 
-感谢所有为 QuantClaw 项目做出贡献的开发者！
+感谢所有为 RavBot 项目做出贡献的开发者！
 
 ## 📞 联系方式
 
-- **项目主页**: https://github.com/QuantClaw/QuantClaw
-- **问题反馈**: https://github.com/QuantClaw/QuantClaw/issues
-- **文档**: https://quantclaw.dev/docs
+- **项目主页**: https://github.com/RavBot/RavBot
+- **问题反馈**: https://github.com/RavBot/RavBot/issues
+- **文档**: https://ravbot.dev/docs
 
 ---
 
-**版本**: QuantClaw v0.3.0
+**版本**: RavBot v0.3.0
 **构建**: eae3b0e
 **日期**: 2026-03-11
 **状态**: 生产就绪 ✅

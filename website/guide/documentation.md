@@ -1,6 +1,6 @@
 # Full Documentation
 
-Complete reference for QuantClaw features and APIs.
+Complete reference for RavBot features and APIs.
 
 ## Table of Contents
 
@@ -15,21 +15,21 @@ Complete reference for QuantClaw features and APIs.
 
 ## Quick Start
 
-Get QuantClaw running in 5 minutes:
+Get RavBot running in 5 minutes:
 
 ```bash
 # 1. Install
-git clone https://github.com/QuantClaw/quantclaw.git
-cd quantclaw
+git clone https://github.com/RavBot/ravbot.git
+cd ravbot
 mkdir build && cd build
 cmake ..
 cmake --build . -j$(nproc)
 
 # 2. Configure
-quantclaw onboard --quick
+ravbot onboard --quick
 
 # 3. Run
-quantclaw agent --id=main
+ravbot agent --id=main
 ```
 
 Then open the web interface at `http://localhost:8000`.
@@ -61,46 +61,46 @@ See the [CLI Reference](/guide/cli-reference) for complete command documentation
 
 ```bash
 # Agent operations
-quantclaw agent --id=main              # Start agent
-quantclaw agent --id=main --port 9000  # Custom port
+ravbot agent --id=main              # Start agent
+ravbot agent --id=main --port 9000  # Custom port
 
 # Run commands
-quantclaw run "What is 2+2?"          # Execute command
-quantclaw eval "What is 2+2?" --no-session  # Eval without session
+ravbot run "What is 2+2?"          # Execute command
+ravbot eval "What is 2+2?" --no-session  # Eval without session
 
 # Session management
-quantclaw sessions list                # List sessions
-quantclaw sessions history SESS-ID     # View session history
-quantclaw sessions compact SESS-ID     # Compact session
+ravbot sessions list                # List sessions
+ravbot sessions history SESS-ID     # View session history
+ravbot sessions compact SESS-ID     # Compact session
 
 # Configuration
-quantclaw config get                   # View config
-quantclaw config validate              # Validate config
-quantclaw config schema                # Show schema
+ravbot config get                   # View config
+ravbot config validate              # Validate config
+ravbot config schema                # Show schema
 
 # Gateway
-quantclaw gateway run                  # Start gateway
-quantclaw gateway status               # Check gateway status
+ravbot gateway run                  # Start gateway
+ravbot gateway status               # Check gateway status
 
 # File operations
-quantclaw file list                    # List workspace files
-quantclaw file read WORKSPACE/FILE     # Read file
-quantclaw file write WORKSPACE/FILE    # Write file
+ravbot file list                    # List workspace files
+ravbot file read WORKSPACE/FILE     # Read file
+ravbot file write WORKSPACE/FILE    # Write file
 
 # Skills
-quantclaw skill create my-skill        # Create new skill
-quantclaw skill install ./my-skill     # Install plugin
-quantclaw skill status                 # List installed skills
+ravbot skill create my-skill        # Create new skill
+ravbot skill install ./my-skill     # Install plugin
+ravbot skill status                 # List installed skills
 
 # Status and monitoring
-quantclaw status                       # Overall status
-quantclaw logs tail                    # View logs
-quantclaw usage cost                   # Token usage
+ravbot status                       # Overall status
+ravbot logs tail                    # View logs
+ravbot usage cost                   # Token usage
 ```
 
 ## API Reference
 
-QuantClaw exposes a JSON-RPC API via the gateway.
+RavBot exposes a JSON-RPC API via the gateway.
 
 ### Gateway Endpoints
 
@@ -241,9 +241,9 @@ See the [Plugin Development Guide](/guide/plugins) for:
 ### Quick Example
 
 ```typescript
-import type { QuantClawPlugin, SkillContext } from '@quantclaw/sdk'
+import type { RavBotPlugin, SkillContext } from '@ravbot/sdk'
 
-export default class MyPlugin implements QuantClawPlugin {
+export default class MyPlugin implements RavBotPlugin {
   async initialize(context: SkillContext) {
     console.log('Plugin initialized')
   }
@@ -284,7 +284,7 @@ See the [Architecture Guide](/guide/architecture) for:
 ### Bash Execution
 
 ```bash
-quantclaw tool bash "ls -la /home"
+ravbot tool bash "ls -la /home"
 ```
 
 **Schema**:
@@ -304,7 +304,7 @@ quantclaw tool bash "ls -la /home"
 ### Browser Control
 
 ```bash
-quantclaw tool browser.launch "https://example.com"
+ravbot tool browser.launch "https://example.com"
 ```
 
 **Schema**:
@@ -326,7 +326,7 @@ quantclaw tool browser.launch "https://example.com"
 ### Web Search
 
 ```bash
-quantclaw tool web_search "latest AI news"
+ravbot tool web_search "latest AI news"
 ```
 
 Supports multiple providers:
@@ -338,7 +338,7 @@ Supports multiple providers:
 ### Web Fetch
 
 ```bash
-quantclaw tool web_fetch "https://example.com"
+ravbot tool web_fetch "https://example.com"
 ```
 
 Features:
@@ -350,7 +350,7 @@ Features:
 ### Memory Search
 
 ```bash
-quantclaw tool memory_search "user preferences"
+ravbot tool memory_search "user preferences"
 ```
 
 Uses BM25 scoring for relevance.
@@ -358,7 +358,7 @@ Uses BM25 scoring for relevance.
 ### Memory Get
 
 ```bash
-quantclaw tool memory_get "WORKSPACE/MEMORY.md"
+ravbot tool memory_get "WORKSPACE/MEMORY.md"
 ```
 
 Direct file access from workspace.
@@ -379,25 +379,25 @@ cmake --build .
 **Configuration errors**
 ```bash
 # Validate configuration
-quantclaw config validate
+ravbot config validate
 
 # Reset to defaults
-quantclaw onboard --reset
+ravbot onboard --reset
 ```
 
 **Plugin not loading**
 ```bash
 # Check plugin directory
-ls ~/.quantclaw/plugins/
+ls ~/.ravbot/plugins/
 
 # View logs
-quantclaw logs tail --level=debug
+ravbot logs tail --level=debug
 ```
 
 **API connection issues**
 ```bash
 # Verify gateway is running
-quantclaw gateway status
+ravbot gateway status
 
 # Check port
 netstat -tuln | grep 8000
@@ -448,9 +448,9 @@ Configure Ollama or local models:
 Run multiple agents on the same gateway:
 
 ```bash
-quantclaw gateway run &
-quantclaw agent --id=main &
-quantclaw agent --id=reasoning &
+ravbot gateway run &
+ravbot agent --id=main &
+ravbot agent --id=reasoning &
 ```
 
 ### Distributed Deployment
@@ -459,12 +459,12 @@ Deploy across multiple machines with shared gateway:
 
 ```bash
 # Machine 1: Run gateway
-quantclaw gateway run --host 0.0.0.0
+ravbot gateway run --host 0.0.0.0
 
 # Machine 2: Connect to remote gateway
-quantclaw agent --id=main --gateway machine1:8000
+ravbot agent --id=main --gateway machine1:8000
 ```
 
 ---
 
-**Need help?** Check the [Getting Started](/guide/getting-started) guide or open an issue on [GitHub](https://github.com/QuantClaw/quantclaw/issues).
+**Need help?** Check the [Getting Started](/guide/getting-started) guide or open an issue on [GitHub](https://github.com/RavBot/ravbot/issues).

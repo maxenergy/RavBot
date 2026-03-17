@@ -1,19 +1,19 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/plugins/plugin_registry.hpp"
+#include "ravbot/plugins/plugin_registry.hpp"
 #include <algorithm>
 #include <fstream>
 #include <regex>
 
-namespace quantclaw {
+namespace ravbot {
 
 namespace {
 
-std::filesystem::path get_quantclaw_home() {
+std::filesystem::path get_ravbot_home() {
   const char* home = std::getenv("HOME");
-  if (!home) return "/tmp/.quantclaw";
-  return std::filesystem::path(home) / ".quantclaw";
+  if (!home) return "/tmp/.ravbot";
+  return std::filesystem::path(home) / ".ravbot";
 }
 
 // Bundled plugins enabled by default (matching OpenClaw)
@@ -37,7 +37,7 @@ std::string plugin_status_to_string(PluginStatus s) {
 PluginRegistry::PluginRegistry(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {}
 
-void PluginRegistry::Discover(const QuantClawConfig& config,
+void PluginRegistry::Discover(const RavBotConfig& config,
                               const std::filesystem::path& workspace_dir) {
   plugins_.clear();
   id_index_.clear();
@@ -212,10 +212,10 @@ nlohmann::json PluginRegistry::ToJson() const {
 }
 
 std::vector<PluginCandidate> PluginRegistry::discover_candidates(
-    const QuantClawConfig& config,
+    const RavBotConfig& config,
     const std::filesystem::path& workspace_dir) {
   std::vector<PluginCandidate> candidates;
-  auto qc_home = get_quantclaw_home();
+  auto qc_home = get_ravbot_home();
 
   // 1. Config-specified paths (highest priority)
   if (config.plugins_config.contains("load") &&
@@ -249,7 +249,7 @@ std::vector<PluginCandidate> PluginRegistry::discover_candidates(
     auto ws_plugins = workspace_dir / ".openclaw" / "plugins";
     scan_directory(ws_plugins, PluginOrigin::kWorkspace, candidates);
 
-    auto ws_qc_plugins = workspace_dir / ".quantclaw" / "plugins";
+    auto ws_qc_plugins = workspace_dir / ".ravbot" / "plugins";
     scan_directory(ws_qc_plugins, PluginOrigin::kWorkspace, candidates);
   }
 
@@ -277,8 +277,8 @@ void PluginRegistry::scan_directory(const std::filesystem::path& dir,
 
     auto manifest_path = entry.path() / "openclaw.plugin.json";
     if (!std::filesystem::exists(manifest_path)) {
-      // Also check for quantclaw.plugin.json
-      manifest_path = entry.path() / "quantclaw.plugin.json";
+      // Also check for ravbot.plugin.json
+      manifest_path = entry.path() / "ravbot.plugin.json";
       if (!std::filesystem::exists(manifest_path)) continue;
     }
 
@@ -318,7 +318,7 @@ void PluginRegistry::scan_directory(const std::filesystem::path& dir,
 
 bool PluginRegistry::should_enable(const std::string& plugin_id,
                                    PluginOrigin origin,
-                                   const QuantClawConfig& config) const {
+                                   const RavBotConfig& config) const {
   const auto& pc = config.plugins_config;
 
   // Global disable
@@ -583,4 +583,4 @@ nlohmann::json PluginRegistry::GetDiagnostics() const {
   return diag;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -1,16 +1,16 @@
-// Copyright 2024 QuantClaw Contributors
+// Copyright 2024 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 // ---------------------------------------------------------------------------
-// QuantClaw Sidecar — entry point.
+// RavBot Sidecar — entry point.
 //
-// This Node.js process is spawned by the C++ QuantClaw main process.  It
+// This Node.js process is spawned by the C++ RavBot main process.  It
 // connects to the parent's Unix domain socket, loads OpenClaw-compatible
 // TypeScript plugins via jiti, and serves JSON-RPC 2.0 requests.
 //
 // Environment variables (set by C++ SidecarManager):
-//   QUANTCLAW_PORT           — TCP port that the C++ parent listens on
-//   QUANTCLAW_PLUGIN_CONFIG  — JSON string with plugin configuration
+//   RAVBOT_PORT           — TCP port that the C++ parent listens on
+//   RAVBOT_PLUGIN_CONFIG  — JSON string with plugin configuration
 // ---------------------------------------------------------------------------
 
 import * as path from "node:path";
@@ -43,7 +43,7 @@ import type { PluginRegistries } from "./plugin-api-shim.js";
 
 const logger: PluginLogger = {
   debug: (msg: string) => {
-    if (process.env.QUANTCLAW_VERBOSE) {
+    if (process.env.RAVBOT_VERBOSE) {
       process.stderr.write(`[sidecar:debug] ${msg}\n`);
     }
   },
@@ -57,15 +57,15 @@ const logger: PluginLogger = {
 // ---------------------------------------------------------------------------
 
 function parseStartupConfig(): SidecarStartupConfig {
-  const raw = process.env.QUANTCLAW_PLUGIN_CONFIG;
+  const raw = process.env.RAVBOT_PLUGIN_CONFIG;
   if (!raw) {
-    logger.warn("QUANTCLAW_PLUGIN_CONFIG not set, no plugins will be loaded");
+    logger.warn("RAVBOT_PLUGIN_CONFIG not set, no plugins will be loaded");
     return { enabled_plugins: [] };
   }
   try {
     return JSON.parse(raw) as SidecarStartupConfig;
   } catch (err) {
-    logger.error(`Failed to parse QUANTCLAW_PLUGIN_CONFIG: ${String(err)}`);
+    logger.error(`Failed to parse RAVBOT_PLUGIN_CONFIG: ${String(err)}`);
     return { enabled_plugins: [] };
   }
 }
@@ -195,7 +195,7 @@ function createRpcMethods(opts: {
           return { status: "already_running", id: serviceId };
         }
         const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
-        const stateDir = path.join(homeDir, ".quantclaw", "plugins", entry.pluginId);
+        const stateDir = path.join(homeDir, ".ravbot", "plugins", entry.pluginId);
         const startupCfg = parseStartupConfig();
         await entry.service.start({
           config: {},
@@ -290,7 +290,7 @@ async function startServices(
 
   for (const entry of serviceEntries) {
     try {
-      const stateDir = path.join(homeDir, ".quantclaw", "plugins", entry.pluginId);
+      const stateDir = path.join(homeDir, ".ravbot", "plugins", entry.pluginId);
       await entry.service.start({
         config,
         workspaceDir,
@@ -334,9 +334,9 @@ async function stopServices(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const portStr = process.env.QUANTCLAW_PORT;
+  const portStr = process.env.RAVBOT_PORT;
   if (!portStr) {
-    logger.error("QUANTCLAW_PORT environment variable not set");
+    logger.error("RAVBOT_PORT environment variable not set");
     process.exit(1);
   }
 

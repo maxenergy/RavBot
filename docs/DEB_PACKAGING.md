@@ -1,4 +1,4 @@
-# QuantClaw DEB 打包指南
+# RavBot DEB 打包指南
 
 ## 快速开始
 
@@ -19,13 +19,13 @@
 
 ```bash
 # 安装 DEB 包
-sudo dpkg -i dist/quantclaw_0.3.0-1_amd64.deb
+sudo dpkg -i dist/ravbot_0.3.0-1_amd64.deb
 
 # 如果有依赖问题,运行:
 sudo apt-get install -f
 
 # 验证安装
-quantclaw --version
+ravbot --version
 ```
 
 ## 包结构
@@ -33,48 +33,48 @@ quantclaw --version
 ### 文件布局
 
 ```
-/usr/bin/quantclaw                          # 主程序
-/usr/share/quantclaw/skills/                # 内置技能
-/usr/share/quantclaw/sidecar/               # Node.js Sidecar
-/lib/systemd/system/quantclaw.service       # Systemd 服务
-/usr/share/doc/quantclaw/                   # 文档
+/usr/bin/ravbot                          # 主程序
+/usr/share/ravbot/skills/                # 内置技能
+/usr/share/ravbot/sidecar/               # Node.js Sidecar
+/lib/systemd/system/ravbot.service       # Systemd 服务
+/usr/share/doc/ravbot/                   # 文档
 ```
 
 ### 用户和权限
 
-- 系统用户: `quantclaw`
-- 主目录: `/home/quantclaw`
-- 配置目录: `/home/quantclaw/.quantclaw`
+- 系统用户: `ravbot`
+- 主目录: `/home/ravbot`
+- 配置目录: `/home/ravbot/.ravbot`
 
 ## 安装后配置
 
 ### 1. 运行初始化向导
 
 ```bash
-sudo -u quantclaw quantclaw onboard
+sudo -u ravbot ravbot onboard
 ```
 
 ### 2. 启动服务
 
 ```bash
 # 启动服务
-sudo systemctl start quantclaw
+sudo systemctl start ravbot
 
 # 开机自启
-sudo systemctl enable quantclaw
+sudo systemctl enable ravbot
 
 # 查看状态
-sudo systemctl status quantclaw
+sudo systemctl status ravbot
 
 # 查看日志
-sudo journalctl -u quantclaw -f
+sudo journalctl -u ravbot -f
 ```
 
 ### 3. 访问 Dashboard
 
 ```bash
 # 打开 Web UI
-quantclaw dashboard
+ravbot dashboard
 
 # 或直接访问
 http://localhost:18801
@@ -106,7 +106,7 @@ dpkg-buildpackage -us -uc -b
 ### 3. 查看生成的文件
 
 ```bash
-ls -lh ../quantclaw_*.deb
+ls -lh ../ravbot_*.deb
 ```
 
 ## 卸载
@@ -114,13 +114,13 @@ ls -lh ../quantclaw_*.deb
 ### 保留配置
 
 ```bash
-sudo apt-get remove quantclaw
+sudo apt-get remove ravbot
 ```
 
 ### 完全删除(包括配置和用户)
 
 ```bash
-sudo apt-get purge quantclaw
+sudo apt-get purge ravbot
 ```
 
 ## 依赖关系
@@ -145,35 +145,35 @@ sudo apt-get purge quantclaw
 dpkg-checkbuilddeps
 
 # 安装缺失的依赖
-sudo apt-get build-dep quantclaw
+sudo apt-get build-dep ravbot
 ```
 
 ### 服务启动失败
 
 ```bash
 # 查看详细日志
-sudo journalctl -u quantclaw -n 50 --no-pager
+sudo journalctl -u ravbot -n 50 --no-pager
 
 # 检查配置
-sudo -u quantclaw quantclaw config get
+sudo -u ravbot ravbot config get
 
 # 手动运行(调试模式)
-sudo -u quantclaw quantclaw gateway
+sudo -u ravbot ravbot gateway
 ```
 
 ### 权限问题
 
 ```bash
 # 修复配置目录权限
-sudo chown -R quantclaw:quantclaw /home/quantclaw/.quantclaw
-sudo chmod 755 /home/quantclaw/.quantclaw
+sudo chown -R ravbot:ravbot /home/ravbot/.ravbot
+sudo chmod 755 /home/ravbot/.ravbot
 ```
 
 ## 高级配置
 
 ### 自定义端口
 
-编辑 `/home/quantclaw/.quantclaw/quantclaw.json`:
+编辑 `/home/ravbot/.ravbot/ravbot.json`:
 
 ```json
 {
@@ -189,18 +189,18 @@ sudo chmod 755 /home/quantclaw/.quantclaw
 重启服务:
 
 ```bash
-sudo systemctl restart quantclaw
+sudo systemctl restart ravbot
 ```
 
 ### 配置 LLM Provider
 
 ```bash
-# 使用 quantclaw 用户编辑配置
-sudo -u quantclaw quantclaw config set providers.openai.apiKey "sk-..."
-sudo -u quantclaw quantclaw config set providers.anthropic.apiKey "sk-ant-..."
+# 使用 ravbot 用户编辑配置
+sudo -u ravbot ravbot config set providers.openai.apiKey "sk-..."
+sudo -u ravbot ravbot config set providers.anthropic.apiKey "sk-ant-..."
 
 # 重新加载配置(无需重启)
-sudo -u quantclaw quantclaw config reload
+sudo -u ravbot ravbot config reload
 ```
 
 ## 包维护
@@ -229,6 +229,6 @@ Apache License 2.0
 
 ## 更多信息
 
-- 官方文档: https://quantclaw.github.io
-- GitHub: https://github.com/QuantClaw/QuantClaw
-- 问题反馈: https://github.com/QuantClaw/QuantClaw/issues
+- 官方文档: https://ravbot.github.io
+- GitHub: https://github.com/RavBot/RavBot
+- 问题反馈: https://github.com/RavBot/RavBot/issues

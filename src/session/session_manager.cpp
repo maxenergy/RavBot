@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/session/session_manager.hpp"
+#include "ravbot/session/session_manager.hpp"
 #include <fstream>
 #include <sstream>
 #include <chrono>
@@ -9,7 +9,7 @@
 #include <random>
 #include <algorithm>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- Session Key Utilities ---
 
@@ -720,4 +720,4 @@ void SessionManager::emit_event(const std::string& session_key,
     }
 }
 
-} // namespace quantclaw
+} // namespace ravbot

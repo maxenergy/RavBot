@@ -1,14 +1,14 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/embedding_config.hpp"
-#include "quantclaw/core/mock_embedding_provider.hpp"
+#include "ravbot/core/embedding_config.hpp"
+#include "ravbot/core/mock_embedding_provider.hpp"
 
 #include <fstream>
 #include <regex>
 #include <cstdlib>
 
-namespace quantclaw {
+namespace ravbot {
 
 std::shared_ptr<EmbeddingProviderRegistry> EmbeddingConfig::LoadFromFile(
     const std::string& config_path,
@@ -207,4 +207,4 @@ std::string EmbeddingConfig::ExpandEnvVars(const std::string& str) {
   return result;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -44,8 +44,8 @@ sudo port install cmake openssl nlohmann_json spdlog
 ## 克隆仓库
 
 ```bash
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 
 # 可选：切换到指定版本
 git checkout v0.3.0-alpha
@@ -118,14 +118,14 @@ cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
 cd build
 
 # 运行所有测试
-./quantclaw_tests
+./ravbot_tests
 
 # 通过 ctest 运行
 ctest --output-on-failure
 
 # 运行指定测试套件
-./quantclaw_tests --gtest_filter=AgentLoopTest.*
-./quantclaw_tests --gtest_filter=ConfigTest.*
+./ravbot_tests --gtest_filter=AgentLoopTest.*
+./ravbot_tests --gtest_filter=ConfigTest.*
 ```
 
 ## 构建 Docker 镜像
@@ -139,15 +139,15 @@ docker build \
   --build-arg VERSION=$VERSION \
   --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
   --build-arg VCS_REF=$(git rev-parse --short HEAD) \
-  -t quantclaw:$VERSION \
-  -t quantclaw:latest \
+  -t ravbot:$VERSION \
+  -t ravbot:latest \
   .
 
 # 测试镜像
-docker build -f scripts/Dockerfile.test -t quantclaw-test:$VERSION .
+docker build -f scripts/Dockerfile.test -t ravbot-test:$VERSION .
 
 # 开发镜像（含 gdb/valgrind）
-docker build -f scripts/Dockerfile.dev -t quantclaw-dev:$VERSION .
+docker build -f scripts/Dockerfile.dev -t ravbot-dev:$VERSION .
 ```
 
 ## 安装

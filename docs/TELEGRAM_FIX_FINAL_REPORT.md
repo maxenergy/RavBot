@@ -1,4 +1,4 @@
-# QuantClaw Telegram 增强 - 最终报告
+# RavBot Telegram 增强 - 最终报告
 
 ## 修复日期
 2026-03-14 13:07
@@ -28,7 +28,7 @@ Bot: 我来执行系统健康检查。
 ### 问题 2: 缺少 "正在输入" 状态 ❌ → ✅
 **原始问题**:
 - OpenClaw 有 "正在输入..." 状态
-- QuantClaw 没有此功能
+- RavBot 没有此功能
 
 **解决方案**:
 1. ✅ 添加 `SendChatAction()` 方法
@@ -106,11 +106,11 @@ void TelegramChannel::SendTextChunks(const std::string& chat_id,
 ## 修改的文件
 
 ### 头文件
-1. `include/quantclaw/gateway/message_sanitizer.hpp`
+1. `include/ravbot/gateway/message_sanitizer.hpp`
    - 添加 `SanitizeOutput()` 方法
    - 添加 `RemoveSystemTags()` 方法
 
-2. `include/quantclaw/channels/telegram_channel.hpp`
+2. `include/ravbot/channels/telegram_channel.hpp`
    - 添加 `SendChatAction()` 方法
    - 添加 `MessageSanitizer sanitizer_` 成员
 
@@ -169,14 +169,14 @@ void TelegramChannel::SendTextChunks(const std::string& chat_id,
 
 ### 编译状态
 ```
-✅ quantclaw_core 编译成功
-✅ quantclaw 编译成功
-✅ quantclaw_tests 编译成功
+✅ ravbot_core 编译成功
+✅ ravbot 编译成功
+✅ ravbot_tests 编译成功
 ```
 
 ### 服务状态
 ```
-✅ QuantClaw gateway 运行中 (PID 3345153)
+✅ RavBot gateway 运行中 (PID 3345153)
 ✅ 监听端口 18800
 ✅ Telegram bot 已连接 (@cppclawbot)
 ✅ Telegram polling loop 运行中
@@ -191,8 +191,8 @@ kill -9 2346289  # 旧进程
 
 ### 2. 编译新版本
 ```bash
-cd /home/rogers/source/develop/QuantClaw
-cmake --build build --target quantclaw -j$(nproc)
+cd /home/rogers/source/develop/RavBot
+cmake --build build --target ravbot -j$(nproc)
 ```
 
 **编译时间**: 2026-03-14 13:02:44
@@ -200,7 +200,7 @@ cmake --build build --target quantclaw -j$(nproc)
 ### 3. 启动新服务
 ```bash
 cd build
-nohup ./quantclaw gateway run --port 18800 > /tmp/quantclaw.log 2>&1 &
+nohup ./ravbot gateway run --port 18800 > /tmp/ravbot.log 2>&1 &
 ```
 
 **启动时间**: 2026-03-14 13:07:26
@@ -209,11 +209,11 @@ nohup ./quantclaw gateway run --port 18800 > /tmp/quantclaw.log 2>&1 &
 ### 4. 验证部署
 ```bash
 # 检查进程
-ps aux | grep "quantclaw gateway"
-# ✅ rogers 3345153 ... ./quantclaw gateway run --port 18800
+ps aux | grep "ravbot gateway"
+# ✅ rogers 3345153 ... ./ravbot gateway run --port 18800
 
 # 检查日志
-tail -f /tmp/quantclaw.log
+tail -f /tmp/ravbot.log
 # ✅ [info] GatewayServer started on port 18800
 # ✅ [info] Telegram bot started: @cppclawbot
 # ✅ [info] Telegram polling loop started
@@ -268,7 +268,7 @@ Bot: 我来执行系统健康检查。
 
 ## 与 OpenClaw 的对比
 
-| 功能 | OpenClaw | QuantClaw (修复前) | QuantClaw (修复后) |
+| 功能 | OpenClaw | RavBot (修复前) | RavBot (修复后) |
 |------|----------|-------------------|-------------------|
 | "正在输入" 状态 | ✅ | ❌ | ✅ |
 | 系统标签清理 | ✅ | ❌ | ✅ |
@@ -331,7 +331,7 @@ Bot: 我来执行系统健康检查。
    - 自动状态管理
    - 无性能影响
 
-QuantClaw 的 Telegram 体验现在更接近 OpenClaw 的水平，用户界面更清晰，交互更友好。
+RavBot 的 Telegram 体验现在更接近 OpenClaw 的水平，用户界面更清晰，交互更友好。
 
 ---
 

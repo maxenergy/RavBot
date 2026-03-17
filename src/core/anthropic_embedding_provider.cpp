@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/anthropic_embedding_provider.hpp"
+#include "ravbot/core/anthropic_embedding_provider.hpp"
 
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
@@ -10,7 +10,7 @@
 
 using json = nlohmann::json;
 
-namespace quantclaw {
+namespace ravbot {
 
 namespace {
 
@@ -195,4 +195,4 @@ int AnthropicEmbeddingProvider::GetModelDimension(const std::string& model) {
   }
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -1,4 +1,4 @@
-# QuantClaw Production Image — Multi-stage build
+# RavBot Production Image — Multi-stage build
 #
 # Stages:
 #   cpp-builder  — compiles C++ binary (Ubuntu 22.04)
@@ -6,12 +6,12 @@
 #   runtime      — minimal Ubuntu 22.04 image with both artifacts
 #
 # Build:
-#   docker build -f scripts/Dockerfile -t quantclaw:$(cat scripts/DOCKER_VERSION) .
+#   docker build -f scripts/Dockerfile -t ravbot:$(cat scripts/DOCKER_VERSION) .
 # Run:
-#   docker run -d --name quantclaw \
+#   docker run -d --name ravbot \
 #     -p 18800:18800 -p 18801:18801 \
-#     -v quantclaw_data:/home/quantclaw/.quantclaw \
-#     quantclaw gateway run
+#     -v ravbot_data:/home/ravbot/.ravbot \
+#     ravbot gateway run
 
 ARG UBUNTU_VERSION=22.04
 
@@ -38,7 +38,7 @@ COPY . .
 RUN mkdir -p build && cd build \
     && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. \
     && make -j$(nproc) \
-    && (strip /src/build/quantclaw 2>/dev/null || true)
+    && (strip /src/build/ravbot 2>/dev/null || true)
 
 # ── Stage 2: Sidecar (Node.js) build ─────────────────────────────────────────
 # Use Debian Bullseye-based Node.js image so the copied node binary links
@@ -67,12 +67,12 @@ ARG VERSION
 ARG BUILD_DATE
 ARG VCS_REF
 
-LABEL org.opencontainers.image.title="QuantClaw" \
+LABEL org.opencontainers.image.title="RavBot" \
       org.opencontainers.image.description="High-performance AI agent runtime (C++17)" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \
-      org.opencontainers.image.source="https://github.com/QuantClaw/QuantClaw" \
+      org.opencontainers.image.source="https://github.com/RavBot/RavBot" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -87,39 +87,39 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user (mirrors ixwebsocket's adduser pattern)
-RUN groupadd -r quantclaw && useradd -r -g quantclaw -m -d /home/quantclaw quantclaw
+RUN groupadd -r ravbot && useradd -r -g ravbot -m -d /home/ravbot ravbot
 
 # Install C++ binary
-COPY --from=cpp-builder --chown=root:root /src/build/quantclaw /usr/local/bin/quantclaw
-RUN chmod +x /usr/local/bin/quantclaw \
-    && ldd /usr/local/bin/quantclaw
+COPY --from=cpp-builder --chown=root:root /src/build/ravbot /usr/local/bin/ravbot
+RUN chmod +x /usr/local/bin/ravbot \
+    && ldd /usr/local/bin/ravbot
 
 # Copy Node.js binary from node-builder (avoids nodesource installation in runtime)
 COPY --from=node-builder /usr/local/bin/node /usr/local/bin/node
 
 # Install Sidecar (dist + pruned node_modules)
-COPY --from=node-builder --chown=quantclaw:quantclaw /src/sidecar/dist /home/quantclaw/sidecar/dist
-COPY --from=node-builder --chown=quantclaw:quantclaw /src/sidecar/node_modules /home/quantclaw/sidecar/node_modules
+COPY --from=node-builder --chown=ravbot:ravbot /src/sidecar/dist /home/ravbot/sidecar/dist
+COPY --from=node-builder --chown=ravbot:ravbot /src/sidecar/node_modules /home/ravbot/sidecar/node_modules
 
 # Runtime workspace layout (OpenClaw-compatible: agents/main/)
-RUN mkdir -p /home/quantclaw/.quantclaw/agents/main/workspace \
-             /home/quantclaw/.quantclaw/agents/main/sessions \
-             /home/quantclaw/.quantclaw/logs \
-    && chown -R quantclaw:quantclaw /home/quantclaw/.quantclaw
+RUN mkdir -p /home/ravbot/.ravbot/agents/main/workspace \
+             /home/ravbot/.ravbot/agents/main/sessions \
+             /home/ravbot/.ravbot/logs \
+    && chown -R ravbot:ravbot /home/ravbot/.ravbot
 
 # Install built-in skills to global skills directory.
 # Must be before VOLUME so the files are part of the image layer.
-COPY --chown=quantclaw:quantclaw assets/skills/ /home/quantclaw/.quantclaw/skills/
+COPY --chown=ravbot:ravbot assets/skills/ /home/ravbot/.ravbot/skills/
 
-VOLUME ["/home/quantclaw/.quantclaw"]
+VOLUME ["/home/ravbot/.ravbot"]
 
 EXPOSE 18800 18801
 
-USER quantclaw
-WORKDIR /home/quantclaw
+USER ravbot
+WORKDIR /home/ravbot
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD quantclaw health || exit 1
+    CMD ravbot health || exit 1
 
-ENTRYPOINT ["quantclaw"]
+ENTRYPOINT ["ravbot"]
 CMD ["gateway", "run"]

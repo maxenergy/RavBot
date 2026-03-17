@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/thread_binder.hpp"
+#include "ravbot/channels/thread_binder.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -9,7 +9,7 @@
 #include <sstream>
 #include <nlohmann/json.hpp>
 
-namespace quantclaw {
+namespace ravbot {
 
 ThreadBinder::ThreadBinder(const std::filesystem::path& store_path,
                              std::shared_ptr<spdlog::logger> logger)
@@ -189,4 +189,4 @@ std::string ThreadBinder::get_timestamp() const {
   return ss.str();
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

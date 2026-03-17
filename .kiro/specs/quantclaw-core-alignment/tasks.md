@@ -1,15 +1,15 @@
-# Implementation Plan: QuantClaw Core Alignment
+# Implementation Plan: RavBot Core Alignment
 
 ## Overview
 
-本实施计划将 QuantClaw 核心对齐项目分为 7 个阶段，涵盖核心模块增强、提供商弹性、网关/会话/渠道集成、安全层、插件系统、配置解析和集成测试。每个任务都关联到具体的需求编号，并标记可选的测试任务。
+本实施计划将 RavBot 核心对齐项目分为 7 个阶段，涵盖核心模块增强、提供商弹性、网关/会话/渠道集成、安全层、插件系统、配置解析和集成测试。每个任务都关联到具体的需求编号，并标记可选的测试任务。
 
 ## Tasks
 
 - [-] 1. Phase 1: Core Module Enhancement (Weeks 1-3)
   - [-] 1.1 Prompt Builder 重构
     - [x] 1.1.1 创建 PromptContext 和 PromptComponents 结构体
-      - 在 `include/quantclaw/core/prompt_builder.hpp` 中定义结构体
+      - 在 `include/ravbot/core/prompt_builder.hpp` 中定义结构体
       - 添加 TrustLevel 枚举
       - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
     
@@ -79,7 +79,7 @@
 
   - [ ] 1.2 Context Pruner 实现
     - [x] 1.2.1 创建 ContextPruner 类
-      - 创建 `include/quantclaw/core/context_pruner.hpp`
+      - 创建 `include/ravbot/core/context_pruner.hpp`
       - 创建 `src/core/context_pruner.cpp`
       - 定义 CompressionStrategy 结构体
       - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
@@ -126,7 +126,7 @@
 
   - [-] 1.3 Turn Validator 实现
     - [x] 1.3.1 创建 TurnValidator 类
-      - 创建 `include/quantclaw/core/turn_validator.hpp`
+      - 创建 `include/ravbot/core/turn_validator.hpp`
       - 创建 `src/core/turn_validator.cpp`
       - 定义 ProviderValidator 函数类型
       - _Requirements: 4.1, 4.8_
@@ -235,7 +235,7 @@
 - [ ] 2. Phase 2: Provider Resilience (Weeks 4-5)
   - [ ] 2.1 Enhanced Failover Resolver
     - [x] 2.1.1 添加 RetryConfig 结构体
-      - 在 `include/quantclaw/providers/failover_resolver.hpp` 中定义
+      - 在 `include/ravbot/providers/failover_resolver.hpp` 中定义
       - 包含 max_retries、initial_backoff、backoff_multiplier、max_backoff
       - _Requirements: 5.2, 5.3_
       - ✅ 已完成 (commit: 825d753)
@@ -272,7 +272,7 @@
 
   - [ ] 2.2 Enhanced Cooldown Tracker
     - [x] 2.2.1 添加 CooldownStats 统计
-      - 在 `include/quantclaw/providers/cooldown_tracker.hpp` 中定义
+      - 在 `include/ravbot/providers/cooldown_tracker.hpp` 中定义
       - 记录总冷却次数、活跃冷却数
       - 按错误类型统计冷却
       - 记录总冷却时间
@@ -323,7 +323,7 @@
 - [ ] 3. Phase 3: Gateway/Session/Channel Integration (Weeks 6-8)
   - [x] 3.1 Message Sanitizer 实现
     - [x] 3.1.1 创建 MessageSanitizer 类
-      - 创建 `include/quantclaw/gateway/message_sanitizer.hpp`
+      - 创建 `include/ravbot/gateway/message_sanitizer.hpp`
       - 创建 `src/gateway/message_sanitizer.cpp`
       - _Requirements: 7.1, 7.2, 13.1, 13.2_
       - ✅ 已完成 (commit: 7afbbdb)
@@ -366,7 +366,7 @@
 
   - [x] 3.2 Route Manager 实现
     - [x] 3.2.1 创建 RouteManager 类
-      - 创建 `include/quantclaw/gateway/route_manager.hpp`
+      - 创建 `include/ravbot/gateway/route_manager.hpp`
       - 创建 `src/gateway/route_manager.cpp`
       - 定义 RouteMetadata、DeliveryStatus、MessagePriority 枚举
       - _Requirements: 6.1, 6.2, 6.3, 6.4_
@@ -459,7 +459,7 @@
 
   - [ ] 3.4 Session Manager 增强
     - [x] 3.4.1 实现 SessionPolicy 支持
-      - 在 `include/quantclaw/session/session_manager.hpp` 中定义 SessionPolicy 结构体
+      - 在 `include/ravbot/session/session_manager.hpp` 中定义 SessionPolicy 结构体
       - 实现 SetPolicy() 方法
       - 实现 GetPolicy() 方法
       - 添加 policies_ 映射和互斥锁
@@ -480,7 +480,7 @@
       - _Requirements: 11.5_
     
     - [ ] 3.4.4 添加策略持久化
-      - 保存策略到 `~/.quantclaw/sessions/<session_id>/policy.json`
+      - 保存策略到 `~/.ravbot/sessions/<session_id>/policy.json`
       - 启动时加载策略
       - _Requirements: 11.1, 11.2_
     
@@ -509,18 +509,18 @@
 
   - [ ] 3.5 Telegram Channel 增强
     - [x] 3.5.1 实现 DeduplicationStore
-      - 创建 `include/quantclaw/channels/deduplication_store.hpp`
+      - 创建 `include/ravbot/channels/deduplication_store.hpp`
       - 创建 `src/channels/deduplication_store.cpp`
       - 实现 IsProcessed()、MarkProcessed() 方法
       - 实现 GetWatermark()、SetWatermark() 方法
       - 实现 Save()、Load() 持久化方法
       - 实现 Cleanup() 清理过期记录
-      - 存储路径：`~/.quantclaw/channels/telegram/dedup.json`
+      - 存储路径：`~/.ravbot/channels/telegram/dedup.json`
       - _Requirements: 9.1, 9.2, 9.3, 9.7, 9.8_
       - ✅ 已完成 (commit: ddc0718)
 
     - [x] 3.5.2 实现 LaneProcessor
-      - 创建 `include/quantclaw/channels/lane_processor.hpp`
+      - 创建 `include/ravbot/channels/lane_processor.hpp`
       - 创建 `src/channels/lane_processor.cpp`
       - 实现 Submit() 方法（按 lane_id 顺序处理）
       - 为每个 lane 创建独立的工作线程
@@ -530,13 +530,13 @@
       - ✅ 已完成 (commit: ddc0718)
 
     - [x] 3.5.3 实现 ThreadBinder
-      - 创建 `include/quantclaw/channels/thread_binder.hpp`
+      - 创建 `include/ravbot/channels/thread_binder.hpp`
       - 创建 `src/channels/thread_binder.cpp`
       - 实现 GetSessionKey() 方法
       - 实现 BindThread()、UnbindThread() 方法
       - 实现 ListThreads() 方法
       - 实现 Save()、Load() 持久化方法
-      - 存储路径：`~/.quantclaw/channels/telegram/threads.json`
+      - 存储路径：`~/.ravbot/channels/telegram/threads.json`
       - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
       - ✅ 已完成 (commit: ddc0718)
 
@@ -605,7 +605,7 @@
 - [ ] 4. Phase 4: Security Layer (Weeks 9-10)
   - [x] 4.1 External Content Wrapper 实现
     - [x] 4.1.1 创建 ExternalContentWrapper 类
-      - 创建 `include/quantclaw/security/external_content.hpp`
+      - 创建 `include/ravbot/security/external_content.hpp`
       - 创建 `src/security/external_content.cpp`
       - 定义 ContentSource 结构体
       - 定义边界标记常量（使用特殊 Unicode 字符）
@@ -650,7 +650,7 @@
 
   - [x] 4.2 Trust Model Manager 实现
     - [x] 4.2.1 创建 TrustModelManager 类
-      - 创建 `include/quantclaw/security/trust_model.hpp`
+      - 创建 `include/ravbot/security/trust_model.hpp`
       - 创建 `src/security/trust_model.cpp`
       - 定义 SecurityPolicy 结构体
       - _Requirements: 14.1-14.8_
@@ -691,7 +691,7 @@
 
   - [x] 4.3 Security Audit Logger 实现
     - [x] 4.3.1 创建 SecurityAuditLogger 类
-      - 创建 `include/quantclaw/security/audit_logger.hpp`
+      - 创建 `include/ravbot/security/audit_logger.hpp`
       - 创建 `src/security/audit_logger.cpp`
       - 定义 AuditEntry 结构体
       - 使用 spdlog 作为日志后端
@@ -704,7 +704,7 @@
       - 实现 LogDangerousToolCall()
       - 实现 LogAuthFailure()
       - 实现 LogPolicyChange()
-      - 日志路径：`~/.quantclaw/logs/audit/<date>.jsonl`
+      - 日志路径：`~/.ravbot/logs/audit/<date>.jsonl`
       - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5_
       - ✅ 已完成 (commit: b2a43f4)
 
@@ -1231,11 +1231,11 @@
     
     - [ ] 7.4.5 手动验证关键功能
       - 重新构建项目：`./scripts/build.sh --tests`
-      - 重启 quantclaw 进程
-      - 确认只有一个 quantclaw 进程运行
+      - 重启 ravbot 进程
+      - 确认只有一个 ravbot 进程运行
       - 发送 Telegram 测试消息
       - 验证消息处理正常
-      - 检查日志：`~/.quantclaw/logs/`
+      - 检查日志：`~/.ravbot/logs/`
       - 验证所有新功能工作正常
       - _Requirements: All_
     

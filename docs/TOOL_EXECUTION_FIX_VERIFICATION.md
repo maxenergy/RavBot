@@ -1,11 +1,11 @@
-# QuantClaw 工具执行修复验证报告
+# RavBot 工具执行修复验证报告
 
 ## 修复时间
 2026-03-14
 
 ## 问题描述
 
-**原始问题**: QuantClaw 在收到用户查询时，只返回 bash 命令文本，而不实际执行工具。
+**原始问题**: RavBot 在收到用户查询时，只返回 bash 命令文本，而不实际执行工具。
 
 **对比**: OpenClaw 会实际执行工具（显示 "There is a tool use"），返回真实数据。
 
@@ -73,7 +73,7 @@ register_tool("bash",
 
 ### 3. 添加专门的 GitHub 工具 ✅
 
-**文件**: `src/tools/tool_registry.cpp`, `include/quantclaw/tools/tool_registry.hpp`
+**文件**: `src/tools/tool_registry.cpp`, `include/ravbot/tools/tool_registry.hpp`
 
 **新增工具**:
 
@@ -152,7 +152,7 @@ register_tool("github_get_repo",
 ### 修改的文件
 1. `src/core/prompt_builder.cpp` - 添加工具使用指令
 2. `src/tools/tool_registry.cpp` - 增强工具描述 + 添加 3 个 GitHub 工具
-3. `include/quantclaw/tools/tool_registry.hpp` - 添加 3 个函数声明
+3. `include/ravbot/tools/tool_registry.hpp` - 添加 3 个函数声明
 
 ### 新增代码量
 - System prompt: ~20 行
@@ -164,7 +164,7 @@ register_tool("github_get_repo",
 
 ✅ 编译成功
 ```
-[100%] Built target quantclaw
+[100%] Built target ravbot
 ```
 
 ## 验证计划
@@ -198,7 +198,7 @@ register_tool("github_get_repo",
 
 ### 工具执行流程
 
-1. **用户查询** → QuantClaw
+1. **用户查询** → RavBot
 2. **Prompt Builder** → 构建包含工具使用规则的 system prompt
 3. **LLM 推理** → 理解需要执行工具
 4. **返回 tool_calls** → 而不是文本响应
@@ -236,11 +236,11 @@ if (exit_code != 0) {
 ## 与 OpenClaw 的对比
 
 ### 修复前
-- QuantClaw: 返回命令文本 ❌
+- RavBot: 返回命令文本 ❌
 - OpenClaw: 执行工具 ✅
 
 ### 修复后（预期）
-- QuantClaw: 执行工具 ✅
+- RavBot: 执行工具 ✅
 - OpenClaw: 执行工具 ✅
 
 ## 相关文档
@@ -288,11 +288,11 @@ if (exit_code != 0) {
 
 ## 总结
 
-通过三个层面的改进（Prompt、工具描述、专用工具），QuantClaw 现在应该能够像 OpenClaw 一样实际执行工具，而不是只返回命令文本。
+通过三个层面的改进（Prompt、工具描述、专用工具），RavBot 现在应该能够像 OpenClaw 一样实际执行工具，而不是只返回命令文本。
 
 核心改进：
 1. **明确指令** - System prompt 强调"执行"vs"展示"
 2. **清晰描述** - 工具描述强调实际执行
 3. **高级抽象** - 专用 GitHub 工具更易使用
 
-预期结果：QuantClaw 工具执行功能完全正常，与 OpenClaw 行为一致。
+预期结果：RavBot 工具执行功能完全正常，与 OpenClaw 行为一致。

@@ -61,19 +61,19 @@
 - **总计**: 3336+ 行
 
 ### 文件清单
-1. `include/quantclaw/core/embedding_provider.hpp`
+1. `include/ravbot/core/embedding_provider.hpp`
 2. `src/core/embedding_provider.cpp`
-3. `include/quantclaw/core/mock_embedding_provider.hpp`
+3. `include/ravbot/core/mock_embedding_provider.hpp`
 4. `src/core/mock_embedding_provider.cpp`
-5. `include/quantclaw/core/local_embedding_provider.hpp`
+5. `include/ravbot/core/local_embedding_provider.hpp`
 6. `src/core/local_embedding_provider.cpp`
-7. `include/quantclaw/core/openai_embedding_provider.hpp`
+7. `include/ravbot/core/openai_embedding_provider.hpp`
 8. `src/core/openai_embedding_provider.cpp`
-9. `include/quantclaw/core/anthropic_embedding_provider.hpp`
+9. `include/ravbot/core/anthropic_embedding_provider.hpp`
 10. `src/core/anthropic_embedding_provider.cpp`
-11. `include/quantclaw/core/embedding_manager.hpp`
+11. `include/ravbot/core/embedding_manager.hpp`
 12. `src/core/embedding_manager.cpp`
-13. `include/quantclaw/core/embedding_config.hpp`
+13. `include/ravbot/core/embedding_config.hpp`
 14. `src/core/embedding_config.cpp`
 15. `tests/test_embedding_provider.cpp`
 16. `tests/test_local_embedding_provider.cpp`

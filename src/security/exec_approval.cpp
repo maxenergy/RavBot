@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/security/exec_approval.hpp"
+#include "ravbot/security/exec_approval.hpp"
 
 #include <algorithm>
 #include <random>
 #include <sstream>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- AskMode ---
 
@@ -126,6 +126,10 @@ void ExecApprovalManager::Configure(const ExecApprovalConfig& config) {
   for (const auto& p : config_.allowlist) {
     allowlist_.AddPattern(p);
   }
+  logger_->info("ExecApprovalManager configured: ask={}, timeout_fallback={}, allowlist_size={}",
+                AskModeToString(config_.ask),
+                ApprovalDecisionToString(config_.timeout_fallback),
+                config_.allowlist.size());
 }
 
 void ExecApprovalManager::SetApprovalHandler(ApprovalCallback handler) {
@@ -253,4 +257,4 @@ std::string ExecApprovalManager::generate_request_id() const {
   return ss.str();
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

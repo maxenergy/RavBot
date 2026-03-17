@@ -1,12 +1,12 @@
-# Requirements Document: QuantClaw Core Alignment
+# Requirements Document: RavBot Core Alignment
 
 ## Introduction
 
-QuantClaw 是 OpenClaw 的 C++ 复刻版本，旨在提供高性能的个人 AI 助手能力。根据 func_logic_diff.md 的详细差异分析，QuantClaw 在架构层面与 OpenClaw 对齐，但在逻辑深度上存在显著差距。本需求文档定义了五个优先级最高的功能差距的补全需求，以实现与 OpenClaw 的功能对等。
+RavBot 是 OpenClaw 的 C++ 复刻版本，旨在提供高性能的个人 AI 助手能力。根据 func_logic_diff.md 的详细差异分析，RavBot 在架构层面与 OpenClaw 对齐，但在逻辑深度上存在显著差距。本需求文档定义了五个优先级最高的功能差距的补全需求，以实现与 OpenClaw 的功能对等。
 
 ### 项目目标
 
-1. 将 QuantClaw 的核心运行时逻辑提升至与 OpenClaw 相当的成熟度
+1. 将 RavBot 的核心运行时逻辑提升至与 OpenClaw 相当的成熟度
 2. 增强系统在多轮对话、多渠道、多工具和降级提供商条件下的可靠性
 3. 实现完整的安全防护机制，特别是外部内容安全层
 4. 提升插件和控制平面的架构深度
@@ -24,7 +24,7 @@ QuantClaw 是 OpenClaw 的 C++ 复刻版本，旨在提供高性能的个人 AI 
 
 ## Glossary
 
-- **System**: QuantClaw 核心系统
+- **System**: RavBot 核心系统
 - **Agent_Loop**: 代理循环模块，负责处理用户请求和工具调用
 - **Prompt_Builder**: 提示词构建器，负责生成发送给 LLM 的系统提示词
 - **Gateway**: 网关服务器，负责处理客户端连接和消息路由
@@ -455,10 +455,10 @@ QuantClaw 是 OpenClaw 的 C++ 复刻版本，旨在提供高性能的个人 AI 
 
 #### Acceptance Criteria
 
-1. WHEN 提供有效的 JSON 配置文件时，THE Config_Parser SHALL 解析为 QuantClawConfig 对象
+1. WHEN 提供有效的 JSON 配置文件时，THE Config_Parser SHALL 解析为 RavBotConfig 对象
 2. WHEN 提供无效的 JSON 配置文件时，THE Config_Parser SHALL 返回描述性错误信息
-3. THE Config_Formatter SHALL 将 QuantClawConfig 对象格式化为有效的 JSON 配置文件
-4. FOR ALL 有效的 QuantClawConfig 对象，解析、格式化、再解析 SHALL 产生等价的对象（round-trip property）
+3. THE Config_Formatter SHALL 将 RavBotConfig 对象格式化为有效的 JSON 配置文件
+4. FOR ALL 有效的 RavBotConfig 对象，解析、格式化、再解析 SHALL 产生等价的对象（round-trip property）
 5. THE Config_Parser SHALL 支持配置文件验证，检查必填字段和类型
 6. THE Config_Parser SHALL 支持配置文件合并，组合多个配置文件
 7. THE Config_Formatter SHALL 支持美化输出，提高可读性
@@ -481,7 +481,7 @@ QuantClaw 是 OpenClaw 的 C++ 复刻版本，旨在提供高性能的个人 AI 
 
 ## Summary
 
-本需求文档定义了 QuantClaw 核心对齐项目的 22 个功能需求和 6 个非功能性需求领域，涵盖：
+本需求文档定义了 RavBot 核心对齐项目的 22 个功能需求和 6 个非功能性需求领域，涵盖：
 
 1. 核心运行时逻辑增强（Requirement 1-5）
 2. Gateway/Session/Channel 集成升级（Requirement 6-11）

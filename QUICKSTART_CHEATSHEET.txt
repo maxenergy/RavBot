@@ -1,54 +1,54 @@
 ┌─────────────────────────────────────────────────────────────┐
-│              QuantClaw 快速配置速查卡                        │
+│              RavBot 快速配置速查卡                        │
 └─────────────────────────────────────────────────────────────┘
 
 📦 安装
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  sudo dpkg -i quantclaw_*.deb
+  sudo dpkg -i ravbot_*.deb
   sudo apt-get install -f
 
 🚀 初始化
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  quantclaw onboard              # 交互式配置向导
-  quantclaw gateway              # 前台启动
-  quantclaw health               # 验证运行
+  ravbot onboard              # 交互式配置向导
+  ravbot gateway              # 前台启动
+  ravbot health               # 验证运行
 
 ⚙️  配置 API 密钥
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # OpenAI
-  quantclaw config set providers.openai.apiKey "sk-..."
-  quantclaw config set providers.openai.model "gpt-4"
+  ravbot config set providers.openai.apiKey "sk-..."
+  ravbot config set providers.openai.model "gpt-4"
 
   # Anthropic (Claude)
-  quantclaw config set providers.anthropic.apiKey "sk-ant-..."
-  quantclaw config set providers.anthropic.model "claude-3-5-sonnet-20241022"
+  ravbot config set providers.anthropic.apiKey "sk-ant-..."
+  ravbot config set providers.anthropic.model "claude-3-5-sonnet-20241022"
 
   # Google (Gemini)
-  quantclaw config set providers.google.apiKey "AIza..."
-  quantclaw config set providers.google.model "gemini-2.0-flash-exp"
+  ravbot config set providers.google.apiKey "AIza..."
+  ravbot config set providers.google.model "gemini-2.0-flash-exp"
 
   # Qwen (通义千问)
-  quantclaw config set providers.qwen.apiKey "sk-..."
-  quantclaw config set providers.qwen.model "qwen-max"
+  ravbot config set providers.qwen.apiKey "sk-..."
+  ravbot config set providers.qwen.model "qwen-max"
 
 💬 使用 Agent
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  quantclaw agent "你好"                    # 发送消息
-  quantclaw agent --model gpt-4 "问题"      # 指定模型
-  quantclaw agent --session my-session "问题" # 指定会话
+  ravbot agent "你好"                    # 发送消息
+  ravbot agent --model gpt-4 "问题"      # 指定模型
+  ravbot agent --session my-session "问题" # 指定会话
 
 📋 会话管理
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  quantclaw sessions list                   # 列出会话
-  quantclaw sessions show <id>              # 查看详情
-  quantclaw sessions delete <id>            # 删除会话
-  quantclaw sessions export <id> > file     # 导出会话
+  ravbot sessions list                   # 列出会话
+  ravbot sessions show <id>              # 查看详情
+  ravbot sessions delete <id>            # 删除会话
+  ravbot sessions export <id> > file     # 导出会话
 
 🔌 插件管理
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 创建插件
-  mkdir -p ~/.quantclaw/plugins/my-plugin
-  cat > ~/.quantclaw/plugins/my-plugin/quantclaw.plugin.json << 'EOF'
+  mkdir -p ~/.ravbot/plugins/my-plugin
+  cat > ~/.ravbot/plugins/my-plugin/ravbot.plugin.json << 'EOF'
   {
     "name": "my-plugin",
     "version": "1.0.0",
@@ -57,38 +57,38 @@
   EOF
 
   # 启用插件
-  quantclaw config set plugins.allow '["my-plugin"]'
-  quantclaw gateway restart
+  ravbot config set plugins.allow '["my-plugin"]'
+  ravbot gateway restart
 
   # 查看插件
-  quantclaw plugins list
+  ravbot plugins list
 
 📊 服务管理
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 安装为系统服务
-  quantclaw gateway install
-  systemctl start quantclaw
-  systemctl enable quantclaw
-  systemctl status quantclaw
+  ravbot gateway install
+  systemctl start ravbot
+  systemctl enable ravbot
+  systemctl status ravbot
 
   # 查看日志
-  journalctl -u quantclaw -f
-  quantclaw logs
+  journalctl -u ravbot -f
+  ravbot logs
 
 🔧 常用配置
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 修改端口
-  quantclaw config set gateway.port 19000
-  quantclaw config set gateway.controlUi.port 19001
+  ravbot config set gateway.port 19000
+  ravbot config set gateway.controlUi.port 19001
 
   # 日志级别
-  quantclaw config set logging.level "debug"
+  ravbot config set logging.level "debug"
 
   # 查看配置
-  quantclaw config get
+  ravbot config get
 
   # 重新加载
-  quantclaw config reload
+  ravbot config reload
 
 🌐 API 访问
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -99,56 +99,56 @@
   http://localhost:18801
 
   # Web 控制台
-  quantclaw dashboard
+  ravbot dashboard
   # 或访问: http://localhost:18801
 
 🔍 故障排查
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 查看详细日志
-  journalctl -u quantclaw -n 50 --no-pager
+  journalctl -u ravbot -n 50 --no-pager
 
   # 手动运行 (调试)
-  quantclaw gateway
+  ravbot gateway
 
   # 检查端口
   sudo netstat -tlnp | grep -E '18800|18801'
 
   # 检查配置
-  quantclaw config get
+  ravbot config get
 
   # 检查 Sidecar
-  ls -la /usr/share/quantclaw/sidecar/dist/
+  ls -la /usr/share/ravbot/sidecar/dist/
   node --version  # 应该 >= 18
 
 📁 文件位置
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  /usr/bin/quantclaw                  # 主程序
-  /usr/share/quantclaw/sidecar/       # Node.js Sidecar
-  /usr/share/quantclaw/skills/        # 内置技能
-  ~/.quantclaw/quantclaw.json         # 配置文件
-  ~/.quantclaw/agents/main/workspace/ # 工作区
-  ~/.quantclaw/logs/                  # 日志
-  ~/.quantclaw/plugins/               # 用户插件
+  /usr/bin/ravbot                  # 主程序
+  /usr/share/ravbot/sidecar/       # Node.js Sidecar
+  /usr/share/ravbot/skills/        # 内置技能
+  ~/.ravbot/ravbot.json         # 配置文件
+  ~/.ravbot/agents/main/workspace/ # 工作区
+  ~/.ravbot/logs/                  # 日志
+  ~/.ravbot/plugins/               # 用户插件
 
 💡 快捷别名
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 添加到 ~/.bashrc
-  alias qc='quantclaw'
-  alias qca='quantclaw agent'
-  alias qcg='quantclaw gateway'
-  alias qcs='quantclaw sessions'
-  alias qcc='quantclaw config'
+  alias qc='ravbot'
+  alias qca='ravbot agent'
+  alias qcg='ravbot gateway'
+  alias qcs='ravbot sessions'
+  alias qcc='ravbot config'
 
 🔗 资源链接
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  官网: https://quantclaw.github.io
-  GitHub: https://github.com/QuantClaw/QuantClaw
-  Issues: https://github.com/QuantClaw/QuantClaw/issues
+  官网: https://ravbot.github.io
+  GitHub: https://github.com/RavBot/RavBot
+  Issues: https://github.com/RavBot/RavBot/issues
   完整指南: QUICKSTART.md
   Sidecar: docs/SIDECAR_GUIDE.md
   DEB 打包: docs/DEB_PACKAGING.md
 
-📝 配置文件示例 (~/.quantclaw/quantclaw.json)
+📝 配置文件示例 (~/.ravbot/ravbot.json)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {
   "providers": {
@@ -177,7 +177,7 @@
   }
 }
 
-🎯 插件示例 (~/.quantclaw/plugins/weather/index.js)
+🎯 插件示例 (~/.ravbot/plugins/weather/index.js)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const tools = [{
   name: "get_weather",
@@ -197,18 +197,18 @@ export const tools = [{
 🚨 常见问题
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Q: 服务无法启动?
-A: journalctl -u quantclaw -n 50 --no-pager
+A: journalctl -u ravbot -n 50 --no-pager
 
 Q: 端口冲突?
-A: quantclaw config set gateway.port 19000
+A: ravbot config set gateway.port 19000
 
 Q: API 密钥无效?
-A: quantclaw config set providers.openai.apiKey "sk-..."
+A: ravbot config set providers.openai.apiKey "sk-..."
 
 Q: Sidecar 无法启动?
 A: node --version (需要 >= 18)
-   ls -la /usr/share/quantclaw/sidecar/dist/
+   ls -la /usr/share/ravbot/sidecar/dist/
 
 Q: 插件加载失败?
-A: quantclaw plugins list
-   cat ~/.quantclaw/quantclaw.json | grep -A 5 plugins
+A: ravbot plugins list
+   cat ~/.ravbot/ravbot.json | grep -A 5 plugins

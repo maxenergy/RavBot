@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/cli/agent_commands.hpp"
-#include "quantclaw/gateway/gateway_client.hpp"
-#include "quantclaw/gateway/protocol.hpp"
+#include "ravbot/cli/agent_commands.hpp"
+#include "ravbot/gateway/gateway_client.hpp"
+#include "ravbot/gateway/protocol.hpp"
 #include <iostream>
 
-namespace quantclaw::cli {
+namespace ravbot::cli {
 
 AgentCommands::AgentCommands(std::shared_ptr<spdlog::logger> logger)
     : logger_(logger) {
@@ -37,7 +37,7 @@ int AgentCommands::RequestCommand(const std::vector<std::string>& args) {
     }
 
     if (message.empty()) {
-        std::cerr << "Usage: quantclaw agent -m \"your message\" [--session-id <id>] "
+        std::cerr << "Usage: ravbot agent -m \"your message\" [--session-id <id>] "
                      "[--timeout <seconds>] [--json]" << std::endl;
         return 1;
     }
@@ -46,7 +46,7 @@ int AgentCommands::RequestCommand(const std::vector<std::string>& args) {
         auto client = std::make_shared<gateway::GatewayClient>(gateway_url_, auth_token_, logger_);
         if (!client->Connect()) {
             std::cerr << "Error: Cannot connect to gateway at " << gateway_url_ << std::endl;
-            std::cerr << "Is the gateway running? Start it with: quantclaw gateway" << std::endl;
+            std::cerr << "Is the gateway running? Start it with: ravbot gateway" << std::endl;
             return 1;
         }
 
@@ -108,4 +108,4 @@ int AgentCommands::StopCommand(const std::vector<std::string>& /*args*/) {
     }
 }
 
-} // namespace quantclaw::cli
+} // namespace ravbot::cli

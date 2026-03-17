@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GATEWAY_EVENT_UPDATE_AVAILABLE } from "../../../src/gateway/events.js";
+import { GATEWAY_EVENT_UPDATE_AVAILABLE } from "../shared/gateway-utils.js";
 import { connectGateway } from "./app-gateway.ts";
 
 type GatewayClientMock = {
@@ -97,7 +97,7 @@ function createHost() {
     agentsList: null,
     agentsError: null,
     debugHealth: null,
-    assistantName: "QuantClaw",
+    assistantName: "RavBot",
     assistantAvatar: null,
     assistantAgentId: null,
     sessionKey: "main",

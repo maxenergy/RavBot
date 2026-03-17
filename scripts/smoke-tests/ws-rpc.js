@@ -1,4 +1,4 @@
-// WebSocket RPC smoke test helper for QuantClaw
+// WebSocket RPC smoke test helper for RavBot
 // Usage:
 //   node ws-rpc.js <url> <token> hello           — test connect.hello handshake
 //   node ws-rpc.js <url> <token> auth-reject      — expect auth rejection (exit 0 on reject)

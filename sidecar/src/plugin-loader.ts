@@ -1,4 +1,4 @@
-// Copyright 2024 QuantClaw Contributors
+// Copyright 2024 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 // ---------------------------------------------------------------------------
@@ -64,8 +64,8 @@ interface PluginManifest {
 }
 
 function loadManifest(pluginDir: string): PluginManifest | null {
-  // Try OpenClaw manifest first, then QuantClaw.
-  for (const filename of ["openclaw.plugin.json", "quantclaw.plugin.json"]) {
+  // Try OpenClaw manifest first, then RavBot.
+  for (const filename of ["openclaw.plugin.json", "ravbot.plugin.json"]) {
     const manifestPath = path.join(pluginDir, filename);
     if (fs.existsSync(manifestPath)) {
       try {
@@ -222,7 +222,7 @@ export interface LoadPluginsResult {
 /**
  * Load all enabled plugins from the startup configuration.
  *
- * The startup config is parsed from the QUANTCLAW_PLUGIN_CONFIG env var and
+ * The startup config is parsed from the RAVBOT_PLUGIN_CONFIG env var and
  * contains the list of enabled plugin IDs, their configs, and the workspace
  * directory.
  */
@@ -288,7 +288,7 @@ function discoverPluginDirs(
   const seen = new Set<string>();
 
   const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
-  const quantclawDir = path.join(homeDir, ".quantclaw");
+  const ravbotDir = path.join(homeDir, ".ravbot");
 
   // Search paths in priority order.
   const searchDirs = [
@@ -297,13 +297,13 @@ function discoverPluginDirs(
       ? path.join(config.workspace_dir, ".openclaw", "plugins")
       : null,
     config.workspace_dir
-      ? path.join(config.workspace_dir, ".quantclaw", "plugins")
+      ? path.join(config.workspace_dir, ".ravbot", "plugins")
       : null,
     // Global plugins.
-    path.join(quantclawDir, "plugins"),
-    path.join(quantclawDir, "extensions"),
+    path.join(ravbotDir, "plugins"),
+    path.join(ravbotDir, "extensions"),
     // Bundled plugins.
-    path.join(quantclawDir, "bundled-plugins"),
+    path.join(ravbotDir, "bundled-plugins"),
   ].filter(Boolean) as string[];
 
   for (const searchDir of searchDirs) {

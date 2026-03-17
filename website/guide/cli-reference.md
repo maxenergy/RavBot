@@ -1,11 +1,11 @@
 # CLI Reference
 
-Complete command reference for QuantClaw.
+Complete command reference for RavBot.
 
 ## Global Options
 
 ```bash
-quantclaw [OPTIONS] COMMAND [ARGS]
+ravbot [OPTIONS] COMMAND [ARGS]
 ```
 
 - `--help, -h` — Show help message
@@ -20,7 +20,7 @@ quantclaw [OPTIONS] COMMAND [ARGS]
 Send a message to the agent.
 
 ```bash
-quantclaw agent [OPTIONS] MESSAGE
+ravbot agent [OPTIONS] MESSAGE
 ```
 
 **Options:**
@@ -29,10 +29,10 @@ quantclaw agent [OPTIONS] MESSAGE
 **Examples:**
 ```bash
 # Send a message (creates a new session automatically)
-quantclaw agent "Hello, introduce yourself"
+ravbot agent "Hello, introduce yourself"
 
 # Use a specific session key
-quantclaw agent --session my:project "What's the status?"
+ravbot agent --session my:project "What's the status?"
 ```
 
 ### run
@@ -40,7 +40,7 @@ quantclaw agent --session my:project "What's the status?"
 Send a message to the agent (alias for `agent`).
 
 ```bash
-quantclaw run MESSAGE
+ravbot run MESSAGE
 ```
 
 ### eval
@@ -48,13 +48,13 @@ quantclaw run MESSAGE
 One-shot prompt evaluation — no session history is created or used.
 
 ```bash
-quantclaw eval PROMPT
+ravbot eval PROMPT
 ```
 
 **Examples:**
 ```bash
-quantclaw eval "What is 2 + 2?"
-quantclaw eval "Generate a random UUID"
+ravbot eval "What is 2 + 2?"
+ravbot eval "Generate a random UUID"
 ```
 
 ### gateway
@@ -62,7 +62,7 @@ quantclaw eval "Generate a random UUID"
 Manage the RPC gateway.
 
 ```bash
-quantclaw gateway [SUBCOMMAND] [OPTIONS]
+ravbot gateway [SUBCOMMAND] [OPTIONS]
 ```
 
 **Subcommands:**
@@ -71,50 +71,50 @@ quantclaw gateway [SUBCOMMAND] [OPTIONS]
 Run the gateway in the foreground.
 
 ```bash
-quantclaw gateway
+ravbot gateway
 ```
 
 #### gateway install
 Install as a system service (systemd on Linux, launchd on macOS).
 
 ```bash
-quantclaw gateway install
+ravbot gateway install
 ```
 
 #### gateway uninstall
 Remove the system service.
 
 ```bash
-quantclaw gateway uninstall
+ravbot gateway uninstall
 ```
 
 #### gateway start / stop / restart
 Control the background daemon.
 
 ```bash
-quantclaw gateway start
-quantclaw gateway stop
-quantclaw gateway restart
+ravbot gateway start
+ravbot gateway stop
+ravbot gateway restart
 ```
 
 #### gateway status
 Check whether the gateway daemon is running.
 
 ```bash
-quantclaw gateway status
+ravbot gateway status
 ```
 
 #### gateway call
 Call any RPC method directly.
 
 ```bash
-quantclaw gateway call METHOD [JSON_PARAMS]
+ravbot gateway call METHOD [JSON_PARAMS]
 ```
 
 **Examples:**
 ```bash
-quantclaw gateway call gateway.health
-quantclaw gateway call config.get '{"path":"llm.model"}'
+ravbot gateway call gateway.health
+ravbot gateway call config.get '{"path":"llm.model"}'
 ```
 
 ### sessions
@@ -122,31 +122,31 @@ quantclaw gateway call config.get '{"path":"llm.model"}'
 Manage conversation sessions.
 
 ```bash
-quantclaw sessions SUBCOMMAND [OPTIONS]
+ravbot sessions SUBCOMMAND [OPTIONS]
 ```
 
 #### sessions list
 
 ```bash
-quantclaw sessions list
+ravbot sessions list
 ```
 
 #### sessions history
 
 ```bash
-quantclaw sessions history SESSION_KEY
+ravbot sessions history SESSION_KEY
 ```
 
 #### sessions delete
 
 ```bash
-quantclaw sessions delete SESSION_KEY
+ravbot sessions delete SESSION_KEY
 ```
 
 #### sessions reset
 
 ```bash
-quantclaw sessions reset SESSION_KEY
+ravbot sessions reset SESSION_KEY
 ```
 
 ### config
@@ -154,45 +154,45 @@ quantclaw sessions reset SESSION_KEY
 Manage configuration.
 
 ```bash
-quantclaw config SUBCOMMAND [OPTIONS]
+ravbot config SUBCOMMAND [OPTIONS]
 ```
 
 #### config get
 
 ```bash
-quantclaw config get                    # Full config
-quantclaw config get llm.model         # Specific value (dot-path)
+ravbot config get                    # Full config
+ravbot config get llm.model         # Specific value (dot-path)
 ```
 
 #### config set
 
 ```bash
-quantclaw config set llm.model "anthropic/claude-sonnet-4-6"
+ravbot config set llm.model "anthropic/claude-sonnet-4-6"
 ```
 
 #### config unset
 
 ```bash
-quantclaw config unset llm.temperature
+ravbot config unset llm.temperature
 ```
 
 #### config reload
 Hot-reload config without restarting the gateway.
 
 ```bash
-quantclaw config reload
+ravbot config reload
 ```
 
 #### config validate
 
 ```bash
-quantclaw config validate
+ravbot config validate
 ```
 
 #### config schema
 
 ```bash
-quantclaw config schema
+ravbot config schema
 ```
 
 ### skills
@@ -200,13 +200,13 @@ quantclaw config schema
 Manage skills.
 
 ```bash
-quantclaw skills SUBCOMMAND
+ravbot skills SUBCOMMAND
 ```
 
 #### skills list
 
 ```bash
-quantclaw skills list
+ravbot skills list
 ```
 
 #### skills install
@@ -214,7 +214,7 @@ quantclaw skills list
 Install a skill's dependencies.
 
 ```bash
-quantclaw skills install SKILL_NAME
+ravbot skills install SKILL_NAME
 ```
 
 ### memory
@@ -222,14 +222,14 @@ quantclaw skills install SKILL_NAME
 Search and inspect agent memory.
 
 ```bash
-quantclaw memory SUBCOMMAND [OPTIONS]
+ravbot memory SUBCOMMAND [OPTIONS]
 ```
 
 #### memory search
 
 ```bash
-quantclaw memory search "query string"
-quantclaw memory search "recent events" --limit 10
+ravbot memory search "query string"
+ravbot memory search "recent events" --limit 10
 ```
 
 **Options:**
@@ -238,7 +238,7 @@ quantclaw memory search "recent events" --limit 10
 #### memory status
 
 ```bash
-quantclaw memory status
+ravbot memory status
 ```
 
 ### cron
@@ -246,25 +246,25 @@ quantclaw memory status
 Manage scheduled tasks.
 
 ```bash
-quantclaw cron SUBCOMMAND
+ravbot cron SUBCOMMAND
 ```
 
 #### cron list
 
 ```bash
-quantclaw cron list
+ravbot cron list
 ```
 
 #### cron add
 
 ```bash
-quantclaw cron add NAME "0 9 * * *" "Send daily summary"
+ravbot cron add NAME "0 9 * * *" "Send daily summary"
 ```
 
 #### cron remove
 
 ```bash
-quantclaw cron remove TASK_ID
+ravbot cron remove TASK_ID
 ```
 
 ### health
@@ -272,7 +272,7 @@ quantclaw cron remove TASK_ID
 Quick health check — confirms the gateway is reachable.
 
 ```bash
-quantclaw health
+ravbot health
 ```
 
 ### status
@@ -280,7 +280,7 @@ quantclaw health
 Show connection and session counts.
 
 ```bash
-quantclaw status
+ravbot status
 ```
 
 ### logs
@@ -288,7 +288,7 @@ quantclaw status
 Stream gateway logs.
 
 ```bash
-quantclaw logs
+ravbot logs
 ```
 
 ### doctor
@@ -296,7 +296,7 @@ quantclaw logs
 Run a full diagnostic check.
 
 ```bash
-quantclaw doctor
+ravbot doctor
 ```
 
 ### dashboard
@@ -304,7 +304,7 @@ quantclaw doctor
 Open the web dashboard in the browser.
 
 ```bash
-quantclaw dashboard
+ravbot dashboard
 ```
 
 Opens `http://127.0.0.1:18801`.
@@ -314,7 +314,7 @@ Opens `http://127.0.0.1:18801`.
 Interactive setup wizard.
 
 ```bash
-quantclaw onboard [OPTIONS]
+ravbot onboard [OPTIONS]
 ```
 
 **Options:**
@@ -323,9 +323,9 @@ quantclaw onboard [OPTIONS]
 
 **Examples:**
 ```bash
-quantclaw onboard                     # Interactive
-quantclaw onboard --quick             # Non-interactive
-quantclaw onboard --install-daemon    # Interactive + install daemon
+ravbot onboard                     # Interactive
+ravbot onboard --quick             # Non-interactive
+ravbot onboard --install-daemon    # Interactive + install daemon
 ```
 
 ## In-Conversation Message Commands
@@ -347,8 +347,8 @@ While chatting, prefix a message with a slash command to control the session:
 |----------|-------------|
 | `OPENAI_API_KEY` | OpenAI / compatible provider API key |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
-| `QUANTCLAW_LOG_LEVEL` | Log level override (`debug`, `info`, `warn`, `error`) |
-| `QUANTCLAW_PORT` | Sidecar IPC port (internal use, set automatically) |
+| `RAVBOT_LOG_LEVEL` | Log level override (`debug`, `info`, `warn`, `error`) |
+| `RAVBOT_PORT` | Sidecar IPC port (internal use, set automatically) |
 
 ## Ports
 
@@ -361,29 +361,29 @@ While chatting, prefix a message with a slash command to control the session:
 
 ```bash
 # 1. Initial setup
-quantclaw onboard --quick
+ravbot onboard --quick
 
 # 2. Start gateway in background
-quantclaw gateway start
+ravbot gateway start
 
 # 3. Send a message
-quantclaw agent "Hello!"
+ravbot agent "Hello!"
 
 # 4. View session history
-quantclaw sessions list
-quantclaw sessions history SESSION_KEY
+ravbot sessions list
+ravbot sessions history SESSION_KEY
 
 # 5. Search memory
-quantclaw memory search "project notes"
+ravbot memory search "project notes"
 
 # 6. Check status
-quantclaw health
-quantclaw status
+ravbot health
+ravbot status
 
 # 7. Stream logs
-quantclaw logs
+ravbot logs
 ```
 
 ---
 
-**Need help?** Run `quantclaw --help` or `quantclaw COMMAND --help`.
+**Need help?** Run `ravbot --help` or `ravbot COMMAND --help`.

@@ -1,6 +1,6 @@
-# QuantClaw Official Website
+# RavBot Official Website
 
-This directory contains the source code for the official QuantClaw website, built with VitePress.
+This directory contains the source code for the official RavBot website, built with VitePress.
 
 ## 🚀 Getting Started
 
@@ -135,11 +135,11 @@ npm run docs:build
 
 ### Custom Domain Setup
 
-To use a custom domain (e.g., quantclaw.io):
+To use a custom domain (e.g., ravbot.io):
 
 1. Add `CNAME` file to `.vitepress/dist/`:
    ```
-   quantclaw.io
+   ravbot.io
    ```
 
 2. Configure DNS records pointing to GitHub Pages
@@ -208,7 +208,7 @@ npm run docs:preview
 
 ## 📜 License
 
-This website content is part of QuantClaw, released under the [MIT License](https://github.com/QuantClaw/quantclaw/blob/main/LICENSE).
+This website content is part of RavBot, released under the [MIT License](https://github.com/RavBot/ravbot/blob/main/LICENSE).
 
 ## 🤝 Contributing
 

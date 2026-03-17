@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/security/audit_logger.hpp"
+#include "ravbot/security/audit_logger.hpp"
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>
 #include <spdlog/sinks/null_sink.h>
 
-namespace quantclaw {
+namespace ravbot {
 
 class AuditLoggerTest : public ::testing::Test {
  protected:
@@ -315,4 +315,4 @@ TEST_F(AuditLoggerTest, SetLogDirectory) {
   std::filesystem::remove_all(custom_dir);
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

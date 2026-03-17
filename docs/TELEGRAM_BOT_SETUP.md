@@ -1,4 +1,4 @@
-# QuantClaw Telegram Bot 配置
+# RavBot Telegram Bot 配置
 
 配置日期：2026-03-11
 Bot 名称：cppclawbot
@@ -19,7 +19,7 @@ Bot 用户名：@cppclawbot
 
 ### 配置文件位置
 ```
-~/.quantclaw/quantclaw.json
+~/.ravbot/ravbot.json
 ```
 
 ### Telegram 配置
@@ -103,13 +103,13 @@ Bot 用户名：@cppclawbot
 
 ### 1. 启动 Gateway
 ```bash
-cd /home/rogers/source/develop/QuantClaw/build
-./quantclaw gateway start
+cd /home/rogers/source/develop/RavBot/build
+./ravbot gateway start
 ```
 
 ### 2. 查看通道状态
 ```bash
-./quantclaw channels list
+./ravbot channels list
 ```
 
 输出示例：
@@ -121,7 +121,7 @@ cd /home/rogers/source/develop/QuantClaw/build
 
 ### 3. 查看 Telegram 详细状态
 ```bash
-./quantclaw channels status telegram
+./ravbot channels status telegram
 ```
 
 ### 4. 与 Bot 交互
@@ -163,9 +163,9 @@ cd /home/rogers/source/develop/QuantClaw/build
 
 ## 配置对比
 
-### OpenClaw vs QuantClaw
+### OpenClaw vs RavBot
 
-| 配置项 | OpenClaw | QuantClaw | 状态 |
+| 配置项 | OpenClaw | RavBot | 状态 |
 |--------|----------|-----------|------|
 | Bot Token | 8333912163:AAF... | 8208097744:AAF... | ✅ 已更新 |
 | enabled | true | true | ✅ 一致 |
@@ -185,25 +185,25 @@ cd /home/rogers/source/develop/QuantClaw/build
 
 **检查 Gateway 状态**:
 ```bash
-./quantclaw status
+./ravbot status
 ```
 
 **检查通道状态**:
 ```bash
-./quantclaw channels status telegram
+./ravbot channels status telegram
 ```
 
 **重启 Gateway**:
 ```bash
-./quantclaw gateway stop
-./quantclaw gateway start
+./ravbot gateway stop
+./ravbot gateway start
 ```
 
 ### 2. 连接错误
 
 **检查配置文件**:
 ```bash
-cat ~/.quantclaw/quantclaw.json | grep -A 15 '"telegram"'
+cat ~/.ravbot/ravbot.json | grep -A 15 '"telegram"'
 ```
 
 **验证 Token**:
@@ -222,12 +222,12 @@ cat ~/.quantclaw/quantclaw.json | grep -A 15 '"telegram"'
 
 **实时日志**:
 ```bash
-./quantclaw logs -f
+./ravbot logs -f
 ```
 
 **错误日志**:
 ```bash
-./quantclaw logs --level error
+./ravbot logs --level error
 ```
 
 ---
@@ -292,24 +292,24 @@ cat ~/.quantclaw/quantclaw.json | grep -A 15 '"telegram"'
 - **Bot 管理**: https://t.me/BotFather
 - **Bot 链接**: https://t.me/cppclawbot
 
-### QuantClaw CLI
+### RavBot CLI
 ```bash
 # 通道管理
-./quantclaw channels list
-./quantclaw channels status <channel>
+./ravbot channels list
+./ravbot channels status <channel>
 
 # Gateway 管理
-./quantclaw gateway start
-./quantclaw gateway stop
-./quantclaw gateway status
+./ravbot gateway start
+./ravbot gateway stop
+./ravbot gateway status
 
 # 配置管理
-./quantclaw config get channels.telegram
-./quantclaw config reload
+./ravbot config get channels.telegram
+./ravbot config reload
 
 # 日志查看
-./quantclaw logs -f
-./quantclaw logs --level debug
+./ravbot logs -f
+./ravbot logs --level debug
 ```
 
 ---
@@ -368,7 +368,7 @@ cat ~/.quantclaw/quantclaw.json | grep -A 15 '"telegram"'
 
 ## 相关文档
 
-- [QuantClaw 完整功能清单](FEATURE_CHECKLIST.md)
+- [RavBot 完整功能清单](FEATURE_CHECKLIST.md)
 - [Gateway 测试报告](GATEWAY_TEST_REPORT.md)
 - [100% 功能对齐报告](COMPLETE_100_PERCENT_ALIGNMENT.md)
 - [项目完成总结](PROJECT_COMPLETION_SUMMARY.md)

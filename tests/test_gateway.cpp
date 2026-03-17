@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -8,14 +8,14 @@
 #include <memory>
 #include <mutex>
 #include <thread>
-#include "quantclaw/gateway/gateway_server.hpp"
-#include "quantclaw/gateway/gateway_client.hpp"
-#include "quantclaw/gateway/protocol.hpp"
+#include "ravbot/gateway/gateway_server.hpp"
+#include "ravbot/gateway/gateway_client.hpp"
+#include "ravbot/gateway/protocol.hpp"
 #include "test_helpers.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
-using namespace quantclaw::gateway;
+using namespace ravbot::gateway;
 
 class GatewayTest : public ::testing::Test {
 protected:
@@ -32,7 +32,7 @@ protected:
     }
 
     int find_free_port() {
-        return quantclaw::test::FindFreePort();
+        return ravbot::test::FindFreePort();
     }
 
     std::shared_ptr<spdlog::logger> logger_;

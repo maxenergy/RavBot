@@ -8,7 +8,7 @@
 
 ## 执行摘要
 
-成功从 OpenClaw 同步了 2 个 P0 优先级功能，提高了 QuantClaw 的稳定性和安全性。所有功能已测试验证并提交到 git。
+成功从 OpenClaw 同步了 2 个 P0 优先级功能，提高了 RavBot 的稳定性和安全性。所有功能已测试验证并提交到 git。
 
 ---
 
@@ -26,7 +26,7 @@
 - 支持 camelCase 和 snake_case 配置格式
 
 **修改文件**:
-- `include/quantclaw/config.hpp` - 添加配置字段
+- `include/ravbot/config.hpp` - 添加配置字段
 - `src/core/config.cpp` - 添加配置解析
 
 **配置示例**:
@@ -57,7 +57,7 @@
 - 限制字符串长度和类型
 
 **修改文件**:
-- `include/quantclaw/gateway/message_sanitizer.hpp` - 添加方法声明
+- `include/ravbot/gateway/message_sanitizer.hpp` - 添加方法声明
 - `src/gateway/message_sanitizer.cpp` - 实现清理逻辑
 
 **白名单字段**:
@@ -86,13 +86,13 @@
 
 ### 编译测试
 ```bash
-cmake --build build --target quantclaw
+cmake --build build --target ravbot
 ```
 **结果**: ✅ 编译成功，无错误
 
 ### 功能测试
 ```bash
-./build/quantclaw --version
+./build/ravbot --version
 ```
 **结果**: ✅ 程序正常运行
 
@@ -116,9 +116,9 @@ cmake --build build --target quantclaw
 **标题**: feat: sync P0 features from OpenClaw (2026-03-15)
 
 **提交文件**:
-- `include/quantclaw/config.hpp`
+- `include/ravbot/config.hpp`
 - `src/core/config.cpp`
-- `include/quantclaw/gateway/message_sanitizer.hpp`
+- `include/ravbot/gateway/message_sanitizer.hpp`
 - `src/gateway/message_sanitizer.cpp`
 - `docs/OPENCLAW_SYNC_2026-03-15.md`
 

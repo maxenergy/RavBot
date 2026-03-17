@@ -1,4 +1,4 @@
-// Concurrent WebSocket connection smoke test for QuantClaw
+// Concurrent WebSocket connection smoke test for RavBot
 // Launches N parallel connections, each performs connect.hello handshake.
 // Usage: node ws-concurrent.js <url> <token> [count=10]
 // Exit codes: 0 = all succeeded, 1 = any failed

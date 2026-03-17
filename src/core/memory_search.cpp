@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/memory_search.hpp"
+#include "ravbot/core/memory_search.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace quantclaw {
+namespace ravbot {
 
 MemorySearch::MemorySearch(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {}
@@ -205,4 +205,4 @@ double MemorySearch::score_entry(
   return score;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -1,4 +1,4 @@
-# QuantClaw 长效记忆系统状态报告
+# RavBot 长效记忆系统状态报告
 
 **生成时间**: 2026-03-16 05:32:00
 **报告类型**: 系统状态与性能分析
@@ -9,7 +9,7 @@
 
 ### 双层记忆架构
 
-QuantClaw 采用双层记忆系统：
+RavBot 采用双层记忆系统：
 
 1. **结构化记忆** - MEMORY.md 文件
    - 存储关键事实和用户偏好
@@ -47,7 +47,7 @@ QuantClaw 采用双层记忆系统：
 ### 文件信息
 
 ```
-/home/rogers/.quantclaw/data/
+/home/rogers/.ravbot/data/
 ├── vectors.db          48 KB   (SQLite 数据库)
 ├── vectors.db.hnsw     96 B    (HNSW 索引)
 └── vectors.db.hnsw.mapping  16 B    (ID 映射)
@@ -121,7 +121,7 @@ QuantClaw 采用双层记忆系统：
 
 ### 文件信息
 
-- **路径**: `/home/rogers/.quantclaw/agents/main/workspace/MEMORY.md`
+- **路径**: `/home/rogers/.ravbot/agents/main/workspace/MEMORY.md`
 - **大小**: 846 bytes
 - **创建时间**: 2026-03-11 19:20:06
 - **最后修改**: 2026-03-16 04:54:59
@@ -132,8 +132,8 @@ QuantClaw 采用双层记忆系统：
 ```markdown
 ## User Environment
 - OS: Ubuntu
-- Project: QuantClaw
-- Project Directory: /home/rogers/source/develop/QuantClaw
+- Project: RavBot
+- Project Directory: /home/rogers/source/develop/RavBot
 
 ## System Access Permissions
 - Full system control authorized
@@ -144,7 +144,7 @@ QuantClaw 采用双层记忆系统：
 
 ## Runtime Information
 - Current time: 2026-03-15T20:54:50Z
-- Workspace: /home/rogers/.quantclaw/agents/main/workspace
+- Workspace: /home/rogers/.ravbot/agents/main/workspace
 - Platform: linux
 ```
 
@@ -289,7 +289,7 @@ ef_search: 50
 
 ## 📊 总结
 
-QuantClaw 的长效记忆系统已成功部署并运行良好：
+RavBot 的长效记忆系统已成功部署并运行良好：
 
 ✅ **8 条记录** 成功索引到向量数据库
 ✅ **100% 成功率** 无任何失败记录

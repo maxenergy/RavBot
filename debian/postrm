@@ -3,14 +3,14 @@ set -e
 
 case "$1" in
     purge)
-        # Note: User data in ~/.quantclaw is NOT removed automatically
+        # Note: User data in ~/.ravbot is NOT removed automatically
         # Users should manually remove it if desired
         echo ""
-        echo "QuantClaw has been removed."
+        echo "RavBot has been removed."
         echo ""
-        echo "Note: User configuration in ~/.quantclaw was NOT removed."
+        echo "Note: User configuration in ~/.ravbot was NOT removed."
         echo "To completely remove all data, run:"
-        echo "  rm -rf ~/.quantclaw"
+        echo "  rm -rf ~/.ravbot"
         echo ""
 
         # Reload systemd

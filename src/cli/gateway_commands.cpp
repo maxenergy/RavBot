@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/cli/gateway_commands.hpp"
+#include "ravbot/cli/gateway_commands.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -10,61 +10,61 @@
 #include <iostream>
 #include <thread>
 
-#include "quantclaw/channels/adapter_manager.hpp"
-#include "quantclaw/channels/telegram_channel.hpp"
-#include "quantclaw/config.hpp"
-#include "quantclaw/constants.hpp"
-#include "quantclaw/core/agent_loop.hpp"
-#include "quantclaw/core/cron_scheduler.hpp"
-#include "quantclaw/core/embedding_manager.hpp"
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/core/ollama_embedding_provider.hpp"
-#include "quantclaw/core/prompt_builder.hpp"
-#include "quantclaw/core/signal_handler.hpp"
-#include "quantclaw/core/skill_loader.hpp"
-#include "quantclaw/core/subagent.hpp"
-#include "quantclaw/core/vector_database.hpp"
-#include "quantclaw/gateway/command_queue.hpp"
-#include "quantclaw/gateway/daemon_manager.hpp"
-#include "quantclaw/gateway/gateway_client.hpp"
-#include "quantclaw/gateway/gateway_server.hpp"
-#include "quantclaw/gateway/protocol.hpp"
-#include "quantclaw/mcp/mcp_tool_manager.hpp"
-#include "quantclaw/platform/process.hpp"
-#include "quantclaw/plugins/plugin_system.hpp"
-#include "quantclaw/providers/failover_resolver.hpp"
-#include "quantclaw/providers/provider_registry.hpp"
-#include "quantclaw/security/exec_approval.hpp"
-#include "quantclaw/security/rate_limiter.hpp"
-#include "quantclaw/security/rbac.hpp"
-#include "quantclaw/security/tool_permissions.hpp"
-#include "quantclaw/session/session_manager.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
-#include "quantclaw/utils/port_checker.hpp"
-#include "quantclaw/web/api_routes.hpp"
-#include "quantclaw/web/web_server.hpp"
+#include "ravbot/channels/adapter_manager.hpp"
+#include "ravbot/channels/telegram_channel.hpp"
+#include "ravbot/config.hpp"
+#include "ravbot/constants.hpp"
+#include "ravbot/core/agent_loop.hpp"
+#include "ravbot/core/cron_scheduler.hpp"
+#include "ravbot/core/embedding_manager.hpp"
+#include "ravbot/core/memory_manager.hpp"
+#include "ravbot/core/ollama_embedding_provider.hpp"
+#include "ravbot/core/prompt_builder.hpp"
+#include "ravbot/core/signal_handler.hpp"
+#include "ravbot/core/skill_loader.hpp"
+#include "ravbot/core/subagent.hpp"
+#include "ravbot/core/vector_database.hpp"
+#include "ravbot/gateway/command_queue.hpp"
+#include "ravbot/gateway/daemon_manager.hpp"
+#include "ravbot/gateway/gateway_client.hpp"
+#include "ravbot/gateway/gateway_server.hpp"
+#include "ravbot/gateway/protocol.hpp"
+#include "ravbot/mcp/mcp_tool_manager.hpp"
+#include "ravbot/platform/process.hpp"
+#include "ravbot/plugins/plugin_system.hpp"
+#include "ravbot/providers/failover_resolver.hpp"
+#include "ravbot/providers/provider_registry.hpp"
+#include "ravbot/security/exec_approval.hpp"
+#include "ravbot/security/rate_limiter.hpp"
+#include "ravbot/security/rbac.hpp"
+#include "ravbot/security/tool_permissions.hpp"
+#include "ravbot/session/session_manager.hpp"
+#include "ravbot/tools/tool_registry.hpp"
+#include "ravbot/utils/port_checker.hpp"
+#include "ravbot/web/api_routes.hpp"
+#include "ravbot/web/web_server.hpp"
 
 // Forward declare from rpc_handlers.cpp
-namespace quantclaw::gateway {
+namespace ravbot::gateway {
 void register_rpc_handlers(
     GatewayServer& server,
-    std::shared_ptr<quantclaw::SessionManager> session_manager,
-    std::shared_ptr<quantclaw::AgentLoop> agent_loop,
-    std::shared_ptr<quantclaw::PromptBuilder> prompt_builder,
-    std::shared_ptr<quantclaw::ToolRegistry> tool_registry,
-    const quantclaw::QuantClawConfig& config,
+    std::shared_ptr<ravbot::SessionManager> session_manager,
+    std::shared_ptr<ravbot::AgentLoop> agent_loop,
+    std::shared_ptr<ravbot::PromptBuilder> prompt_builder,
+    std::shared_ptr<ravbot::ToolRegistry> tool_registry,
+    const ravbot::RavBotConfig& config,
     std::shared_ptr<spdlog::logger> logger,
     std::function<void()> reload_fn = nullptr,
-    std::shared_ptr<quantclaw::ProviderRegistry> provider_registry = nullptr,
-    std::shared_ptr<quantclaw::SkillLoader> skill_loader = nullptr,
-    std::shared_ptr<quantclaw::CronScheduler> cron_scheduler = nullptr,
-    std::shared_ptr<quantclaw::ExecApprovalManager> exec_approval_mgr = nullptr,
-    quantclaw::PluginSystem* plugin_system = nullptr,
+    std::shared_ptr<ravbot::ProviderRegistry> provider_registry = nullptr,
+    std::shared_ptr<ravbot::SkillLoader> skill_loader = nullptr,
+    std::shared_ptr<ravbot::CronScheduler> cron_scheduler = nullptr,
+    std::shared_ptr<ravbot::ExecApprovalManager> exec_approval_mgr = nullptr,
+    ravbot::PluginSystem* plugin_system = nullptr,
     gateway::CommandQueue* command_queue = nullptr,
     std::string log_file_path = {});
 }
 
-namespace quantclaw::cli {
+namespace ravbot::cli {
 
 // Removes *.log and spdlog rotated files (*.log.N) older than |days| days.
 // Called at gateway startup to prevent unbounded disk usage.
@@ -90,7 +90,7 @@ static void PruneOldLogs(const std::filesystem::path& dir, int days) {
 }
 
 std::string
-ExtractLastAssistantText(const std::vector<quantclaw::Message>& messages) {
+ExtractLastAssistantText(const std::vector<ravbot::Message>& messages) {
   std::string response;
   for (const auto& msg : messages) {
     if (msg.role != "assistant") {
@@ -104,13 +104,13 @@ ExtractLastAssistantText(const std::vector<quantclaw::Message>& messages) {
   return response;
 }
 
-std::vector<quantclaw::Message> BuildLlmHistoryFromSessionHistory(
-    const std::vector<quantclaw::SessionMessage>& history_msgs) {
-  std::vector<quantclaw::Message> history;
+std::vector<ravbot::Message> BuildLlmHistoryFromSessionHistory(
+    const std::vector<ravbot::SessionMessage>& history_msgs) {
+  std::vector<ravbot::Message> history;
   history.reserve(history_msgs.size());
 
   for (const auto& sm : history_msgs) {
-    quantclaw::Message m;
+    ravbot::Message m;
     m.role = sm.role;
     m.content = sm.content;
     history.push_back(std::move(m));
@@ -128,10 +128,10 @@ GatewayCommands::GatewayCommands(std::shared_ptr<spdlog::logger> logger)
 
 int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   // Load configuration first (CLI flags override later)
-  quantclaw::QuantClawConfig config;
+  ravbot::RavBotConfig config;
   try {
-    config = quantclaw::QuantClawConfig::LoadFromFile(
-        quantclaw::QuantClawConfig::DefaultConfigPath());
+    config = ravbot::RavBotConfig::LoadFromFile(
+        ravbot::RavBotConfig::DefaultConfigPath());
   } catch (const std::exception& e) {
     logger_->warn("No config file found, using defaults: {}", e.what());
   }
@@ -183,7 +183,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   std::string home_str = platform::home_directory();
 
   std::filesystem::path base_dir =
-      std::filesystem::path(home_str) / ".quantclaw";
+      std::filesystem::path(home_str) / ".ravbot";
   std::filesystem::path workspace_dir =
       base_dir / "agents" / "main" / "workspace";
   std::filesystem::path sessions_dir =
@@ -197,36 +197,36 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
 
   // Initialize components
   auto memory_manager =
-      std::make_shared<quantclaw::MemoryManager>(workspace_dir, logger_);
+      std::make_shared<ravbot::MemoryManager>(workspace_dir, logger_);
   memory_manager->LoadWorkspaceFiles();
 
-  auto skill_loader = std::make_shared<quantclaw::SkillLoader>(logger_);
-  auto tool_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto skill_loader = std::make_shared<ravbot::SkillLoader>(logger_);
+  auto tool_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   tool_registry->RegisterBuiltinTools();
   tool_registry->RegisterChainTool();
 
   // Discover and register MCP tools
   auto mcp_tool_manager =
-      std::make_shared<quantclaw::mcp::MCPToolManager>(logger_);
+      std::make_shared<ravbot::mcp::MCPToolManager>(logger_);
   if (!config.mcp.servers.empty()) {
     mcp_tool_manager->DiscoverTools(config.mcp);
     mcp_tool_manager->RegisterInto(*tool_registry);
   }
 
   // Set up tool permissions
-  auto permission_checker = std::make_shared<quantclaw::ToolPermissionChecker>(
+  auto permission_checker = std::make_shared<ravbot::ToolPermissionChecker>(
       config.tools_permission);
   tool_registry->SetPermissionChecker(permission_checker);
   tool_registry->SetMcpToolManager(mcp_tool_manager);
 
   // Initialize provider registry
   auto provider_registry =
-      std::make_shared<quantclaw::ProviderRegistry>(logger_);
+      std::make_shared<ravbot::ProviderRegistry>(logger_);
   provider_registry->RegisterBuiltinFactories();
 
   // Load provider entries from config (apiKey, baseUrl, timeout)
   for (const auto& [id, prov] : config.providers) {
-    quantclaw::ProviderEntry entry;
+    ravbot::ProviderEntry entry;
     entry.id = id;
     entry.api_key = prov.api_key;
     entry.base_url = prov.base_url;
@@ -258,12 +258,12 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
     return 1;
   }
 
-  auto agent_loop = std::make_shared<quantclaw::AgentLoop>(
+  auto agent_loop = std::make_shared<ravbot::AgentLoop>(
       memory_manager, skill_loader, tool_registry, llm_provider, config.agent,
       logger_);
   agent_loop->SetProviderRegistry(provider_registry.get());
 
-  auto failover_resolver = std::make_shared<quantclaw::FailoverResolver>(
+  auto failover_resolver = std::make_shared<ravbot::FailoverResolver>(
       provider_registry.get(), logger_);
   failover_resolver->SetFallbackChain(config.agent.fallbacks);
   agent_loop->SetFailoverResolver(failover_resolver.get());
@@ -271,7 +271,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   // Initialize vector search components
   auto vector_db_path = base_dir / "data" / "vectors.db";
   std::filesystem::create_directories(base_dir / "data");
-  auto vector_db = std::make_shared<quantclaw::VectorDatabase>(
+  auto vector_db = std::make_shared<ravbot::VectorDatabase>(
       vector_db_path.string(), logger_);
 
   // Initialize vector database
@@ -280,15 +280,15 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
     return 1;
   }
 
-  auto embedding_registry = std::make_shared<quantclaw::EmbeddingProviderRegistry>();
+  auto embedding_registry = std::make_shared<ravbot::EmbeddingProviderRegistry>();
 
   // Register Ollama embedding provider as default
-  auto ollama_provider = std::make_shared<quantclaw::OllamaEmbeddingProvider>(
+  auto ollama_provider = std::make_shared<ravbot::OllamaEmbeddingProvider>(
       "nomic-embed-text", "http://localhost:11434", logger_);
   embedding_registry->RegisterProvider("ollama", ollama_provider);
   embedding_registry->SetDefaultProvider("ollama");
 
-  auto embedding_manager = std::make_shared<quantclaw::EmbeddingManager>(
+  auto embedding_manager = std::make_shared<ravbot::EmbeddingManager>(
       embedding_registry, vector_db, logger_);
 
   // Set embedding manager for automatic message indexing
@@ -297,9 +297,9 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   logger_->info("Vector search initialized with Ollama embedding provider");
 
   auto session_manager =
-      std::make_shared<quantclaw::SessionManager>(sessions_dir, logger_);
+      std::make_shared<ravbot::SessionManager>(sessions_dir, logger_);
 
-  auto prompt_builder = std::make_shared<quantclaw::PromptBuilder>(
+  auto prompt_builder = std::make_shared<ravbot::PromptBuilder>(
       memory_manager, skill_loader, tool_registry, &config);
 
   // Create and configure gateway server
@@ -312,24 +312,24 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
 
   // Configure auth: prefer env var, fall back to config file
   std::string auth_token = config.gateway.auth.token;
-  const char* env_token = std::getenv("QUANTCLAW_AUTH_TOKEN");
+  const char* env_token = std::getenv("RAVBOT_AUTH_TOKEN");
   if (env_token && strlen(env_token) > 0) {
     auth_token = env_token;
   }
   server.SetAuth(config.gateway.auth.mode, auth_token);
 
   // Enable RBAC
-  auto rbac_checker = std::make_shared<quantclaw::RBACChecker>();
+  auto rbac_checker = std::make_shared<ravbot::RBACChecker>();
   server.SetRbac(rbac_checker);
 
   // Enable rate limiting
-  quantclaw::RateLimiter::Config rl_config;
+  ravbot::RateLimiter::Config rl_config;
   if (config.security.permission_level == "strict") {
     rl_config.max_requests = 60;
     rl_config.window_seconds = 60;
     rl_config.burst_max = 10;
   }
-  auto rate_limiter = std::make_shared<quantclaw::RateLimiter>(rl_config);
+  auto rate_limiter = std::make_shared<ravbot::RateLimiter>(rl_config);
   server.SetRateLimiter(rate_limiter);
 
   // Configure health monitoring
@@ -347,21 +347,21 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   memory_manager->StartFileWatcher();
 
   // Build reusable reload function
-  std::string config_path = quantclaw::QuantClawConfig::DefaultConfigPath();
+  std::string config_path = ravbot::RavBotConfig::DefaultConfigPath();
   std::function<void()> reload_fn = [&config, agent_loop, tool_registry,
                                      mcp_tool_manager, memory_manager,
                                      failover_resolver, this]() {
     logger_->info("Reload signal received");
     try {
-      config = quantclaw::QuantClawConfig::LoadFromFile(
-          quantclaw::QuantClawConfig::DefaultConfigPath());
+      config = ravbot::RavBotConfig::LoadFromFile(
+          ravbot::RavBotConfig::DefaultConfigPath());
 
       // Propagate to AgentLoop
       agent_loop->SetConfig(config.agent);
       failover_resolver->SetFallbackChain(config.agent.fallbacks);
 
       // Rebuild permissions
-      auto new_checker = std::make_shared<quantclaw::ToolPermissionChecker>(
+      auto new_checker = std::make_shared<ravbot::ToolPermissionChecker>(
           config.tools_permission);
       tool_registry->SetPermissionChecker(new_checker);
 
@@ -381,7 +381,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   };
 
   // Initialize cron scheduler
-  auto cron_scheduler = std::make_shared<quantclaw::CronScheduler>(logger_);
+  auto cron_scheduler = std::make_shared<ravbot::CronScheduler>(logger_);
   std::string cron_file = (base_dir / "cron.json").string();
   if (std::filesystem::exists(cron_file)) {
     cron_scheduler->Load(cron_file);
@@ -389,20 +389,25 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
 
   // Initialize exec approval manager
   auto exec_approval_mgr =
-      std::make_shared<quantclaw::ExecApprovalManager>(logger_);
+      std::make_shared<ravbot::ExecApprovalManager>(logger_);
+  logger_->info("ExecApprovalManager created, config.exec_approval_config.is_null() = {}",
+                config.exec_approval_config.is_null());
   if (!config.exec_approval_config.is_null()) {
+    logger_->info("Loading exec approval config: {}", config.exec_approval_config.dump());
     auto approval_cfg =
-        quantclaw::ExecApprovalConfig::FromJson(config.exec_approval_config);
+        ravbot::ExecApprovalConfig::FromJson(config.exec_approval_config);
     exec_approval_mgr->Configure(approval_cfg);
+  } else {
+    logger_->warn("exec_approval_config is null, using default (ask=on-miss, fallback=denied)");
   }
 
   // Connect approval manager to tool registry
   tool_registry->SetApprovalManager(exec_approval_mgr);
 
   // Initialize subagent manager
-  auto subagent_manager = std::make_shared<quantclaw::SubagentManager>(logger_);
+  auto subagent_manager = std::make_shared<ravbot::SubagentManager>(logger_);
   if (!config.subagent_config.is_null()) {
-    auto sub_cfg = quantclaw::SubagentConfig::FromJson(config.subagent_config);
+    auto sub_cfg = ravbot::SubagentConfig::FromJson(config.subagent_config);
     subagent_manager->Configure(sub_cfg);
   }
 
@@ -468,7 +473,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
         std::string final_response;
         auto new_messages = agent_loop->ProcessMessageStream(
             cmd.message, llm_history, system_prompt,
-            [&event_sink, &final_response](const quantclaw::AgentEvent& event) {
+            [&event_sink, &final_response](const ravbot::AgentEvent& event) {
               event_sink(event.type, event.data);
               if (event.type == "agent.message_end" &&
                   event.data.contains("content")) {
@@ -477,7 +482,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
             });
 
         for (const auto& msg : new_messages) {
-          quantclaw::SessionMessage smsg;
+          ravbot::SessionMessage smsg;
           smsg.role = msg.role;
           smsg.content = msg.content;
           session_manager->AppendMessage(session_key, smsg);
@@ -502,7 +507,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   command_queue->Start();
 
   // Initialize plugin system
-  quantclaw::PluginSystem plugin_system(logger_);
+  ravbot::PluginSystem plugin_system(logger_);
   plugin_system.Initialize(config, workspace_dir);
 
   // Register RPC handlers
@@ -523,22 +528,22 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   logger_->info("Gateway running on ws://0.0.0.0:{}", gateway_port);
 
   // Start HTTP API server (Control UI)
-  std::unique_ptr<quantclaw::web::WebServer> http_server;
+  std::unique_ptr<ravbot::web::WebServer> http_server;
   if (config.gateway.control_ui.enabled) {
     http_server =
-        std::make_unique<quantclaw::web::WebServer>(http_port, logger_);
+        std::make_unique<ravbot::web::WebServer>(http_port, logger_);
     http_server->EnableCors("*");
 
     if (!auth_token.empty() && config.gateway.auth.mode == "token") {
       http_server->SetAuthToken(auth_token);
     }
 
-    quantclaw::web::register_api_routes(
+    ravbot::web::register_api_routes(
         *http_server, session_manager, agent_loop, prompt_builder,
         tool_registry, config, server, logger_, reload_fn);
 
     // Mount dashboard UI if available
-    // Search order: 1) ~/.quantclaw/ui/  2) <exe_dir>/ui/dist/  3)
+    // Search order: 1) ~/.ravbot/ui/  2) <exe_dir>/ui/dist/  3)
     // <exe_dir>/../ui/dist/
     std::string ui_dir;
     std::string candidate1 = (base_dir / "ui").string();
@@ -556,13 +561,13 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
       }
     }
     if (!ui_dir.empty()) {
-      http_server->SetMountPoint("/__quantclaw__/control/", ui_dir);
+      http_server->SetMountPoint("/__ravbot__/control/", ui_dir);
       logger_->info("Dashboard UI mounted from {}", ui_dir);
 
       // Redirect / to control UI
       http_server->AddRawRoute(
           "/", "GET", [](const httplib::Request&, httplib::Response& res) {
-            res.set_redirect("/__quantclaw__/control/");
+            res.set_redirect("/__ravbot__/control/");
           });
     }
 
@@ -573,7 +578,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
           nlohmann::json info = {
               {"wsUrl", "ws://localhost:" + std::to_string(gateway_port)},
               {"wsPort", gateway_port},
-              {"version", quantclaw::kVersion}};
+              {"version", ravbot::kVersion}};
           res.status = 200;
           res.set_content(info.dump(), "application/json");
         });
@@ -583,8 +588,8 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   }
 
   // Start channel adapters (Discord, Telegram, etc.)
-  std::unique_ptr<quantclaw::ChannelAdapterManager> adapter_manager;
-  std::unique_ptr<quantclaw::TelegramChannel> telegram_channel;
+  std::unique_ptr<ravbot::ChannelAdapterManager> adapter_manager;
+  std::unique_ptr<ravbot::TelegramChannel> telegram_channel;
 
   // Initialize Telegram channel if configured (C++ native implementation)
   logger_->info("Checking Telegram channel configuration...");
@@ -595,7 +600,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
     logger_->info("Telegram token: {}",
                   tg_config.token.empty() ? "EMPTY" : "SET");
     if (!tg_config.token.empty()) {
-      quantclaw::TelegramConfig tg_cfg;
+      ravbot::TelegramConfig tg_cfg;
       tg_cfg.bot_token = tg_config.token;
 
       // Parse additional config from raw JSON
@@ -626,12 +631,12 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
       }
 
       telegram_channel =
-          std::make_unique<quantclaw::TelegramChannel>(tg_cfg, logger_);
+          std::make_unique<ravbot::TelegramChannel>(tg_cfg, logger_);
 
       // Set message handler to forward messages to agent
       telegram_channel->SetMessageHandler(
           [&agent_loop, &session_manager, &prompt_builder, &telegram_channel,
-           &config, logger = logger_](const quantclaw::ChannelMessage& msg) {
+           &config, logger = logger_](const ravbot::ChannelMessage& msg) {
             try {
               // Create session key for this chat
               std::string session_key = "telegram:" + msg.channel_id;
@@ -657,7 +662,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
 
               // Append messages to session
               for (const auto& new_msg : new_messages) {
-                quantclaw::SessionMessage smsg;
+                ravbot::SessionMessage smsg;
                 smsg.role = new_msg.role;
                 smsg.content = new_msg.content;
                 session_manager->AppendMessage(session_key, smsg);
@@ -694,7 +699,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
 
   // Start other channel adapters (Discord, etc.) via external scripts
   if (!config.channels.empty()) {
-    adapter_manager = std::make_unique<quantclaw::ChannelAdapterManager>(
+    adapter_manager = std::make_unique<ravbot::ChannelAdapterManager>(
         gateway_port, auth_token, config.channels, logger_);
     adapter_manager->Start();
   }
@@ -702,7 +707,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
   logger_->info("Press Ctrl+C to stop");
 
   // Install signal handler
-  quantclaw::SignalHandler::Install(
+  ravbot::SignalHandler::Install(
       [&server, &http_server, &adapter_manager, &telegram_channel,
        &plugin_system, this]() {
         logger_->info("Shutdown signal received");
@@ -746,7 +751,7 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
       });
 
   // Block until shutdown
-  quantclaw::SignalHandler::WaitForShutdown();
+  ravbot::SignalHandler::WaitForShutdown();
 
   // Stop config watcher
   watching.store(false);
@@ -785,7 +790,7 @@ int GatewayCommands::UninstallCommand(
 
 int GatewayCommands::CallCommand(const std::vector<std::string>& args) {
   if (args.empty()) {
-    std::cerr << "Usage: quantclaw gateway call <method> [json-params]"
+    std::cerr << "Usage: ravbot gateway call <method> [json-params]"
               << std::endl;
     return 1;
   }
@@ -821,7 +826,7 @@ int GatewayCommands::CallCommand(const std::vector<std::string>& args) {
 
 int GatewayCommands::StartCommand(const std::vector<std::string>& /*args*/) {
   logger_->info("Note: 'gateway start' attempts to start a systemd service.");
-  logger_->info("For foreground mode, use: quantclaw gateway run");
+  logger_->info("For foreground mode, use: ravbot gateway run");
   gateway::DaemonManager daemon(logger_);
   return daemon.Start();
 }
@@ -884,4 +889,4 @@ int GatewayCommands::StatusCommand(const std::vector<std::string>& args) {
   return 1;
 }
 
-}  // namespace quantclaw::cli
+}  // namespace ravbot::cli

@@ -13,7 +13,7 @@
 
 ### 2. 配置集成
 - ✅ 支持 `botToken` 字段读取
-- ✅ 从 `~/.quantclaw/quantclaw.json` 加载配置
+- ✅ 从 `~/.ravbot/ravbot.json` 加载配置
 - ✅ 避免与外部适配器脚本冲突
 
 ### 3. Gateway 集成
@@ -68,12 +68,12 @@
 
 ### 1. 检查 Bot 状态
 ```bash
-./quantclaw channels status telegram
+./ravbot channels status telegram
 ```
 
 ### 2. 查看日志
 ```bash
-./quantclaw logs --level info | grep -i telegram
+./ravbot logs --level info | grep -i telegram
 ```
 
 ### 3. 发送测试消息
@@ -130,7 +130,7 @@ telegram_channel->SetMessageHandler([&agent_loop, &session_manager](const Channe
 
 ### 文件结构
 ```
-include/quantclaw/channels/telegram_channel.hpp
+include/ravbot/channels/telegram_channel.hpp
 src/channels/telegram_channel.cpp
 src/cli/gateway_commands.cpp (集成代码)
 src/core/config.cpp (配置解析)
@@ -168,8 +168,8 @@ src/core/config.cpp (配置解析)
 ## 参考文档
 
 - [Telegram Bot API](https://core.telegram.org/bots/api)
-- [QuantClaw Telegram 配置](TELEGRAM_BOT_SETUP.md)
-- [QuantClaw 通道系统](../include/quantclaw/channels/channel_base.hpp)
+- [RavBot Telegram 配置](TELEGRAM_BOT_SETUP.md)
+- [RavBot 通道系统](../include/ravbot/channels/channel_base.hpp)
 
 ---
 

@@ -1,10 +1,10 @@
-# QuantClaw 与 OpenClaw 同步更新计划
+# RavBot 与 OpenClaw 同步更新计划
 
 ## 版本信息
 
 - **OpenClaw 基准版本**: 2026.3.9
 - **OpenClaw 最新版本**: 2026.3.13-beta.1
-- **QuantClaw 当前版本**: v0.3.1
+- **RavBot 当前版本**: v0.3.1
 - **分析日期**: 2026-03-14
 - **提交数量**: 1220+ commits (2026-03-09 至 2026-03-14)
 
@@ -36,7 +36,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 防止资源泄漏
 - 改善错误处理
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ✅ 已有基础超时机制
 - ⚠️ 需要增强 watchdog 监控
 - ⚠️ 需要添加请求超时策略
@@ -52,7 +52,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 区分完全不可达和降级状态
 - 优化探测 RPC 处理
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ⚠️ 需要实现健康检查降级逻辑
 - ⚠️ 需要区分不同的不可达状态
 
@@ -69,7 +69,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进回复线程处理
 - 优化进度指示器
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ✅ 已实现基础 typing 状态 (2026-03-14)
 - ⚠️ 需要实现持续刷新机制
 - ⚠️ 需要实现线程化 typing
@@ -85,7 +85,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进线程化处理
 - 共享代码模块
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ✅ 已有基础分块功能
 - ⚠️ 需要实现线程化分块
 - ⚠️ 需要优化分块策略
@@ -101,7 +101,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进媒体下载可靠性
 - 处理网络故障
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ❌ 未实现媒体下载
 - ⚠️ 需要实现媒体处理
 - ⚠️ 需要添加网络回退
@@ -117,7 +117,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 防止未授权请求
 - 改进安全性
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ⚠️ 需要实现 webhook 模式
 - ⚠️ 需要添加安全验证
 
@@ -134,7 +134,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进会话管理
 - 优化用户体验
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ✅ 已有基础浏览器工具
 - ⚠️ 需要实现会话选择
 - ⚠️ 需要改进会话管理
@@ -150,7 +150,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进生命周期管理
 - 添加错误处理
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ⚠️ 需要强化会话验证
 - ⚠️ 需要改进生命周期管理
 
@@ -167,7 +167,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进 Google Vertex 提供商
 - 统一模型命名
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ❌ 未实现 Google 提供商
 - ⚠️ 需要添加 Google/Gemini 支持
 
@@ -182,7 +182,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进 onboarding 流程
 - 支持自定义提供商
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ⚠️ 需要改进 API 密钥管理
 - ⚠️ 需要支持自定义提供商
 
@@ -199,7 +199,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 防止重复回复
 - 改进消息处理
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ❌ 未实现飞书通道
 - ⚠️ 可参考去重机制
 
@@ -216,7 +216,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 减少代码重复
 - 改进测试可维护性
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ⚠️ 需要重构测试代码
 - ⚠️ 需要提取共享辅助函数
 
@@ -231,7 +231,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 减少代码重复
 - 改进代码可维护性
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ⚠️ 需要持续重构
 - ⚠️ 需要模块化设计
 
@@ -248,7 +248,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进错误处理
 - 优化启动流程
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ❌ 未实现 Discord 通道
 - ⚠️ 可参考速率限制处理
 
@@ -263,7 +263,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 - 改进安全性
 - 清理远程路径
 
-**QuantClaw 对应**:
+**RavBot 对应**:
 - ❌ 未实现 iMessage 通道
 - ⚠️ 需要注意安全性
 
@@ -286,7 +286,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 **文件**:
 - `src/gateway/gateway_server.cpp`
 - `src/gateway/rpc_handlers.cpp`
-- `include/quantclaw/gateway/gateway_server.hpp`
+- `include/ravbot/gateway/gateway_server.hpp`
 - `tests/test_gateway_timeout.cpp`
 
 **验收标准**:
@@ -326,7 +326,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 
 **文件**:
 - `src/channels/telegram_channel.cpp`
-- `include/quantclaw/channels/telegram_channel.hpp`
+- `include/ravbot/channels/telegram_channel.hpp`
 - `tests/test_telegram_typing.cpp`
 
 **验收标准**:
@@ -363,7 +363,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 
 **文件**:
 - `src/channels/telegram_webhook.cpp`
-- `include/quantclaw/channels/telegram_webhook.hpp`
+- `include/ravbot/channels/telegram_webhook.hpp`
 - `tests/test_telegram_webhook.cpp`
 
 **验收标准**:
@@ -384,7 +384,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 
 **文件**:
 - `src/providers/google_provider.cpp`
-- `include/quantclaw/providers/google_provider.hpp`
+- `include/ravbot/providers/google_provider.hpp`
 - `tests/test_google_provider.cpp`
 
 **验收标准**:
@@ -403,7 +403,7 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 
 **文件**:
 - `src/providers/qwen_provider.cpp`
-- `include/quantclaw/providers/qwen_provider.hpp`
+- `include/ravbot/providers/qwen_provider.hpp`
 - `tests/test_qwen_provider.cpp`
 
 **验收标准**:
@@ -615,11 +615,11 @@ OpenClaw 在过去 5 天内进行了大量更新，主要集中在：
 
 - OpenClaw CHANGELOG: `/home/rogers/develop/openclaw/CHANGELOG.md`
 - OpenClaw 代码库: `/home/rogers/develop/openclaw`
-- QuantClaw 文档: `/home/rogers/source/develop/QuantClaw/docs/`
+- RavBot 文档: `/home/rogers/source/develop/RavBot/docs/`
 
 ---
 
 **文档版本**: v1.0
 **创建日期**: 2026-03-14
 **最后更新**: 2026-03-14
-**负责人**: QuantClaw Team
+**负责人**: RavBot Team

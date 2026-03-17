@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/imessage_channel.hpp"
+#include "ravbot/channels/imessage_channel.hpp"
 #include <chrono>
 #include <thread>
 
-namespace quantclaw {
+namespace ravbot {
 
 IMessageChannel::IMessageChannel(const std::string& channel_id,
                                  std::shared_ptr<spdlog::logger> logger)
@@ -85,4 +85,4 @@ bool IMessageChannel::SendViaAppleScript(const std::string& recipient, const std
 #endif
 }
 
-} // namespace quantclaw
+} // namespace ravbot

@@ -7,7 +7,7 @@ const enNav = [
   { text: 'Architecture', link: '/guide/architecture' },
   { text: 'Plugins', link: '/guide/plugins' },
   { text: 'CLI Reference', link: '/guide/cli-reference' },
-  { text: 'GitHub', link: 'https://github.com/QuantClaw/QuantClaw' },
+  { text: 'GitHub', link: 'https://github.com/RavBot/RavBot' },
 ]
 
 const zhNav = [
@@ -17,7 +17,7 @@ const zhNav = [
   { text: '架构', link: '/zh/guide/architecture' },
   { text: '插件', link: '/zh/guide/plugins' },
   { text: 'CLI 参考', link: '/zh/guide/cli-reference' },
-  { text: 'GitHub', link: 'https://github.com/QuantClaw/QuantClaw' },
+  { text: 'GitHub', link: 'https://github.com/RavBot/RavBot' },
 ]
 
 const enSidebar = {
@@ -79,10 +79,10 @@ const zhSidebar = {
 }
 
 export default defineConfig({
-  title: 'QuantClaw',
+  title: 'RavBot',
   description: 'High-performance C++17 implementation of OpenClaw - AI agent framework with persistent memory, browser control, and plugin ecosystem',
 
-  // Deployed to quantclaw.github.io (root domain)
+  // Deployed to ravbot.github.io (root domain)
   cleanUrls: true,
 
   head: [
@@ -100,12 +100,12 @@ export default defineConfig({
         nav: enNav,
         sidebar: enSidebar,
         editLink: {
-          pattern: 'https://github.com/QuantClaw/QuantClaw/edit/main/website/:path',
+          pattern: 'https://github.com/RavBot/RavBot/edit/main/website/:path',
           text: 'Edit this page on GitHub',
         },
         footer: {
           message: 'Released under the Apache 2.0 License.',
-          copyright: 'Copyright © 2024-2026 QuantClaw Contributors',
+          copyright: 'Copyright © 2024-2026 RavBot Contributors',
         },
         docFooter: {
           prev: 'Previous',
@@ -121,12 +121,12 @@ export default defineConfig({
         nav: zhNav,
         sidebar: zhSidebar,
         editLink: {
-          pattern: 'https://github.com/QuantClaw/QuantClaw/edit/main/website/:path',
+          pattern: 'https://github.com/RavBot/RavBot/edit/main/website/:path',
           text: '在 GitHub 上编辑此页',
         },
         footer: {
           message: '基于 Apache 2.0 协议发布。',
-          copyright: 'Copyright © 2024-2026 QuantClaw 贡献者',
+          copyright: 'Copyright © 2024-2026 RavBot 贡献者',
         },
         docFooter: {
           prev: '上一页',
@@ -150,7 +150,7 @@ export default defineConfig({
       provider: 'local',
     },
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/QuantClaw/QuantClaw' },
+      { icon: 'github', link: 'https://github.com/RavBot/RavBot' },
     ],
   },
 

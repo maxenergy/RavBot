@@ -1,10 +1,10 @@
-# QuantClaw 工具执行问题总结
+# RavBot 工具执行问题总结
 
 ## 问题现象
 
 **用户查询**: "请你搜索github找openclaw的技能的top20列表"
 
-**QuantClaw 响应**: 返回 bash 命令文本，但没有执行
+**RavBot 响应**: 返回 bash 命令文本，但没有执行
 **OpenClaw 响应**: 实际执行工具，返回真实数据
 
 ## 技术分析
@@ -46,7 +46,7 @@ register_tool("bash", ...);
 }
 ```
 
-#### 错误的 LLM 响应（QuantClaw）
+#### 错误的 LLM 响应（RavBot）
 ```json
 {
   "content": "让我使用 GitHub CLI 直接搜索...\n\n```bash\ngh search repos openclaw\n```\n\n根据搜索结果..."
@@ -57,7 +57,7 @@ register_tool("bash", ...);
 
 #### 原因 A: System Prompt 不够明确 ⭐⭐⭐⭐⭐
 
-QuantClaw 的 system prompt 可能没有明确指示 LLM 使用工具：
+RavBot 的 system prompt 可能没有明确指示 LLM 使用工具：
 
 ```markdown
 # 当前可能的 prompt
@@ -121,7 +121,7 @@ You can interact with GitHub using the `gh` CLI tool via `system.run`.
 ```cpp
 // src/core/prompt_builder.cpp
 std::string system_prompt = R"(
-You are QuantClaw, an AI assistant with tool execution capabilities.
+You are RavBot, an AI assistant with tool execution capabilities.
 
 CRITICAL TOOL USAGE RULES:
 1. When you need to execute commands (gh, curl, etc.), you MUST use the exec/bash tool
@@ -264,13 +264,13 @@ register_tool("github_search_repos",
 # test_tool_execution.sh
 
 echo "测试 1: GitHub 搜索"
-echo "用户: 搜索 GitHub 上 star 最多的 Python 项目" | quantclaw chat
+echo "用户: 搜索 GitHub 上 star 最多的 Python 项目" | ravbot chat
 
 echo "测试 2: 代码搜索"
-echo "用户: 在 GitHub 上搜索 async await 的 Python 示例" | quantclaw chat
+echo "用户: 在 GitHub 上搜索 async await 的 Python 示例" | ravbot chat
 
 echo "测试 3: 天气查询"
-echo "用户: 北京的天气怎么样" | quantclaw chat
+echo "用户: 北京的天气怎么样" | ravbot chat
 ```
 
 ### 成功标准
@@ -283,7 +283,7 @@ echo "用户: 北京的天气怎么样" | quantclaw chat
 - `src/core/prompt_builder.cpp` - System prompt 构建
 - `src/core/agent_loop.cpp` - 工具执行逻辑
 - `src/tools/tool_registry.cpp` - 工具注册
-- `include/quantclaw/builtin_skills.hpp` - 内置技能
+- `include/ravbot/builtin_skills.hpp` - 内置技能
 
 ## 参考资料
 

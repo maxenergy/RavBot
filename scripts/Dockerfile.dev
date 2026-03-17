@@ -1,20 +1,20 @@
-# QuantClaw Dev Image
+# RavBot Dev Image
 # Full source tree + build toolchain + pre-built artifacts, runs as root for convenience.
 #
 # Build:
-#   docker build -f scripts/Dockerfile.dev -t quantclaw-dev .
+#   docker build -f scripts/Dockerfile.dev -t ravbot-dev .
 # Run:
 #   docker run -it --rm \
 #     -p 18800:18800 -p 18801:18801 \
 #     -v $(pwd):/app \
-#     quantclaw-dev
+#     ravbot-dev
 
 FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-LABEL org.opencontainers.image.title="QuantClaw Dev" \
-      org.opencontainers.image.description="QuantClaw development environment with full toolchain"
+LABEL org.opencontainers.image.title="RavBot Dev" \
+      org.opencontainers.image.description="RavBot development environment with full toolchain"
 
 # ── 1. System dependencies ────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -50,8 +50,8 @@ COPY . .
 RUN mkdir -p build && cd build \
     && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON .. \
     && make -j$(nproc) \
-    && ln -sf /app/build/quantclaw /usr/local/bin/quantclaw \
-    && ldd /app/build/quantclaw
+    && ln -sf /app/build/ravbot /usr/local/bin/ravbot \
+    && ldd /app/build/ravbot
 
 # ── 5. Build Sidecar (Node.js) ───────────────────────────────────────────────
 RUN cd sidecar \
@@ -59,9 +59,9 @@ RUN cd sidecar \
     && npm run build
 
 # ── 6. Runtime workspace layout (OpenClaw-compatible: agents/main/) ───────────
-RUN mkdir -p /root/.quantclaw/agents/main/workspace \
-             /root/.quantclaw/agents/main/sessions \
-             /root/.quantclaw/logs
+RUN mkdir -p /root/.ravbot/agents/main/workspace \
+             /root/.ravbot/agents/main/sessions \
+             /root/.ravbot/logs
 
 EXPOSE 18800 18801
 

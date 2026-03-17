@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# QuantClaw release build script
+# RavBot release build script
 # Produces a versioned tarball + SHA256 checksum, similar to pikiwidb's
 # ci/release-build.sh pattern.
 #
@@ -11,8 +11,8 @@
 #   ./scripts/release.sh 0.3.0-alpha      # explicit version
 #
 # Output:
-#   dist/quantclaw-<VERSION>-<os>-<arch>.tar.gz
-#   dist/quantclaw-<VERSION>-<os>-<arch>.tar.gz.sha256
+#   dist/ravbot-<VERSION>-<os>-<arch>.tar.gz
+#   dist/ravbot-<VERSION>-<os>-<arch>.tar.gz.sha256
 
 set -euo pipefail
 
@@ -50,7 +50,7 @@ case "$ARCH" in
     arm*)    ARCH=arm   ;;
 esac
 
-ARTIFACT_NAME="quantclaw-${VERSION}-${OS}-${ARCH}"
+ARTIFACT_NAME="ravbot-${VERSION}-${OS}-${ARCH}"
 DIST_DIR="$ROOT/dist"
 mkdir -p "$DIST_DIR"
 
@@ -70,7 +70,7 @@ else
     cmake --build "$BUILD_DIR" --parallel "$CPU_CORES"
 fi
 
-BINARY="$BUILD_DIR/quantclaw"
+BINARY="$BUILD_DIR/ravbot"
 [[ -f "$BINARY" ]] || die "Binary not found: $BINARY"
 
 # ── Assemble staging directory ────────────────────────────────────────────────
@@ -79,8 +79,8 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/bin"
 
 # Strip binary to reduce size
-cp "$BINARY" "$STAGE/bin/quantclaw"
-strip "$STAGE/bin/quantclaw" 2>/dev/null || true
+cp "$BINARY" "$STAGE/bin/ravbot"
+strip "$STAGE/bin/ravbot" 2>/dev/null || true
 
 # Include sidecar dist + pruned node_modules (if built)
 SIDECAR_DIST="$ROOT/sidecar/dist"

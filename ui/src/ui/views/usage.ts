@@ -519,7 +519,7 @@ export function renderUsage(props: UsageProps) {
                   class="usage-export-item"
                   @click=${() =>
                     downloadTextFile(
-                      `quantclaw-usage-sessions-${exportStamp}.csv`,
+                      `ravbot-usage-sessions-${exportStamp}.csv`,
                       buildSessionsCsv(filteredSessions),
                       "text/csv",
                     )}
@@ -531,7 +531,7 @@ export function renderUsage(props: UsageProps) {
                   class="usage-export-item"
                   @click=${() =>
                     downloadTextFile(
-                      `quantclaw-usage-daily-${exportStamp}.csv`,
+                      `ravbot-usage-daily-${exportStamp}.csv`,
                       buildDailyCsv(filteredDaily),
                       "text/csv",
                     )}
@@ -543,7 +543,7 @@ export function renderUsage(props: UsageProps) {
                   class="usage-export-item"
                   @click=${() =>
                     downloadTextFile(
-                      `quantclaw-usage-${exportStamp}.json`,
+                      `ravbot-usage-${exportStamp}.json`,
                       JSON.stringify(
                         {
                           totals: displayTotals,

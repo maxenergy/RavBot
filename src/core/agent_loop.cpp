@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/agent_loop.hpp"
+#include "ravbot/core/agent_loop.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -18,21 +18,21 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
-#include "quantclaw/core/context_pruner.hpp"
-#include "quantclaw/core/embedding_manager.hpp"
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/core/session_compaction.hpp"
-#include "quantclaw/core/skill_loader.hpp"
-#include "quantclaw/gateway/protocol.hpp"
-#include "quantclaw/providers/failover_resolver.hpp"
-#include "quantclaw/providers/provider_error.hpp"
-#include "quantclaw/providers/provider_registry.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
+#include "ravbot/core/context_pruner.hpp"
+#include "ravbot/core/embedding_manager.hpp"
+#include "ravbot/core/memory_manager.hpp"
+#include "ravbot/core/session_compaction.hpp"
+#include "ravbot/core/skill_loader.hpp"
+#include "ravbot/gateway/protocol.hpp"
+#include "ravbot/providers/failover_resolver.hpp"
+#include "ravbot/providers/provider_error.hpp"
+#include "ravbot/providers/provider_registry.hpp"
+#include "ravbot/tools/tool_registry.hpp"
 
 // Bring event name constants into scope
-namespace events = quantclaw::gateway::events;
+namespace events = ravbot::gateway::events;
 
-namespace quantclaw {
+namespace ravbot {
 
 // Estimate token count for a message list (rough: 4 chars ≈ 1 token)
 static int estimate_tokens(const std::vector<Message>& messages) {
@@ -1384,6 +1384,10 @@ bool AgentLoop::execute_stream_with_retry(
 std::vector<Message> AgentLoop::ProcessMessage(
     const std::string& message, const std::vector<Message>& history,
     const std::string& system_prompt, const std::string& usage_session_key) {
+  // Session write lock: serialize concurrent calls on the same AgentLoop
+  // instance to prevent race conditions on session state.
+  std::lock_guard<std::mutex> session_lock(session_write_mutex_);
+
   const std::string& effective_session_key =
       usage_session_key.empty() ? session_key_ : usage_session_key;
   logger_->info("Processing message (non-streaming)");
@@ -1567,9 +1571,7 @@ std::vector<Message> AgentLoop::ProcessMessage(
 
       // --- Usage tracking ---
       if (usage_accumulator_ && !effective_session_key.empty()) {
-        usage_accumulator_->Record(effective_session_key,
-                                   response.usage.prompt_tokens,
-                                   response.usage.completion_tokens);
+        usage_accumulator_->Record(effective_session_key, response.usage);
       }
       logger_->debug("Token usage: prompt={} completion={}",
                      response.usage.prompt_tokens,
@@ -1762,6 +1764,10 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
     const std::string& message, const std::vector<Message>& history,
     const std::string& system_prompt, AgentEventCallback callback,
     const std::string& usage_session_key) {
+  // Session write lock: serialize concurrent streaming calls on the same
+  // AgentLoop instance.
+  std::lock_guard<std::mutex> session_lock(session_write_mutex_);
+
   const std::string& effective_session_key =
       usage_session_key.empty() ? session_key_ : usage_session_key;
   logger_->info("Processing message (streaming)");
@@ -1972,9 +1978,7 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
 
       // --- Usage tracking ---
       if (usage_accumulator_ && !effective_session_key.empty()) {
-        usage_accumulator_->Record(effective_session_key,
-                                   stream_usage.prompt_tokens,
-                                   stream_usage.completion_tokens);
+        usage_accumulator_->Record(effective_session_key, stream_usage);
       }
       logger_->debug("Token usage (stream): prompt={} completion={}",
                      stream_usage.prompt_tokens,
@@ -2289,4 +2293,4 @@ AgentLoop::handle_tool_calls(const std::vector<nlohmann::json>& tool_calls) {
   return results;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

@@ -1,10 +1,10 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <memory>
 #include <filesystem>
-#include "quantclaw/security/sandbox.hpp"
+#include "ravbot/security/sandbox.hpp"
 #ifdef __linux__
 #include <sys/resource.h>
 #include <sys/wait.h>
@@ -15,7 +15,7 @@
 class SandboxTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_sandbox_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_sandbox_test");
     }
 
     void TearDown() override {
@@ -28,7 +28,7 @@ protected:
 };
 
 TEST_F(SandboxTest, AllowedPathWithinWorkspace) {
-    quantclaw::Sandbox sandbox(test_dir_,
+    ravbot::Sandbox sandbox(test_dir_,
         {test_dir_.string()},  // allowed
         {},                     // denied
         {},                     // allowed commands
@@ -40,7 +40,7 @@ TEST_F(SandboxTest, AllowedPathWithinWorkspace) {
 }
 
 TEST_F(SandboxTest, DeniedPathOutsideWorkspace) {
-    quantclaw::Sandbox sandbox(test_dir_,
+    ravbot::Sandbox sandbox(test_dir_,
         {test_dir_.string()},  // allowed
         {},                     // denied
         {},
@@ -51,7 +51,7 @@ TEST_F(SandboxTest, DeniedPathOutsideWorkspace) {
 }
 
 TEST_F(SandboxTest, ExplicitDenyOverridesAllow) {
-    quantclaw::Sandbox sandbox(test_dir_,
+    ravbot::Sandbox sandbox(test_dir_,
         {"/"},                  // allow everything
         {"/etc"},               // but deny /etc
         {},
@@ -63,7 +63,7 @@ TEST_F(SandboxTest, ExplicitDenyOverridesAllow) {
 }
 
 TEST_F(SandboxTest, EmptyAllowedPathsPermitsAll) {
-    quantclaw::Sandbox sandbox(test_dir_,
+    ravbot::Sandbox sandbox(test_dir_,
         {},   // no allowed paths → permit all (except denied)
         {},
         {},
@@ -74,13 +74,13 @@ TEST_F(SandboxTest, EmptyAllowedPathsPermitsAll) {
 }
 
 TEST_F(SandboxTest, SanitizePathTraversal) {
-    quantclaw::Sandbox sandbox(test_dir_, {}, {}, {}, {});
+    ravbot::Sandbox sandbox(test_dir_, {}, {}, {}, {});
 
     EXPECT_THROW(sandbox.SanitizePath("../../../etc/passwd"), std::runtime_error);
 }
 
 TEST_F(SandboxTest, SanitizeNormalPath) {
-    quantclaw::Sandbox sandbox(test_dir_, {}, {}, {}, {});
+    ravbot::Sandbox sandbox(test_dir_, {}, {}, {}, {});
 
     auto result = sandbox.SanitizePath(test_dir_.string() + "/SOUL.md");
     EXPECT_FALSE(result.empty());
@@ -89,25 +89,25 @@ TEST_F(SandboxTest, SanitizeNormalPath) {
 // --- Static validators ---
 
 TEST_F(SandboxTest, ValidateFilePath) {
-    EXPECT_TRUE(quantclaw::Sandbox::ValidateFilePath("/tmp/test.txt", "/tmp"));
-    EXPECT_FALSE(quantclaw::Sandbox::ValidateFilePath("../../etc/passwd", "/tmp"));
+    EXPECT_TRUE(ravbot::Sandbox::ValidateFilePath("/tmp/test.txt", "/tmp"));
+    EXPECT_FALSE(ravbot::Sandbox::ValidateFilePath("../../etc/passwd", "/tmp"));
 }
 
 TEST_F(SandboxTest, ValidateShellCommandSafe) {
-    EXPECT_TRUE(quantclaw::Sandbox::ValidateShellCommand("ls -la"));
-    EXPECT_TRUE(quantclaw::Sandbox::ValidateShellCommand("echo hello"));
+    EXPECT_TRUE(ravbot::Sandbox::ValidateShellCommand("ls -la"));
+    EXPECT_TRUE(ravbot::Sandbox::ValidateShellCommand("echo hello"));
 }
 
 TEST_F(SandboxTest, ValidateShellCommandDangerous) {
-    EXPECT_FALSE(quantclaw::Sandbox::ValidateShellCommand("rm -rf /"));
-    EXPECT_FALSE(quantclaw::Sandbox::ValidateShellCommand("dd if=/dev/zero of=/dev/sda"));
-    EXPECT_FALSE(quantclaw::Sandbox::ValidateShellCommand("mkfs.ext4 /dev/sda"));
+    EXPECT_FALSE(ravbot::Sandbox::ValidateShellCommand("rm -rf /"));
+    EXPECT_FALSE(ravbot::Sandbox::ValidateShellCommand("dd if=/dev/zero of=/dev/sda"));
+    EXPECT_FALSE(ravbot::Sandbox::ValidateShellCommand("mkfs.ext4 /dev/sda"));
 }
 
 // --- Command filtering ---
 
 TEST_F(SandboxTest, DenyCommandByPattern) {
-    quantclaw::Sandbox sandbox(test_dir_,
+    ravbot::Sandbox sandbox(test_dir_,
         {},
         {},
         {},
@@ -126,7 +126,7 @@ TEST_F(SandboxTest, ApplyResourceLimitsDoesNotThrow) {
     pid_t pid = fork();
     ASSERT_NE(pid, -1) << "fork() failed";
     if (pid == 0) {
-        quantclaw::Sandbox::ApplyResourceLimits();
+        ravbot::Sandbox::ApplyResourceLimits();
         _exit(0);  // No throw
     }
     int status;
@@ -134,7 +134,7 @@ TEST_F(SandboxTest, ApplyResourceLimitsDoesNotThrow) {
     ASSERT_TRUE(WIFEXITED(status));
     EXPECT_EQ(WEXITSTATUS(status), 0);
 #else
-    EXPECT_NO_THROW(quantclaw::Sandbox::ApplyResourceLimits());
+    EXPECT_NO_THROW(ravbot::Sandbox::ApplyResourceLimits());
 #endif
 }
 
@@ -147,7 +147,7 @@ TEST_F(SandboxTest, ResourceLimitsAreSet) {
 
     if (pid == 0) {
         // Child process: apply limits and verify
-        quantclaw::Sandbox::ApplyResourceLimits();
+        ravbot::Sandbox::ApplyResourceLimits();
 
         struct rlimit cpu_limit;
         getrlimit(RLIMIT_CPU, &cpu_limit);

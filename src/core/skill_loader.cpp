@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/skill_loader.hpp"
+#include "ravbot/core/skill_loader.hpp"
 #include <fstream>
 #include <sstream>
 #include <regex>
@@ -12,7 +12,7 @@
 #include <unordered_set>
 #include <spdlog/spdlog.h>
 
-namespace quantclaw {
+namespace ravbot {
 
 SkillLoader::SkillLoader(std::shared_ptr<spdlog::logger> logger)
     : logger_(logger) {
@@ -196,7 +196,7 @@ bool SkillLoader::InstallSkill(const SkillMetadata& skill) {
         } else if (eff_method == "download") {
             const char* home = std::getenv("HOME");
             std::string bin_dir = std::string(home ? home : "/tmp") +
-                                  "/.quantclaw/bin";
+                                  "/.ravbot/bin";
             std::filesystem::create_directories(bin_dir);
             std::string dest = bin_dir + "/" +
                                (eff_binary.empty() ? "downloaded" : eff_binary);
@@ -358,7 +358,7 @@ SkillMetadata SkillLoader::parse_skill_file(const std::filesystem::path& skill_f
             }
 
             // Extract install info — supports both formats:
-            //   QuantClaw object: { "apt": "curl", "node": "@pkg/cli" }
+            //   RavBot object: { "apt": "curl", "node": "@pkg/cli" }
             //   OpenClaw array:   [{ "kind": "brew", "formula": "curl", "bins": ["curl"] }]
             nlohmann::json* install_section = nullptr;
             if (metadata.contains("metadata") &&
@@ -398,7 +398,7 @@ SkillMetadata SkillLoader::parse_skill_file(const std::filesystem::path& skill_f
                         skill.installs.push_back(std::move(info));
                     }
                 } else if (install_section->is_object()) {
-                    // QuantClaw object format: { method: formula }
+                    // RavBot object format: { method: formula }
                     for (auto it = install_section->begin();
                          it != install_section->end(); ++it) {
                         SkillInstallInfo info;
@@ -721,7 +721,7 @@ std::vector<SkillMetadata> SkillLoader::LoadSkills(
     std::string home_str;
     const char* home = std::getenv("HOME");
     if (home) home_str = home;
-    dirs.push_back(std::filesystem::path(home_str.empty() ? "/tmp" : home_str) / ".quantclaw" / "skills");
+    dirs.push_back(std::filesystem::path(home_str.empty() ? "/tmp" : home_str) / ".ravbot" / "skills");
 
     for (const auto& extra : skills_config.load.extra_dirs) {
         dirs.push_back(std::filesystem::path(extra));
@@ -752,4 +752,4 @@ std::vector<SkillMetadata> SkillLoader::LoadSkills(
     return result;
 }
 
-} // namespace quantclaw
+} // namespace ravbot

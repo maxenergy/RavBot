@@ -266,7 +266,7 @@ void BrowserSessionManager::lifecycle_loop() {
 
 ### 修改文件
 
-1. `include/quantclaw/tools/browser_tool.hpp`
+1. `include/ravbot/tools/browser_tool.hpp`
    - 添加 SessionLifecycleConfig 结构
    - 扩展 BrowserSessionManager 类
    - 添加生命周期管理方法
@@ -320,7 +320,7 @@ void BrowserSessionManager::lifecycle_loop() {
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | 会话验证 | ✅ | ✅ | 完成 |
 | 空闲超时 | ✅ | ✅ | 完成 |
@@ -568,7 +568,7 @@ config.idle_timeout_seconds = 300;
 6. ✅ 生命周期配置
 7. ✅ 100% 测试覆盖率
 
-该功能使 QuantClaw 能够自动管理浏览器会话的生命周期,避免资源泄漏,提高系统稳定性和安全性。
+该功能使 RavBot 能够自动管理浏览器会话的生命周期,避免资源泄漏,提高系统稳定性和安全性。
 
 ---
 

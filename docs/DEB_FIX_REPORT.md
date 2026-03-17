@@ -7,8 +7,8 @@
 
 **错误信息:**
 ```
-dpkg: 处理归档 /home/kaifa/下载/quantclaw_0.3.0-1_amd64.deb (--unpack)时出错：
- 无法打开 /usr/lib/systemd/system/quantclaw.service.dpkg-new: 没有那个文件或目录
+dpkg: 处理归档 /home/kaifa/下载/ravbot_0.3.0-1_amd64.deb (--unpack)时出错：
+ 无法打开 /usr/lib/systemd/system/ravbot.service.dpkg-new: 没有那个文件或目录
 ```
 
 ## 🔍 根本原因分析
@@ -21,9 +21,9 @@ dpkg: 处理归档 /home/kaifa/下载/quantclaw_0.3.0-1_amd64.deb (--unpack)时�
 
 ### 1. 修改 debian/install
 ```diff
- assets/skills/* usr/share/quantclaw/skills/
- sidecar/* usr/share/quantclaw/sidecar/
-+debian/quantclaw.service usr/lib/systemd/system/
+ assets/skills/* usr/share/ravbot/skills/
+ sidecar/* usr/share/ravbot/sidecar/
++debian/ravbot.service usr/lib/systemd/system/
 ```
 
 ### 2. 修改 debian/rules
@@ -31,21 +31,21 @@ dpkg: 处理归档 /home/kaifa/下载/quantclaw_0.3.0-1_amd64.deb (--unpack)时�
  override_dh_auto_install:
      dh_auto_install
      # Install assets
-     install -d debian/quantclaw/usr/share/quantclaw/skills
-     cp -r assets/skills/* debian/quantclaw/usr/share/quantclaw/skills/
+     install -d debian/ravbot/usr/share/ravbot/skills
+     cp -r assets/skills/* debian/ravbot/usr/share/ravbot/skills/
      # Install sidecar (compiled JS + dependencies)
-     install -d debian/quantclaw/usr/share/quantclaw/sidecar
-     cp -r sidecar/dist debian/quantclaw/usr/share/quantclaw/sidecar/
-     cp -r sidecar/node_modules debian/quantclaw/usr/share/quantclaw/sidecar/
-     cp sidecar/package.json debian/quantclaw/usr/share/quantclaw/sidecar/
-     cp sidecar/package-lock.json debian/quantclaw/usr/share/quantclaw/sidecar/
+     install -d debian/ravbot/usr/share/ravbot/sidecar
+     cp -r sidecar/dist debian/ravbot/usr/share/ravbot/sidecar/
+     cp -r sidecar/node_modules debian/ravbot/usr/share/ravbot/sidecar/
+     cp sidecar/package.json debian/ravbot/usr/share/ravbot/sidecar/
+     cp sidecar/package-lock.json debian/ravbot/usr/share/ravbot/sidecar/
 -    # Install systemd service
--    install -d debian/quantclaw/usr/lib/systemd/system
--    install -m 644 debian/quantclaw.service debian/quantclaw/usr/lib/systemd/system/
+-    install -d debian/ravbot/usr/lib/systemd/system
+-    install -m 644 debian/ravbot.service debian/ravbot/usr/lib/systemd/system/
      # Install documentation
-     install -d debian/quantclaw/usr/share/doc/quantclaw
-     install -m 644 README.md debian/quantclaw/usr/share/doc/quantclaw/
-     install -m 644 README_CN.md debian/quantclaw/usr/share/doc/quantclaw/
+     install -d debian/ravbot/usr/share/doc/ravbot
+     install -m 644 README.md debian/ravbot/usr/share/doc/ravbot/
+     install -m 644 README_CN.md debian/ravbot/usr/share/doc/ravbot/
 ```
 
 **关键改进:**
@@ -56,15 +56,15 @@ dpkg: 处理归档 /home/kaifa/下载/quantclaw_0.3.0-1_amd64.deb (--unpack)时�
 ## 📦 新包验证
 
 ### 包信息
-- **文件名:** quantclaw_0.3.0-1_amd64.deb
+- **文件名:** ravbot_0.3.0-1_amd64.deb
 - **大小:** 11MB
 - **SHA256:** `b3dadb6dc25e7fce177dcf150fe36be9d11470bd20256a8660ca5ea07e4dfbbb`
 
 ### 验证结果
 ```
-✅ 主程序: /usr/bin/quantclaw
-✅ Systemd 服务: /usr/lib/systemd/system/quantclaw.service
-✅ Sidecar: /usr/share/quantclaw/sidecar/dist/index.js
+✅ 主程序: /usr/bin/ravbot
+✅ Systemd 服务: /usr/lib/systemd/system/ravbot.service
+✅ Sidecar: /usr/share/ravbot/sidecar/dist/index.js
 ✅ Node.js 依赖: 1193 个文件
 ✅ 内置技能: 11 个文件
 ✅ nodejs 依赖已声明
@@ -76,13 +76,13 @@ dpkg: 处理归档 /home/kaifa/下载/quantclaw_0.3.0-1_amd64.deb (--unpack)时�
 
 **修复前 (错误):**
 ```
-./lib/systemd/system/quantclaw.service          ❌ 错误路径
-./usr/lib/systemd/system/quantclaw.service      ✅ 正确路径 (重复)
+./lib/systemd/system/ravbot.service          ❌ 错误路径
+./usr/lib/systemd/system/ravbot.service      ✅ 正确路径 (重复)
 ```
 
 **修复后 (正确):**
 ```
-./usr/lib/systemd/system/quantclaw.service      ✅ 唯一正确路径
+./usr/lib/systemd/system/ravbot.service      ✅ 唯一正确路径
 ```
 
 ## 🛠️ 新增工具和文档
@@ -97,7 +97,7 @@ dpkg: 处理归档 /home/kaifa/下载/quantclaw_0.3.0-1_amd64.deb (--unpack)时�
 
 **使用:**
 ```bash
-./scripts/verify-deb.sh dist/quantclaw_0.3.0-1_amd64.deb
+./scripts/verify-deb.sh dist/ravbot_0.3.0-1_amd64.deb
 ```
 
 ### 2. 快速上手指南
@@ -148,35 +148,35 @@ a7f9eeb feat: 添加 Ubuntu 24.04 DEB 打包支持
 
 1. **传输包到测试机器:**
    ```bash
-   scp dist/quantclaw_0.3.0-1_amd64.deb kaifa@kaifa:~/下载/
+   scp dist/ravbot_0.3.0-1_amd64.deb kaifa@kaifa:~/下载/
    ```
 
 2. **安装:**
    ```bash
    cd ~/下载
-   sudo dpkg -i quantclaw_0.3.0-1_amd64.deb
+   sudo dpkg -i ravbot_0.3.0-1_amd64.deb
    sudo apt-get install -f
    ```
 
 3. **验证:**
    ```bash
-   quantclaw --version
-   ls -la /usr/lib/systemd/system/quantclaw.service
-   ls -la /usr/share/quantclaw/sidecar/dist/
+   ravbot --version
+   ls -la /usr/lib/systemd/system/ravbot.service
+   ls -la /usr/share/ravbot/sidecar/dist/
    ```
 
 4. **功能测试:**
    ```bash
-   quantclaw onboard
-   quantclaw gateway
-   quantclaw health
-   quantclaw agent "测试消息"
+   ravbot onboard
+   ravbot gateway
+   ravbot health
+   ravbot agent "测试消息"
    ```
 
 5. **插件测试:**
    ```bash
    # 创建测试插件
-   mkdir -p ~/.quantclaw/plugins/test-plugin
+   mkdir -p ~/.ravbot/plugins/test-plugin
    # ... (参考 INSTALL_TEST_GUIDE.md)
    ```
 
@@ -184,13 +184,13 @@ a7f9eeb feat: 添加 Ubuntu 24.04 DEB 打包支持
 
 安装应该成功完成,输出类似:
 ```
-正在选中未选择的软件包 quantclaw。
-正在解压 quantclaw (0.3.0-1) ...
-正在设置 quantclaw (0.3.0-1) ...
+正在选中未选择的软件包 ravbot。
+正在解压 ravbot (0.3.0-1) ...
+正在设置 ravbot (0.3.0-1) ...
 ✓ Sidecar installed successfully
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  QuantClaw has been installed successfully!
+  RavBot has been installed successfully!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -223,9 +223,9 @@ a7f9eeb feat: 添加 Ubuntu 24.04 DEB 打包支持
 
 ## 🔗 资源链接
 
-- **GitHub:** https://github.com/QuantClaw/QuantClaw
-- **Issues:** https://github.com/QuantClaw/QuantClaw/issues
-- **官网:** https://quantclaw.github.io
+- **GitHub:** https://github.com/RavBot/RavBot
+- **Issues:** https://github.com/RavBot/RavBot/issues
+- **官网:** https://ravbot.github.io
 
 ---
 

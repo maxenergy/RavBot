@@ -1,4 +1,4 @@
-# QuantClaw Ubuntu 24.04 DEB 包
+# RavBot Ubuntu 24.04 DEB 包
 
 ## 快速安装
 
@@ -6,8 +6,8 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 
 # 2. 安装构建依赖
 sudo apt-get update
@@ -23,7 +23,7 @@ sudo apt-get install -y \
 ./scripts/build-deb.sh
 
 # 4. 安装
-sudo dpkg -i dist/quantclaw_0.3.0-1_amd64.deb
+sudo dpkg -i dist/ravbot_0.3.0-1_amd64.deb
 sudo apt-get install -f  # 如果有依赖问题
 ```
 
@@ -34,59 +34,59 @@ sudo apt-get install -f  # 如果有依赖问题
 ./scripts/build-deb-local.sh
 
 # 安装生成的包
-sudo dpkg -i dist/quantclaw_0.3.0-1_amd64.deb
+sudo dpkg -i dist/ravbot_0.3.0-1_amd64.deb
 ```
 
 ## 初始化配置
 
 ```bash
 # 1. 运行初始化向导(在当前用户下)
-quantclaw onboard
+ravbot onboard
 
 # 2. 启动服务(前台运行)
-quantclaw gateway
+ravbot gateway
 
 # 或者安装为系统服务
-quantclaw gateway install
-systemctl start quantclaw
-systemctl enable quantclaw
+ravbot gateway install
+systemctl start ravbot
+systemctl enable ravbot
 
 # 3. 查看状态
-quantclaw health
+ravbot health
 
 # 4. 打开 Dashboard
-quantclaw dashboard
+ravbot dashboard
 ```
 
 ## 包内容
 
 ### 安装位置
 
-- **主程序**: `/usr/bin/quantclaw`
-- **技能库**: `/usr/share/quantclaw/skills/`
-- **Sidecar**: `/usr/share/quantclaw/sidecar/` (可选,需要 Node.js)
-- **服务文件**: `/lib/systemd/system/quantclaw.service`
-- **文档**: `/usr/share/doc/quantclaw/`
+- **主程序**: `/usr/bin/ravbot`
+- **技能库**: `/usr/share/ravbot/skills/`
+- **Sidecar**: `/usr/share/ravbot/sidecar/` (可选,需要 Node.js)
+- **服务文件**: `/lib/systemd/system/ravbot.service`
+- **文档**: `/usr/share/doc/ravbot/`
 
 ### 运行时文件(在当前用户主目录)
 
-- **配置**: `~/.quantclaw/quantclaw.json`
-- **工作区**: `~/.quantclaw/agents/main/workspace/`
-- **会话**: `~/.quantclaw/agents/main/sessions/`
-- **日志**: `~/.quantclaw/logs/`
-- **插件**: `~/.quantclaw/plugins/` (可选)
+- **配置**: `~/.ravbot/ravbot.json`
+- **工作区**: `~/.ravbot/agents/main/workspace/`
+- **会话**: `~/.ravbot/agents/main/sessions/`
+- **日志**: `~/.ravbot/logs/`
+- **插件**: `~/.ravbot/plugins/` (可选)
 
 ## 配置 API 密钥
 
 ```bash
 # OpenAI
-quantclaw config set providers.openai.apiKey "sk-..."
+ravbot config set providers.openai.apiKey "sk-..."
 
 # Anthropic
-quantclaw config set providers.anthropic.apiKey "sk-ant-..."
+ravbot config set providers.anthropic.apiKey "sk-ant-..."
 
 # 重新加载配置
-quantclaw config reload
+ravbot config reload
 ```
 
 ## 关于 Node.js Sidecar
@@ -106,11 +106,11 @@ quantclaw config reload
 
 ```bash
 # 1. 安装插件到用户目录
-mkdir -p ~/.quantclaw/plugins/my-plugin
-cd ~/.quantclaw/plugins/my-plugin
+mkdir -p ~/.ravbot/plugins/my-plugin
+cd ~/.ravbot/plugins/my-plugin
 
 # 2. 创建插件配置
-cat > quantclaw.plugin.json << 'EOF'
+cat > ravbot.plugin.json << 'EOF'
 {
   "name": "my-plugin",
   "version": "1.0.0",
@@ -119,54 +119,54 @@ cat > quantclaw.plugin.json << 'EOF'
 EOF
 
 # 3. 启用插件
-quantclaw config set plugins.allow '["my-plugin"]'
+ravbot config set plugins.allow '["my-plugin"]'
 
 # 4. 重启 gateway
-quantclaw gateway restart
+ravbot gateway restart
 ```
 
 ### 验证 Sidecar
 
 ```bash
 # 检查 Sidecar 是否正确安装
-ls -la /usr/share/quantclaw/sidecar/dist/
-ls -la /usr/share/quantclaw/sidecar/node_modules/
+ls -la /usr/share/ravbot/sidecar/dist/
+ls -la /usr/share/ravbot/sidecar/node_modules/
 
 # 查看插件状态
-quantclaw plugins list
+ravbot plugins list
 ```
 
 ## 常用命令
 
 ```bash
 # 查看版本
-quantclaw --version
+ravbot --version
 
 # 健康检查
-quantclaw health
+ravbot health
 
 # 查看状态
-quantclaw status
+ravbot status
 
 # 发送消息
-quantclaw agent "Hello!"
+ravbot agent "Hello!"
 
 # 查看会话
-quantclaw sessions list
+ravbot sessions list
 
 # 查看日志
-quantclaw logs
+ravbot logs
 ```
 
 ## 卸载
 
 ```bash
 # 保留配置
-sudo apt-get remove quantclaw
+sudo apt-get remove ravbot
 
 # 完全删除(包括配置)
-sudo apt-get purge quantclaw
-rm -rf ~/.quantclaw  # 手动删除用户数据
+sudo apt-get purge ravbot
+rm -rf ~/.ravbot  # 手动删除用户数据
 ```
 
 ## 故障排查
@@ -175,13 +175,13 @@ rm -rf ~/.quantclaw  # 手动删除用户数据
 
 ```bash
 # 查看详细日志
-journalctl -u quantclaw -n 50 --no-pager
+journalctl -u ravbot -n 50 --no-pager
 
 # 手动运行(调试)
-quantclaw gateway
+ravbot gateway
 
 # 检查配置
-quantclaw config get
+ravbot config get
 ```
 
 ### 端口冲突
@@ -191,8 +191,8 @@ quantclaw config get
 sudo netstat -tlnp | grep -E '18800|18801'
 
 # 修改端口
-quantclaw config set gateway.port 18900
-quantclaw config set gateway.controlUi.port 18901
+ravbot config set gateway.port 18900
+ravbot config set gateway.controlUi.port 18901
 ```
 
 ## 系统要求
@@ -226,9 +226,9 @@ quantclaw config set gateway.controlUi.port 18901
 
 ## 更多信息
 
-- **官方文档**: https://quantclaw.github.io
-- **GitHub**: https://github.com/QuantClaw/QuantClaw
-- **问题反馈**: https://github.com/QuantClaw/QuantClaw/issues
+- **官方文档**: https://ravbot.github.io
+- **GitHub**: https://github.com/RavBot/RavBot
+- **问题反馈**: https://github.com/RavBot/RavBot/issues
 - **详细打包指南**: [docs/DEB_PACKAGING.md](docs/DEB_PACKAGING.md)
 
 ## 许可证

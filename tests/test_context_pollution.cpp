@@ -1,18 +1,18 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <spdlog/sinks/null_sink.h>
 #include <spdlog/spdlog.h>
 
-#include "quantclaw/core/agent_loop.hpp"
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/core/skill_loader.hpp"
-#include "quantclaw/providers/llm_provider.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
+#include "ravbot/core/agent_loop.hpp"
+#include "ravbot/core/memory_manager.hpp"
+#include "ravbot/core/skill_loader.hpp"
+#include "ravbot/providers/llm_provider.hpp"
+#include "ravbot/tools/tool_registry.hpp"
 
 #include <gtest/gtest.h>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 // Mock provider that captures all requests
 class CapturingMockProvider : public LLMProvider {
@@ -69,7 +69,7 @@ class ContextPollutionTest : public ::testing::Test {
 
     // Create a temporary workspace directory
     workspace_path_ =
-        std::filesystem::temp_directory_path() / "quantclaw_test_workspace";
+        std::filesystem::temp_directory_path() / "ravbot_test_workspace";
     std::filesystem::create_directories(workspace_path_);
 
     memory_manager_ = std::make_shared<MemoryManager>(workspace_path_, logger_);

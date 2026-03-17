@@ -21,7 +21,7 @@ You can perform system health checks and diagnostics using standard Linux tools.
 6. **Services:** `systemctl --user list-units --state=running` — check running services
 7. **Logs:** `journalctl --user -n 20 --no-pager` — recent log entries
 
-**QuantClaw specific:**
-- Gateway status: `quantclaw status`
-- Config check: `quantclaw doctor`
-- Health endpoint: `quantclaw health`
+**RavBot specific:**
+- Gateway status: `ravbot status`
+- Config check: `ravbot doctor`
+- Health endpoint: `ravbot health`

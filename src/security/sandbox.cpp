@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/security/sandbox.hpp"
+#include "ravbot/security/sandbox.hpp"
 #include <filesystem>
 #include <regex>
 #include <spdlog/spdlog.h>
@@ -9,7 +9,7 @@
 #include <sys/resource.h>
 #endif
 
-namespace quantclaw {
+namespace ravbot {
 
 Sandbox::Sandbox(const std::filesystem::path& workspace_path,
                 const std::vector<std::string>& allowed_paths,
@@ -124,4 +124,4 @@ void Sandbox::ApplyResourceLimits() {
     // macOS / Windows: no-op (macOS setrlimit semantics differ, not implemented)
 }
 
-} // namespace quantclaw
+} // namespace ravbot

@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-成功修复了 QuantClaw 中的 "Improperly formed request" 错误。问题根源是 `narrow_anthropic_tools_for_replay()` 函数在重试请求时缩减工具列表,导致工具列表与系统提示词不匹配,Anthropic API 拒绝请求。
+成功修复了 RavBot 中的 "Improperly formed request" 错误。问题根源是 `narrow_anthropic_tools_for_replay()` 函数在重试请求时缩减工具列表,导致工具列表与系统提示词不匹配,Anthropic API 拒绝请求。
 
 ---
 
@@ -95,7 +95,7 @@ Anthropic API 检测到不一致
 
 ### 4. 错误 Payload 分析
 
-**文件**: `/tmp/quantclaw_error_payload.json`
+**文件**: `/tmp/ravbot_error_payload.json`
 
 ```json
 {
@@ -187,7 +187,7 @@ static void narrow_anthropic_tools_for_replay(
 
 **命令**:
 ```bash
-./build/quantclaw agent request -m "在VoltAgent/awesome-openclaw-skills仓库中找一些claude code的多代理skill"
+./build/ravbot agent request -m "在VoltAgent/awesome-openclaw-skills仓库中找一些claude code的多代理skill"
 ```
 
 **结果**: ✅ 成功

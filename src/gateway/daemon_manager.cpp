@@ -1,9 +1,9 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/gateway/daemon_manager.hpp"
+#include "ravbot/gateway/daemon_manager.hpp"
 
-namespace quantclaw::gateway {
+namespace ravbot::gateway {
 
 DaemonManager::DaemonManager(std::shared_ptr<spdlog::logger> logger)
     : service_(std::move(logger)) {}
@@ -19,4 +19,4 @@ int DaemonManager::GetPid() const { return service_.get_pid(); }
 void DaemonManager::WritePid(int pid) { service_.write_pid(pid); }
 void DaemonManager::RemovePid() { service_.remove_pid(); }
 
-}  // namespace quantclaw::gateway
+}  // namespace ravbot::gateway

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2025 QuantClaw Contributors
+# Copyright 2025 RavBot Contributors
 # SPDX-License-Identifier: Apache-2.0
 
 # Performance Benchmark Script
@@ -8,7 +8,7 @@
 set -e
 
 echo "=========================================="
-echo "QuantClaw Performance Benchmark"
+echo "RavBot Performance Benchmark"
 echo "=========================================="
 echo ""
 
@@ -19,8 +19,8 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # 检查测试可执行文件
-if [ ! -f "./build/quantclaw_tests" ]; then
-    echo -e "${RED}Error: quantclaw_tests not found. Please build first.${NC}"
+if [ ! -f "./build/ravbot_tests" ]; then
+    echo -e "${RED}Error: ravbot_tests not found. Please build first.${NC}"
     exit 1
 fi
 
@@ -28,14 +28,14 @@ fi
 echo "=========================================="
 echo "1. Load Testing"
 echo "=========================================="
-./build/quantclaw_tests --gtest_filter="LoadTest.*" --gtest_color=yes
+./build/ravbot_tests --gtest_filter="LoadTest.*" --gtest_color=yes
 echo ""
 
 # 运行内存测试
 echo "=========================================="
 echo "2. Memory Testing"
 echo "=========================================="
-./build/quantclaw_tests --gtest_filter="MemoryTest.*" --gtest_color=yes
+./build/ravbot_tests --gtest_filter="MemoryTest.*" --gtest_color=yes
 echo ""
 
 # 性能基准总结

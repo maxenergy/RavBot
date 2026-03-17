@@ -1,4 +1,4 @@
-# QuantClaw 长效记忆验证报告
+# RavBot 长效记忆验证报告
 
 ## 测试时间
 2026-03-14 21:41:29 - 21:42:08
@@ -15,7 +15,7 @@
 - **嵌入服务**: Ollama (http://localhost:11434)
 - **嵌入模型**: nomic-embed-text
 - **向量维度**: 768
-- **数据库路径**: /tmp/quantclaw_test/vectors.db
+- **数据库路径**: /tmp/ravbot_test/vectors.db
 
 ### HNSW 参数
 - **M**: 16
@@ -43,7 +43,7 @@
 [info] Registered embedding provider: ollama (ollama)
 [info] Set default embedding provider: ollama
 [info] HNSW initialization deferred until first vector is indexed
-[info] Vector database initialized: /tmp/quantclaw_test/vectors.db (HNSW: true)
+[info] Vector database initialized: /tmp/ravbot_test/vectors.db (HNSW: true)
 [info] Switched to embedding provider: ollama
 ```
 
@@ -52,7 +52,7 @@
 **测试内容**: 索引 5 个中文测试文本
 
 **测试数据**:
-1. doc1: "QuantClaw 是一个用 C++ 实现的 Agent 网关框架"
+1. doc1: "RavBot 是一个用 C++ 实现的 Agent 网关框架"
 2. doc2: "Ollama 提供本地运行的开源嵌入模型"
 3. doc3: "HNSW 是一种高效的近似最近邻搜索算法"
 4. doc4: "向量数据库用于存储和检索高维向量"
@@ -72,19 +72,19 @@
 [info] Set vector dimension to: 768
 [info] HNSW index initialized: dim=768, max_elements=100000, M=16, ef_construction=200, ef_search=50, metric=cosine
 [info] HNSW index initialized successfully
-[info] HNSW index saved to: /tmp/quantclaw_test/vectors.db.hnsw
+[info] HNSW index saved to: /tmp/ravbot_test/vectors.db.hnsw
 ```
 
 ### 3. 语义搜索测试 ✅
 
 **测试内容**: 使用自然语言查询搜索相关文档
 
-#### 查询 1: "什么是 QuantClaw？"
+#### 查询 1: "什么是 RavBot？"
 
 **结果**:
 ```
 1. [doc1] 相似度: 0.789458
-   QuantClaw 是一个用 C++ 实现的 Agent 网关框架
+   RavBot 是一个用 C++ 实现的 Agent 网关框架
 2. [doc4] 相似度: 0.682351
    向量数据库用于存储和检索高维向量
 3. [doc2] 相似度: 0.681515
@@ -114,7 +114,7 @@
 1. [doc3] 相似度: 0.788724
    HNSW 是一种高效的近似最近邻搜索算法
 2. [doc1] 相似度: 0.663947
-   QuantClaw 是一个用 C++ 实现的 Agent 网关框架
+   RavBot 是一个用 C++ 实现的 Agent 网关框架
 3. [doc2] 相似度: 0.641172
    Ollama 提供本地运行的开源嵌入模型
 ```
@@ -134,9 +134,9 @@
 
 **日志**:
 ```
-[info] HNSW index loaded from: /tmp/quantclaw_test/vectors.db.hnsw (5 vectors)
-[info] Loaded existing HNSW index from: /tmp/quantclaw_test/vectors.db.hnsw
-[info] Vector database initialized: /tmp/quantclaw_test/vectors.db (HNSW: true)
+[info] HNSW index loaded from: /tmp/ravbot_test/vectors.db.hnsw (5 vectors)
+[info] Loaded existing HNSW index from: /tmp/ravbot_test/vectors.db.hnsw
+[info] Vector database initialized: /tmp/ravbot_test/vectors.db (HNSW: true)
 ```
 
 **验证搜索**:
@@ -164,7 +164,7 @@
 1. [doc7] 相似度: 0.81065
    语义搜索可以理解查询的含义而不仅仅是关键词匹配
 2. [doc1] 相似度: 0.79131
-   QuantClaw 是一个用 C++ 实现的 Agent 网关框架
+   RavBot 是一个用 C++ 实现的 Agent 网关框架
 3. [doc4] 相似度: 0.692216
    向量数据库用于存储和检索高维向量
 ```
@@ -233,7 +233,7 @@
 
 ### 数据库文件
 ```bash
-$ ls -lh /tmp/quantclaw_test/
+$ ls -lh /tmp/ravbot_test/
 total 88K
 -rw-r--r-- 1 rogers rogers  389 Mar 14 21:41 config.json
 -rw-r--r-- 1 rogers rogers  28K Mar 14 21:42 vectors.db

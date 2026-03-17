@@ -1,11 +1,11 @@
-# QuantClaw 同步开发团队启动报告
+# RavBot 同步开发团队启动报告
 
 ## 团队信息
 
-- **团队名称**: quantclaw-sync-team
+- **团队名称**: ravbot-sync-team
 - **创建时间**: 2026-03-14 13:30
 - **团队领导**: team-lead
-- **工作目录**: /home/rogers/source/develop/QuantClaw
+- **工作目录**: /home/rogers/source/develop/RavBot
 
 ## 团队成员
 
@@ -121,7 +121,7 @@ SendMessage(recipient="team-lead", content="任务 #1 已完成")
 
 ### 代码参考
 - OpenClaw 代码库: `/home/rogers/develop/openclaw`
-- QuantClaw 代码库: `/home/rogers/source/develop/QuantClaw`
+- RavBot 代码库: `/home/rogers/source/develop/RavBot`
 
 ## 进度跟踪
 

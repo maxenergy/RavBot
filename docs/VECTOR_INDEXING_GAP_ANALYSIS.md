@@ -28,15 +28,15 @@
 
 ```bash
 # 向量数据库文件存在但为空
-$ ls -lh ~/.quantclaw/data/vectors.db
+$ ls -lh ~/.ravbot/data/vectors.db
 -rw-r--r-- 1 rogers rogers 16K Mar 15 19:00 vectors.db
 
 # 向量计数为 0
-$ sqlite3 ~/.quantclaw/data/vectors.db "SELECT COUNT(*) FROM vectors;"
+$ sqlite3 ~/.ravbot/data/vectors.db "SELECT COUNT(*) FROM vectors;"
 0
 
 # 但有 7 个 session 和 358 条消息
-$ sqlite3 ~/.quantclaw/data/sessions.db "SELECT COUNT(*) FROM messages;"
+$ sqlite3 ~/.ravbot/data/sessions.db "SELECT COUNT(*) FROM messages;"
 358
 ```
 
@@ -84,9 +84,9 @@ OpenClaw (TypeScript) 在以下位置自动索引：
 2. **Session Manager** - 保存消息时索引
 3. **Memory Manager** - 显式调用索引
 
-### QuantClaw 的缺失
+### RavBot 的缺失
 
-QuantClaw (C++) 完全缺少这些集成点。
+RavBot (C++) 完全缺少这些集成点。
 
 ---
 
@@ -104,7 +104,7 @@ QuantClaw (C++) 完全缺少这些集成点。
 1. **添加 EmbeddingManager 到 AgentLoop**
 
 ```cpp
-// include/quantclaw/core/agent_loop.hpp
+// include/ravbot/core/agent_loop.hpp
 class AgentLoop {
  public:
   AgentLoop(std::shared_ptr<MemoryManager> memory_manager,

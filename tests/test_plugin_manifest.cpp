@@ -1,16 +1,16 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <fstream>
-#include "quantclaw/plugins/plugin_manifest.hpp"
+#include "ravbot/plugins/plugin_manifest.hpp"
 #include "test_helpers.hpp"
 
 class PluginManifestTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_manifest_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_manifest_test");
     }
 
     void TearDown() override {
@@ -33,7 +33,7 @@ TEST_F(PluginManifestTest, Parse_ValidManifest) {
         {"entryPoint", "index.js"}
     };
 
-    auto manifest = quantclaw::PluginManifest::Parse(j);
+    auto manifest = ravbot::PluginManifest::Parse(j);
     EXPECT_EQ(manifest.id, "test-plugin");
     EXPECT_EQ(manifest.name, "Test Plugin");
     EXPECT_EQ(manifest.description, "A test plugin");
@@ -47,7 +47,7 @@ TEST_F(PluginManifestTest, Parse_MissingId) {
         {"version", "1.0.0"}
     };
 
-    EXPECT_THROW(quantclaw::PluginManifest::Parse(j), std::runtime_error);
+    EXPECT_THROW(ravbot::PluginManifest::Parse(j), std::runtime_error);
 }
 
 TEST_F(PluginManifestTest, Parse_WithChannels) {
@@ -59,7 +59,7 @@ TEST_F(PluginManifestTest, Parse_WithChannels) {
         {"channels", {"telegram", "slack"}}
     };
 
-    auto manifest = quantclaw::PluginManifest::Parse(j);
+    auto manifest = ravbot::PluginManifest::Parse(j);
     ASSERT_EQ(manifest.channels.size(), 2u);
     EXPECT_EQ(manifest.channels[0], "telegram");
     EXPECT_EQ(manifest.channels[1], "slack");
@@ -77,7 +77,7 @@ TEST_F(PluginManifestTest, Parse_WithDependencies) {
         }}
     };
 
-    auto manifest = quantclaw::PluginManifest::Parse(j);
+    auto manifest = ravbot::PluginManifest::Parse(j);
     ASSERT_EQ(manifest.dependencies.size(), 2u);
     EXPECT_EQ(manifest.dependencies[0].plugin_id, "dep1");
     EXPECT_EQ(manifest.dependencies[0].version_range, "^1.0.0");
@@ -97,7 +97,7 @@ TEST_F(PluginManifestTest, Parse_WithExtraFields) {
         {"anotherField", 123}
     };
 
-    auto manifest = quantclaw::PluginManifest::Parse(j);
+    auto manifest = ravbot::PluginManifest::Parse(j);
     EXPECT_TRUE(manifest.extra_fields.contains("customField"));
     EXPECT_EQ(manifest.extra_fields["customField"], "custom value");
     EXPECT_TRUE(manifest.extra_fields.contains("anotherField"));
@@ -114,7 +114,7 @@ TEST_F(PluginManifestTest, Validate_ValidManifest) {
         {"entryPoint", "index.js"}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     EXPECT_TRUE(errors.empty());
 }
 
@@ -125,7 +125,7 @@ TEST_F(PluginManifestTest, Validate_MissingId) {
         {"entryPoint", "index.js"}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "Missing required field: id");
 }
@@ -137,7 +137,7 @@ TEST_F(PluginManifestTest, Validate_MissingName) {
         {"entryPoint", "index.js"}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "Missing required field: name");
 }
@@ -149,7 +149,7 @@ TEST_F(PluginManifestTest, Validate_MissingVersion) {
         {"entryPoint", "index.js"}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "Missing required field: version");
 }
@@ -161,7 +161,7 @@ TEST_F(PluginManifestTest, Validate_MissingEntryPoint) {
         {"version", "1.0.0"}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors[0], "Missing required field: entryPoint");
 }
@@ -174,7 +174,7 @@ TEST_F(PluginManifestTest, Validate_InvalidIdFormat) {
         {"entryPoint", "index.js"}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_TRUE(errors[0].find("must contain only letters") != std::string::npos);
 }
@@ -187,7 +187,7 @@ TEST_F(PluginManifestTest, Validate_InvalidVersionFormat) {
         {"entryPoint", "index.js"}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_TRUE(errors[0].find("must be a valid semver") != std::string::npos);
 }
@@ -201,7 +201,7 @@ TEST_F(PluginManifestTest, Validate_UnsupportedSchemaVersion) {
         {"schemaVersion", "2.0"}  // 不支持的版本
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_TRUE(errors[0].find("Unsupported schemaVersion") != std::string::npos);
 }
@@ -218,7 +218,7 @@ TEST_F(PluginManifestTest, Validate_InvalidDependencyFormat) {
         }}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     ASSERT_GE(errors.size(), 1u);
     EXPECT_TRUE(errors[0].find("missing required field: pluginId") != std::string::npos);
 }
@@ -230,39 +230,39 @@ TEST_F(PluginManifestTest, Validate_MultipleErrors) {
         {"entryPoint", ""}
     };
 
-    auto errors = quantclaw::PluginManifest::Validate(j);
+    auto errors = ravbot::PluginManifest::Validate(j);
     EXPECT_GE(errors.size(), 3u);
 }
 
 // --- Requirements: 22.6 - 依赖验证测试 ---
 
 TEST_F(PluginManifestTest, ValidateDependencies_Valid) {
-    std::vector<quantclaw::PluginDependency> deps = {
+    std::vector<ravbot::PluginDependency> deps = {
         {"dep1", "^1.0.0", false},
         {"dep2", ">=2.0.0", true},
         {"dep3", "~1.2.3", false}
     };
 
-    auto errors = quantclaw::PluginManifest::ValidateDependencies(deps);
+    auto errors = ravbot::PluginManifest::ValidateDependencies(deps);
     EXPECT_TRUE(errors.empty());
 }
 
 TEST_F(PluginManifestTest, ValidateDependencies_EmptyPluginId) {
-    std::vector<quantclaw::PluginDependency> deps = {
+    std::vector<ravbot::PluginDependency> deps = {
         {"", "^1.0.0", false}
     };
 
-    auto errors = quantclaw::PluginManifest::ValidateDependencies(deps);
+    auto errors = ravbot::PluginManifest::ValidateDependencies(deps);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_TRUE(errors[0].find("plugin_id cannot be empty") != std::string::npos);
 }
 
 TEST_F(PluginManifestTest, ValidateDependencies_InvalidVersionRange) {
-    std::vector<quantclaw::PluginDependency> deps = {
+    std::vector<ravbot::PluginDependency> deps = {
         {"dep1", "invalid-version", false}
     };
 
-    auto errors = quantclaw::PluginManifest::ValidateDependencies(deps);
+    auto errors = ravbot::PluginManifest::ValidateDependencies(deps);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_TRUE(errors[0].find("invalid version_range format") != std::string::npos);
 }
@@ -270,11 +270,11 @@ TEST_F(PluginManifestTest, ValidateDependencies_InvalidVersionRange) {
 // --- Requirements: 22.3, 22.7 - 清单模板生成测试 ---
 
 TEST_F(PluginManifestTest, GenerateTemplate_Basic) {
-    auto j = quantclaw::PluginManifest::GenerateTemplate("my-plugin", "My Plugin");
+    auto j = ravbot::PluginManifest::GenerateTemplate("my-plugin", "My Plugin");
 
     EXPECT_EQ(j["id"], "my-plugin");
     EXPECT_EQ(j["name"], "My Plugin");
-    EXPECT_EQ(j["description"], "A QuantClaw plugin");
+    EXPECT_EQ(j["description"], "A RavBot plugin");
     EXPECT_EQ(j["version"], "1.0.0");
     EXPECT_EQ(j["schemaVersion"], "1.0");
     EXPECT_EQ(j["entryPoint"], "index.js");
@@ -300,7 +300,7 @@ TEST_F(PluginManifestTest, RoundTrip_BasicManifest) {
         {"skills", {"weather"}}
     };
 
-    auto manifest = quantclaw::PluginManifest::Parse(original);
+    auto manifest = ravbot::PluginManifest::Parse(original);
     auto serialized = manifest.ToJson();
 
     EXPECT_EQ(serialized["id"], original["id"]);
@@ -325,7 +325,7 @@ TEST_F(PluginManifestTest, RoundTrip_WithDependencies) {
         }}
     };
 
-    auto manifest = quantclaw::PluginManifest::Parse(original);
+    auto manifest = ravbot::PluginManifest::Parse(original);
     auto serialized = manifest.ToJson();
 
     ASSERT_TRUE(serialized.contains("dependencies"));
@@ -347,7 +347,7 @@ TEST_F(PluginManifestTest, RoundTrip_WithExtraFields) {
         {"anotherField", 123}
     };
 
-    auto manifest = quantclaw::PluginManifest::Parse(original);
+    auto manifest = ravbot::PluginManifest::Parse(original);
     auto serialized = manifest.ToJson();
 
     EXPECT_TRUE(serialized.contains("customField"));
@@ -369,7 +369,7 @@ TEST_F(PluginManifestTest, LoadFromFile_Valid) {
     })";
     f.close();
 
-    auto manifest = quantclaw::PluginManifest::LoadFromFile(manifest_path);
+    auto manifest = ravbot::PluginManifest::LoadFromFile(manifest_path);
     EXPECT_EQ(manifest.id, "test-plugin");
     EXPECT_EQ(manifest.name, "Test Plugin");
     EXPECT_EQ(manifest.version, "1.0.0");
@@ -381,12 +381,12 @@ TEST_F(PluginManifestTest, LoadFromFile_InvalidJson) {
     f << "{ invalid json }";
     f.close();
 
-    EXPECT_THROW(quantclaw::PluginManifest::LoadFromFile(manifest_path), std::runtime_error);
+    EXPECT_THROW(ravbot::PluginManifest::LoadFromFile(manifest_path), std::runtime_error);
 }
 
 TEST_F(PluginManifestTest, LoadFromFile_NonexistentFile) {
     auto manifest_path = test_dir_ / "nonexistent.json";
-    EXPECT_THROW(quantclaw::PluginManifest::LoadFromFile(manifest_path), std::runtime_error);
+    EXPECT_THROW(ravbot::PluginManifest::LoadFromFile(manifest_path), std::runtime_error);
 }
 
 // --- PluginDependency 测试 ---
@@ -398,14 +398,14 @@ TEST_F(PluginManifestTest, PluginDependency_FromJson) {
         {"optional", true}
     };
 
-    auto dep = quantclaw::PluginDependency::FromJson(j);
+    auto dep = ravbot::PluginDependency::FromJson(j);
     EXPECT_EQ(dep.plugin_id, "dep1");
     EXPECT_EQ(dep.version_range, "^1.0.0");
     EXPECT_TRUE(dep.optional);
 }
 
 TEST_F(PluginManifestTest, PluginDependency_ToJson) {
-    quantclaw::PluginDependency dep;
+    ravbot::PluginDependency dep;
     dep.plugin_id = "dep1";
     dep.version_range = "^1.0.0";
     dep.optional = true;
@@ -428,7 +428,7 @@ TEST_F(PluginManifestTest, PluginConfigUiHint_FromJson) {
         {"placeholder", "sk-..."}
     };
 
-    auto hint = quantclaw::PluginConfigUiHint::FromJson(j);
+    auto hint = ravbot::PluginConfigUiHint::FromJson(j);
     EXPECT_EQ(hint.label, "API Key");
     EXPECT_EQ(hint.help, "Enter your API key");
     ASSERT_EQ(hint.tags.size(), 2u);
@@ -440,7 +440,7 @@ TEST_F(PluginManifestTest, PluginConfigUiHint_FromJson) {
 }
 
 TEST_F(PluginManifestTest, PluginConfigUiHint_ToJson) {
-    quantclaw::PluginConfigUiHint hint;
+    ravbot::PluginConfigUiHint hint;
     hint.label = "API Key";
     hint.help = "Enter your API key";
     hint.tags = {"required", "secret"};

@@ -16,7 +16,7 @@
 ### 1. Star 数格式 ✅
 
 OpenClaw 显示：`⭐312,388`（带千位分隔符）
-QuantClaw 显示：`⭐ 0`（错误）
+RavBot 显示：`⭐ 0`（错误）
 
 ### 2. 数据来源推测
 
@@ -47,7 +47,7 @@ OpenClaw 的响应包含：
 
 ## 对比分析
 
-### QuantClaw 当前行为
+### RavBot 当前行为
 
 ```
 用户: "请你搜索github找openclaw的技能的top20列表"
@@ -56,7 +56,7 @@ LLM: 调用 github_search_repos("awesome-openclaw-skills")
 ↓
 gh CLI: 返回 JSON [{name: "awesome-openclaw-skills", stargazersCount: 37262}]
 ↓
-QuantClaw: 格式化为 "⭐ 0 stars" (错误！)
+RavBot: 格式化为 "⭐ 0 stars" (错误！)
 ↓
 返回给用户
 ```
@@ -100,15 +100,15 @@ LLM: 调用 memory_search("openclaw skills")
 
 ## 问题根源
 
-### QuantClaw 的问题
+### RavBot 的问题
 
 1. **Star 数显示为 0** - 这是最严重的问题
    - gh CLI 返回正确的数据
-   - 但 QuantClaw 显示为 0
+   - 但 RavBot 显示为 0
    - 需要查看日志确定是解析问题还是 LLM 格式化问题
 
 2. **响应质量不如 OpenClaw**
-   - QuantClaw 只返回简单的搜索结果
+   - RavBot 只返回简单的搜索结果
    - OpenClaw 返回结构化、分类的列表
    - OpenClaw 包含额外的上下文信息
 

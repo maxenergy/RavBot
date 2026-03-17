@@ -1,12 +1,12 @@
 #!/bin/bash
-# QuantClaw CLI End-to-End Test Script
+# RavBot CLI End-to-End Test Script
 # Starts a real gateway process and exercises CLI commands against it.
 set -euo pipefail
 
 PASS=0
 FAIL=0
 PORT=18800
-BINARY="./build/quantclaw"
+BINARY="./build/ravbot"
 GATEWAY_PID=""
 
 # ---------- helpers ----------
@@ -60,7 +60,7 @@ wait_for_gateway() {
 
 # ---------- pre-checks ----------
 
-echo "=== QuantClaw CLI E2E Tests ==="
+echo "=== RavBot CLI E2E Tests ==="
 echo ""
 
 if [ ! -x "$BINARY" ]; then
@@ -69,8 +69,8 @@ if [ ! -x "$BINARY" ]; then
 fi
 
 # Write minimal config (auth mode=none so CLI doesn't need a token)
-mkdir -p "$HOME/.quantclaw"
-cat > "$HOME/.quantclaw/quantclaw.json" <<'EOFCFG'
+mkdir -p "$HOME/.ravbot"
+cat > "$HOME/.ravbot/ravbot.json" <<'EOFCFG'
 {
     "agent": {
         "model": "test-model",

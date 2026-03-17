@@ -1,8 +1,8 @@
-# OpenClaw vs QuantClaw GitHub 搜索深度对比分析
+# OpenClaw vs RavBot GitHub 搜索深度对比分析
 
 ## 执行摘要
 
-本报告深入分析了 OpenClaw 和 QuantClaw 在 GitHub 搜索功能上的实现差异，特别关注用户报告的搜索结果质量问题。
+本报告深入分析了 OpenClaw 和 RavBot 在 GitHub 搜索功能上的实现差异，特别关注用户报告的搜索结果质量问题。
 
 **核心发现**:
 1. ✅ **工具执行机制已修复** - Lookup Guard 成功强制 LLM 调用工具
@@ -16,18 +16,18 @@
 
 ### 1.1 工具可用性
 
-| 工具 | OpenClaw | QuantClaw | 状态 |
+| 工具 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | web_search | ✅ | ✅ | 完全实现 |
-| github_search_repos | ❓ | ✅ | QuantClaw 独有 |
-| github_search_code | ❓ | ✅ | QuantClaw 独有 |
-| github_get_repo | ❓ | ✅ | QuantClaw 独有 |
+| github_search_repos | ❓ | ✅ | RavBot 独有 |
+| github_search_code | ❓ | ✅ | RavBot 独有 |
+| github_get_repo | ❓ | ✅ | RavBot 独有 |
 
-**分析**: QuantClaw 实际上拥有更完整的 GitHub 搜索工具集。
+**分析**: RavBot 实际上拥有更完整的 GitHub 搜索工具集。
 
 ### 1.2 web_search 工具实现
 
-**QuantClaw 实现** (`src/tools/tool_registry.cpp:164-170, 977-1299`):
+**RavBot 实现** (`src/tools/tool_registry.cpp:164-170, 977-1299`):
 
 ```cpp
 register_tool("web_search",
@@ -71,7 +71,7 @@ register_tool("web_search",
 
 ### 1.3 github_search_repos 工具实现
 
-**QuantClaw 实现** (`src/tools/tool_registry.cpp:191-204, 1559-1643`):
+**RavBot 实现** (`src/tools/tool_registry.cpp:191-204, 1559-1643`):
 
 ```cpp
 register_tool("github_search_repos",
@@ -111,7 +111,7 @@ Found 3 repositories:
 
 ### 2.1 工具执行强制规则
 
-**QuantClaw** (`src/core/prompt_builder.cpp:40-63`):
+**RavBot** (`src/core/prompt_builder.cpp:40-63`):
 
 ```
 ## CRITICAL: Tool Usage Rules
@@ -143,7 +143,7 @@ Tool returns: "⭐ 37,265 stars"
 
 ### 2.2 搜索策略指导
 
-**QuantClaw** (`~/.quantclaw/agents/main/workspace/AGENTS.md:57-106`):
+**RavBot** (`~/.ravbot/agents/main/workspace/AGENTS.md:57-106`):
 
 ```markdown
 ## Search Strategy for GitHub
@@ -185,7 +185,7 @@ CORRECT: Search for "openclaw skills" → Gets skill repositories
 
 ### 3.1 搜索意图检测
 
-**QuantClaw** (`src/core/agent_loop.cpp:303-328`):
+**RavBot** (`src/core/agent_loop.cpp:303-328`):
 
 ```cpp
 static bool has_lookup_intent(const std::string& text) {
@@ -217,7 +217,7 @@ static bool has_lookup_intent(const std::string& text) {
 
 ### 3.2 未完成搜索检测
 
-**QuantClaw** (`src/core/agent_loop.cpp:330-360`):
+**RavBot** (`src/core/agent_loop.cpp:330-360`):
 
 ```cpp
 static bool response_looks_like_unfulfilled_lookup_preamble(const std::string& text) {
@@ -251,7 +251,7 @@ static bool response_looks_like_unfulfilled_lookup_preamble(const std::string& t
 
 ### 3.3 否定结论检测
 
-**QuantClaw** (`src/core/agent_loop.cpp:362-393`):
+**RavBot** (`src/core/agent_loop.cpp:362-393`):
 
 ```cpp
 static bool response_contains_negative_conclusion(const std::string& text) {
@@ -278,7 +278,7 @@ static bool response_contains_negative_conclusion(const std::string& text) {
 
 ### 3.4 Lookup Guard 执行流程
 
-**QuantClaw** (`src/core/agent_loop.cpp:1576-1604`):
+**RavBot** (`src/core/agent_loop.cpp:1576-1604`):
 
 ```cpp
 // 检测搜索意图但没有工具调用的情况
@@ -352,7 +352,7 @@ LLM 分析: 用户要找技能列表 → 使用 "awesome-openclaw-skills"
 结果: ✅ VoltAgent/awesome-openclaw-skills (37,262 stars)
 ```
 
-**QuantClaw 的搜索策略** (实际):
+**RavBot 的搜索策略** (实际):
 ```
 用户: "搜索github找openclaw的技能的top20列表"
 ↓
@@ -601,7 +601,7 @@ if (has_lookup_intent(message) && request.messages.size() == 1) {
 | web_search 工具 | `src/tools/tool_registry.cpp` | 164-170, 977-1299 |
 | github_search_repos 工具 | `src/tools/tool_registry.cpp` | 191-204, 1559-1643 |
 | 工具使用规则 | `src/core/prompt_builder.cpp` | 40-63 |
-| 搜索策略指导 | `~/.quantclaw/agents/main/workspace/AGENTS.md` | 57-106 |
+| 搜索策略指导 | `~/.ravbot/agents/main/workspace/AGENTS.md` | 57-106 |
 | Lookup Guard | `src/core/agent_loop.cpp` | 1576-1604 |
 | 搜索意图检测 | `src/core/agent_loop.cpp` | 303-328 |
 | 未完成搜索检测 | `src/core/agent_loop.cpp` | 330-360 |

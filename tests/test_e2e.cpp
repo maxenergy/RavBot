@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -9,73 +9,73 @@
 #include <atomic>
 #include <fstream>
 
-#include "quantclaw/gateway/gateway_server.hpp"
-#include "quantclaw/gateway/gateway_client.hpp"
-#include "quantclaw/gateway/protocol.hpp"
-#include "quantclaw/core/agent_loop.hpp"
+#include "ravbot/gateway/gateway_server.hpp"
+#include "ravbot/gateway/gateway_client.hpp"
+#include "ravbot/gateway/protocol.hpp"
+#include "ravbot/core/agent_loop.hpp"
 #include "test_helpers.hpp"
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/core/prompt_builder.hpp"
-#include "quantclaw/session/session_manager.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
-#include "quantclaw/tools/tool_chain.hpp"
-#include "quantclaw/providers/llm_provider.hpp"
-#include "quantclaw/config.hpp"
-#include "quantclaw/core/skill_loader.hpp"
+#include "ravbot/core/memory_manager.hpp"
+#include "ravbot/core/prompt_builder.hpp"
+#include "ravbot/session/session_manager.hpp"
+#include "ravbot/tools/tool_registry.hpp"
+#include "ravbot/tools/tool_chain.hpp"
+#include "ravbot/providers/llm_provider.hpp"
+#include "ravbot/config.hpp"
+#include "ravbot/core/skill_loader.hpp"
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
 
 // Forward declare register_rpc_handlers
-namespace quantclaw {
+namespace ravbot {
     class ProviderRegistry;
     class SkillLoader;
     class CronScheduler;
     class ExecApprovalManager;
     class PluginSystem;
 }
-namespace quantclaw::gateway {
+namespace ravbot::gateway {
     class CommandQueue;
     void register_rpc_handlers(
         GatewayServer& server,
-        std::shared_ptr<quantclaw::SessionManager> session_manager,
-        std::shared_ptr<quantclaw::AgentLoop> agent_loop,
-        std::shared_ptr<quantclaw::PromptBuilder> prompt_builder,
-        std::shared_ptr<quantclaw::ToolRegistry> tool_registry,
-        const quantclaw::QuantClawConfig& config,
+        std::shared_ptr<ravbot::SessionManager> session_manager,
+        std::shared_ptr<ravbot::AgentLoop> agent_loop,
+        std::shared_ptr<ravbot::PromptBuilder> prompt_builder,
+        std::shared_ptr<ravbot::ToolRegistry> tool_registry,
+        const ravbot::RavBotConfig& config,
         std::shared_ptr<spdlog::logger> logger,
         std::function<void()> reload_fn = nullptr,
-        std::shared_ptr<quantclaw::ProviderRegistry> provider_registry = nullptr,
-        std::shared_ptr<quantclaw::SkillLoader> skill_loader = nullptr,
-        std::shared_ptr<quantclaw::CronScheduler> cron_scheduler = nullptr,
-        std::shared_ptr<quantclaw::ExecApprovalManager> exec_approval_mgr = nullptr,
-        quantclaw::PluginSystem* plugin_system = nullptr,
-        quantclaw::gateway::CommandQueue* command_queue = nullptr,
+        std::shared_ptr<ravbot::ProviderRegistry> provider_registry = nullptr,
+        std::shared_ptr<ravbot::SkillLoader> skill_loader = nullptr,
+        std::shared_ptr<ravbot::CronScheduler> cron_scheduler = nullptr,
+        std::shared_ptr<ravbot::ExecApprovalManager> exec_approval_mgr = nullptr,
+        ravbot::PluginSystem* plugin_system = nullptr,
+        ravbot::gateway::CommandQueue* command_queue = nullptr,
         std::string log_file_path = {});
 }
 
 // --- Mock LLM Provider ---
 
-class E2EMockLLMProvider : public quantclaw::LLMProvider {
+class E2EMockLLMProvider : public ravbot::LLMProvider {
 public:
-    std::string response_text = "Hello from QuantClaw E2E mock.";
+    std::string response_text = "Hello from RavBot E2E mock.";
 
-    quantclaw::ChatCompletionResponse ChatCompletion(const quantclaw::ChatCompletionRequest& /*request*/) override {
-        quantclaw::ChatCompletionResponse resp;
+    ravbot::ChatCompletionResponse ChatCompletion(const ravbot::ChatCompletionRequest& /*request*/) override {
+        ravbot::ChatCompletionResponse resp;
         resp.content = response_text;
         resp.finish_reason = "stop";
         return resp;
     }
 
-    void ChatCompletionStream(const quantclaw::ChatCompletionRequest& /*request*/,
-                                std::function<void(const quantclaw::ChatCompletionResponse&)> callback) override {
+    void ChatCompletionStream(const ravbot::ChatCompletionRequest& /*request*/,
+                                std::function<void(const ravbot::ChatCompletionResponse&)> callback) override {
         // Emit a text delta then stream end
-        quantclaw::ChatCompletionResponse delta;
+        ravbot::ChatCompletionResponse delta;
         delta.content = response_text;
         delta.is_stream_end = false;
         callback(delta);
 
-        quantclaw::ChatCompletionResponse end;
+        ravbot::ChatCompletionResponse end;
         end.content = response_text;
         end.is_stream_end = true;
         end.finish_reason = "stop";
@@ -92,7 +92,7 @@ class E2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Temp directories
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_e2e_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_e2e_test");
         workspace_dir_ = test_dir_ / "workspace";
         sessions_dir_ = test_dir_ / "sessions";
         std::filesystem::create_directories(workspace_dir_);
@@ -117,28 +117,28 @@ protected:
         config_.gateway.auth.token = "";
 
         // Initialize components (mirrors gateway_commands.cpp)
-        memory_manager_ = std::make_shared<quantclaw::MemoryManager>(workspace_dir_, logger_);
-        skill_loader_ = std::make_shared<quantclaw::SkillLoader>(logger_);
-        tool_registry_ = std::make_shared<quantclaw::ToolRegistry>(logger_);
+        memory_manager_ = std::make_shared<ravbot::MemoryManager>(workspace_dir_, logger_);
+        skill_loader_ = std::make_shared<ravbot::SkillLoader>(logger_);
+        tool_registry_ = std::make_shared<ravbot::ToolRegistry>(logger_);
         tool_registry_->RegisterBuiltinTools();
         tool_registry_->RegisterChainTool();
 
         mock_llm_ = std::make_shared<E2EMockLLMProvider>();
 
-        agent_loop_ = std::make_shared<quantclaw::AgentLoop>(
+        agent_loop_ = std::make_shared<ravbot::AgentLoop>(
             memory_manager_, skill_loader_, tool_registry_, mock_llm_, config_.agent, logger_);
 
-        session_manager_ = std::make_shared<quantclaw::SessionManager>(sessions_dir_, logger_);
+        session_manager_ = std::make_shared<ravbot::SessionManager>(sessions_dir_, logger_);
 
-        prompt_builder_ = std::make_shared<quantclaw::PromptBuilder>(
+        prompt_builder_ = std::make_shared<ravbot::PromptBuilder>(
             memory_manager_, skill_loader_, tool_registry_);
 
         // Create server
-        server_ = std::make_unique<quantclaw::gateway::GatewayServer>(port_, logger_);
+        server_ = std::make_unique<ravbot::gateway::GatewayServer>(port_, logger_);
         server_->SetAuth(config_.gateway.auth.mode, config_.gateway.auth.token);
 
         // Register RPC handlers
-        quantclaw::gateway::register_rpc_handlers(
+        ravbot::gateway::register_rpc_handlers(
             *server_, session_manager_, agent_loop_, prompt_builder_, tool_registry_, config_, logger_);
 
         // Start server
@@ -157,14 +157,14 @@ protected:
     }
 
     // Helper: create a connected client (auth=none)
-    std::unique_ptr<quantclaw::gateway::GatewayClient> make_client(const std::string& token = "") {
+    std::unique_ptr<ravbot::gateway::GatewayClient> make_client(const std::string& token = "") {
         std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-        auto client = std::make_unique<quantclaw::gateway::GatewayClient>(url, token, logger_);
+        auto client = std::make_unique<ravbot::gateway::GatewayClient>(url, token, logger_);
         return client;
     }
 
     static int next_port() {
-        return quantclaw::test::FindFreePort();
+        return ravbot::test::FindFreePort();
     }
 
     int port_ = next_port();
@@ -172,15 +172,15 @@ protected:
     std::filesystem::path workspace_dir_;
     std::filesystem::path sessions_dir_;
     std::shared_ptr<spdlog::logger> logger_;
-    quantclaw::QuantClawConfig config_;
-    std::shared_ptr<quantclaw::MemoryManager> memory_manager_;
-    std::shared_ptr<quantclaw::SkillLoader> skill_loader_;
-    std::shared_ptr<quantclaw::ToolRegistry> tool_registry_;
+    ravbot::RavBotConfig config_;
+    std::shared_ptr<ravbot::MemoryManager> memory_manager_;
+    std::shared_ptr<ravbot::SkillLoader> skill_loader_;
+    std::shared_ptr<ravbot::ToolRegistry> tool_registry_;
     std::shared_ptr<E2EMockLLMProvider> mock_llm_;
-    std::shared_ptr<quantclaw::AgentLoop> agent_loop_;
-    std::shared_ptr<quantclaw::SessionManager> session_manager_;
-    std::shared_ptr<quantclaw::PromptBuilder> prompt_builder_;
-    std::unique_ptr<quantclaw::gateway::GatewayServer> server_;
+    std::shared_ptr<ravbot::AgentLoop> agent_loop_;
+    std::shared_ptr<ravbot::SessionManager> session_manager_;
+    std::shared_ptr<ravbot::PromptBuilder> prompt_builder_;
+    std::unique_ptr<ravbot::gateway::GatewayServer> server_;
 };
 
 // ======================================================================
@@ -380,7 +380,7 @@ TEST_F(E2ETest, E2E_ChainExecute) {
 class E2EAuthTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        test_dir_ = quantclaw::test::MakeTestDir("quantclaw_e2e_auth_test");
+        test_dir_ = ravbot::test::MakeTestDir("ravbot_e2e_auth_test");
         workspace_dir_ = test_dir_ / "workspace";
         sessions_dir_ = test_dir_ / "sessions";
         std::filesystem::create_directories(workspace_dir_);
@@ -394,22 +394,22 @@ protected:
         config_.gateway.auth.mode = "token";
         config_.gateway.auth.token = "e2e-secret-token";
 
-        memory_manager_ = std::make_shared<quantclaw::MemoryManager>(workspace_dir_, logger_);
-        skill_loader_ = std::make_shared<quantclaw::SkillLoader>(logger_);
-        tool_registry_ = std::make_shared<quantclaw::ToolRegistry>(logger_);
+        memory_manager_ = std::make_shared<ravbot::MemoryManager>(workspace_dir_, logger_);
+        skill_loader_ = std::make_shared<ravbot::SkillLoader>(logger_);
+        tool_registry_ = std::make_shared<ravbot::ToolRegistry>(logger_);
         tool_registry_->RegisterBuiltinTools();
 
         mock_llm_ = std::make_shared<E2EMockLLMProvider>();
-        agent_loop_ = std::make_shared<quantclaw::AgentLoop>(
+        agent_loop_ = std::make_shared<ravbot::AgentLoop>(
             memory_manager_, skill_loader_, tool_registry_, mock_llm_, config_.agent, logger_);
-        session_manager_ = std::make_shared<quantclaw::SessionManager>(sessions_dir_, logger_);
-        prompt_builder_ = std::make_shared<quantclaw::PromptBuilder>(
+        session_manager_ = std::make_shared<ravbot::SessionManager>(sessions_dir_, logger_);
+        prompt_builder_ = std::make_shared<ravbot::PromptBuilder>(
             memory_manager_, skill_loader_, tool_registry_);
 
-        server_ = std::make_unique<quantclaw::gateway::GatewayServer>(port_, logger_);
+        server_ = std::make_unique<ravbot::gateway::GatewayServer>(port_, logger_);
         server_->SetAuth("token", "e2e-secret-token");
 
-        quantclaw::gateway::register_rpc_handlers(
+        ravbot::gateway::register_rpc_handlers(
             *server_, session_manager_, agent_loop_, prompt_builder_, tool_registry_, config_, logger_);
 
         server_->Start();
@@ -427,7 +427,7 @@ protected:
     }
 
     static int next_port() {
-        return quantclaw::test::FindFreePort();
+        return ravbot::test::FindFreePort();
     }
 
     int port_ = next_port();
@@ -435,22 +435,22 @@ protected:
     std::filesystem::path workspace_dir_;
     std::filesystem::path sessions_dir_;
     std::shared_ptr<spdlog::logger> logger_;
-    quantclaw::QuantClawConfig config_;
-    std::shared_ptr<quantclaw::MemoryManager> memory_manager_;
-    std::shared_ptr<quantclaw::SkillLoader> skill_loader_;
-    std::shared_ptr<quantclaw::ToolRegistry> tool_registry_;
+    ravbot::RavBotConfig config_;
+    std::shared_ptr<ravbot::MemoryManager> memory_manager_;
+    std::shared_ptr<ravbot::SkillLoader> skill_loader_;
+    std::shared_ptr<ravbot::ToolRegistry> tool_registry_;
     std::shared_ptr<E2EMockLLMProvider> mock_llm_;
-    std::shared_ptr<quantclaw::AgentLoop> agent_loop_;
-    std::shared_ptr<quantclaw::SessionManager> session_manager_;
-    std::shared_ptr<quantclaw::PromptBuilder> prompt_builder_;
-    std::unique_ptr<quantclaw::gateway::GatewayServer> server_;
+    std::shared_ptr<ravbot::AgentLoop> agent_loop_;
+    std::shared_ptr<ravbot::SessionManager> session_manager_;
+    std::shared_ptr<ravbot::PromptBuilder> prompt_builder_;
+    std::unique_ptr<ravbot::gateway::GatewayServer> server_;
 };
 
 TEST_F(E2EAuthTest, E2E_AuthRejectNoHello) {
     // Connect with no token; the client's automatic hello will send empty token
     // which should be rejected when auth mode=token
     std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-    quantclaw::gateway::GatewayClient client(url, "", logger_);
+    ravbot::gateway::GatewayClient client(url, "", logger_);
 
     bool connected = client.Connect(3000);
     if (connected) {
@@ -464,7 +464,7 @@ TEST_F(E2EAuthTest, E2E_AuthRejectNoHello) {
 
 TEST_F(E2EAuthTest, E2E_AuthRejectBadToken) {
     std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-    quantclaw::gateway::GatewayClient client(url, "wrong-token", logger_);
+    ravbot::gateway::GatewayClient client(url, "wrong-token", logger_);
 
     bool connected = client.Connect(3000);
     if (connected) {
@@ -476,7 +476,7 @@ TEST_F(E2EAuthTest, E2E_AuthRejectBadToken) {
 
 TEST_F(E2EAuthTest, E2E_AuthSuccessCorrectToken) {
     std::string url = "ws://127.0.0.1:" + std::to_string(port_);
-    quantclaw::gateway::GatewayClient client(url, "e2e-secret-token", logger_);
+    ravbot::gateway::GatewayClient client(url, "e2e-secret-token", logger_);
 
     ASSERT_TRUE(client.Connect(5000));
 

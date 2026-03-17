@@ -2,19 +2,19 @@
 layout: home
 
 hero:
-  name: "QuantClaw"
+  name: "RavBot"
   text: "高性能 AI Agent 框架"
   tagline: "C++17 原生实现的 OpenClaw——持久记忆、浏览器控制、完整插件生态"
   image:
     src: /logo.png
-    alt: QuantClaw
+    alt: RavBot
   actions:
     - theme: brand
       text: 快速开始
       link: /zh/guide/getting-started
     - theme: alt
       text: 在 GitHub 查看
-      link: https://github.com/QuantClaw/QuantClaw
+      link: https://github.com/RavBot/RavBot
 
 features:
   - icon: ⚡
@@ -54,9 +54,9 @@ features:
     details: "兼容 OpenClaw 工作空间文件、SKILL.md 格式、JSONL 会话和 WebSocket RPC 协议"
 ---
 
-## 为什么选择 QuantClaw？
+## 为什么选择 RavBot？
 
-**QuantClaw** 是 [OpenClaw](https://github.com/openclaw/openclaw) AI Agent 生态的 C++17 重新实现——专注于性能和低内存占用，同时保持与 OpenClaw 工作空间文件、技能和 RPC 协议的完全兼容。
+**RavBot** 是 [OpenClaw](https://github.com/openclaw/openclaw) AI Agent 生态的 C++17 重新实现——专注于性能和低内存占用，同时保持与 OpenClaw 工作空间文件、技能和 RPC 协议的完全兼容。
 
 - **原生性能**：C++17 二进制，无 Node.js 运行时开销
 - **OpenClaw 兼容**：工作空间文件、SKILL.md 格式、JSONL 会话、WebSocket RPC
@@ -65,7 +65,7 @@ features:
 
 ## 快速对比
 
-| 特性 | QuantClaw | OpenClaw |
+| 特性 | RavBot | OpenClaw |
 |------|-----------|----------|
 | 语言 | C++17 | TypeScript/Node.js |
 | 运行时开销 | 极低 | Node.js VM |
@@ -108,30 +108,30 @@ features:
 
 ```bash
 # 克隆并编译
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 mkdir build && cd build
 cmake .. && make -j$(nproc)
 
 # 初始化
-quantclaw onboard --quick
+ravbot onboard --quick
 
 # 启动网关并对话
-quantclaw gateway start
-quantclaw agent "你好，介绍一下你自己"
+ravbot gateway start
+ravbot agent "你好，介绍一下你自己"
 ```
 
 详细说明请参阅[快速开始指南](/zh/guide/getting-started)。
 
 ## 社区与支持
 
-- **GitHub**：[QuantClaw/QuantClaw](https://github.com/QuantClaw/QuantClaw)
-- **Issues**：[报告 Bug 或提新功能](https://github.com/QuantClaw/QuantClaw/issues)
-- **Discussions**：[社区讨论](https://github.com/QuantClaw/QuantClaw/discussions)
+- **GitHub**：[RavBot/RavBot](https://github.com/RavBot/RavBot)
+- **Issues**：[报告 Bug 或提新功能](https://github.com/RavBot/RavBot/issues)
+- **Discussions**：[社区讨论](https://github.com/RavBot/RavBot/discussions)
 
 ## 许可证
 
-QuantClaw 基于 [Apache 2.0 协议](https://github.com/QuantClaw/QuantClaw/blob/main/LICENSE)发布。
+RavBot 基于 [Apache 2.0 协议](https://github.com/RavBot/RavBot/blob/main/LICENSE)发布。
 
 ---
 

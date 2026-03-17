@@ -166,33 +166,33 @@ void TelegramChannel::SendTextChunks(const std::string& chat_id,
 
 ### 1. 编译
 ```bash
-cd /home/rogers/source/develop/QuantClaw
-cmake --build build --target quantclaw -j$(nproc)
+cd /home/rogers/source/develop/RavBot
+cmake --build build --target ravbot -j$(nproc)
 ```
 
 ### 2. 重启服务
 ```bash
 # 停止旧进程
-kill -9 $(pgrep -f "quantclaw gateway")
+kill -9 $(pgrep -f "ravbot gateway")
 
 # 启动新进程
 cd build
-nohup ./quantclaw gateway run --port 18800 > /tmp/quantclaw.log 2>&1 &
+nohup ./ravbot gateway run --port 18800 > /tmp/ravbot.log 2>&1 &
 ```
 
 ### 3. 验证
 ```bash
 # 检查进程
-ps aux | grep "quantclaw gateway"
+ps aux | grep "ravbot gateway"
 
 # 查看日志
-tail -f /tmp/quantclaw.log
+tail -f /tmp/ravbot.log
 ```
 
 ## 相关文件
 
 ### 修改的文件
-1. `include/quantclaw/channels/telegram_channel.hpp`
+1. `include/ravbot/channels/telegram_channel.hpp`
    - 添加 `SendChatAction()` 方法声明
 
 2. `src/channels/telegram_channel.cpp`
@@ -200,7 +200,7 @@ tail -f /tmp/quantclaw.log
    - 在 `HandleMessage()` 中调用 `SendChatAction()`
    - 在 `SendTextChunks()` 中调用 `SanitizeOutput()`
 
-3. `include/quantclaw/gateway/message_sanitizer.hpp`
+3. `include/ravbot/gateway/message_sanitizer.hpp`
    - 添加 `SanitizeOutput()` 方法
    - 添加 `RemoveSystemTags()` 方法
 
@@ -219,7 +219,7 @@ tail -f /tmp/quantclaw.log
 - ✅ 清理系统标签
 - ✅ 流式响应支持
 
-### QuantClaw (现在)
+### RavBot (现在)
 - ✅ 支持 "正在输入" 状态
 - ✅ 清理系统标签
 - ⚠️ 流式响应待实现
@@ -252,7 +252,7 @@ tail -f /tmp/quantclaw.log
 **解决方案**:
 ```bash
 # 检查日志
-tail -f /tmp/quantclaw.log | grep "sendChatAction"
+tail -f /tmp/ravbot.log | grep "sendChatAction"
 ```
 
 ### Q2: 系统标签仍然显示
@@ -264,11 +264,11 @@ tail -f /tmp/quantclaw.log | grep "sendChatAction"
 **解决方案**:
 ```bash
 # 确认二进制版本
-ls -lh build/quantclaw
+ls -lh build/ravbot
 
 # 重启服务
-kill -9 $(pgrep -f "quantclaw gateway")
-cd build && nohup ./quantclaw gateway run --port 18800 > /tmp/quantclaw.log 2>&1 &
+kill -9 $(pgrep -f "ravbot gateway")
+cd build && nohup ./ravbot gateway run --port 18800 > /tmp/ravbot.log 2>&1 &
 ```
 
 ### Q3: 性能影响
@@ -292,4 +292,4 @@ cd build && nohup ./quantclaw gateway run --port 18800 > /tmp/quantclaw.log 2>&1
 1. ✅ **"正在输入" 状态** - 提升用户体验
 2. ✅ **系统标签清理** - 防止技术细节泄露
 
-QuantClaw 的 Telegram 体验现在更接近 OpenClaw 的水平。
+RavBot 的 Telegram 体验现在更接近 OpenClaw 的水平。

@@ -1,5 +1,5 @@
 import { html } from "lit";
-import { ConnectErrorDetailCodes } from "../../../../src/gateway/protocol/connect-error-details.js";
+import { ConnectErrorDetailCodes } from "../../shared/connect-error-details.js";
 import { t, i18n, type Locale } from "../../i18n/index.ts";
 import { formatRelativeTimestamp, formatDurationHuman } from "../format.ts";
 import type { GatewayHelloOk } from "../gateway.ts";
@@ -49,8 +49,8 @@ export function renderOverview(props: OverviewProps) {
       <div class="muted" style="margin-top: 8px">
         ${t("overview.pairing.hint")}
         <div style="margin-top: 6px">
-          <span class="mono">quantclaw devices list</span><br />
-          <span class="mono">quantclaw devices approve &lt;requestId&gt;</span>
+          <span class="mono">ravbot devices list</span><br />
+          <span class="mono">ravbot devices approve &lt;requestId&gt;</span>
         </div>
         <div style="margin-top: 6px; font-size: 12px;">
           ${t("overview.pairing.mobileHint")}
@@ -58,7 +58,7 @@ export function renderOverview(props: OverviewProps) {
         <div style="margin-top: 6px">
           <a
             class="session-link"
-            href="https://docs.quantclaw.ai/web/control-ui#device-pairing-first-connection"
+            href="https://docs.ravbot.ai/web/control-ui#device-pairing-first-connection"
             target="_blank"
             rel="noreferrer"
             title="Device pairing docs (opens in new tab)"
@@ -109,13 +109,13 @@ export function renderOverview(props: OverviewProps) {
         <div class="muted" style="margin-top: 8px">
           ${t("overview.auth.required")}
           <div style="margin-top: 6px">
-            <span class="mono">quantclaw dashboard --no-open</span> → tokenized URL<br />
-            <span class="mono">quantclaw doctor --generate-gateway-token</span> → set token
+            <span class="mono">ravbot dashboard --no-open</span> → tokenized URL<br />
+            <span class="mono">ravbot doctor --generate-gateway-token</span> → set token
           </div>
           <div style="margin-top: 6px">
             <a
               class="session-link"
-              href="https://docs.quantclaw.ai/web/dashboard"
+              href="https://docs.ravbot.ai/web/dashboard"
               target="_blank"
               rel="noreferrer"
               title="Control UI auth docs (opens in new tab)"
@@ -127,11 +127,11 @@ export function renderOverview(props: OverviewProps) {
     }
     return html`
       <div class="muted" style="margin-top: 8px">
-        ${t("overview.auth.failed", { command: "quantclaw dashboard --no-open" })}
+        ${t("overview.auth.failed", { command: "ravbot dashboard --no-open" })}
         <div style="margin-top: 6px">
           <a
             class="session-link"
-            href="https://docs.quantclaw.ai/web/dashboard"
+            href="https://docs.ravbot.ai/web/dashboard"
             target="_blank"
             rel="noreferrer"
             title="Control UI auth docs (opens in new tab)"
@@ -170,7 +170,7 @@ export function renderOverview(props: OverviewProps) {
         <div style="margin-top: 6px">
           <a
             class="session-link"
-            href="https://docs.quantclaw.ai/gateway/tailscale"
+            href="https://docs.ravbot.ai/gateway/tailscale"
             target="_blank"
             rel="noreferrer"
             title="Tailscale Serve docs (opens in new tab)"
@@ -179,7 +179,7 @@ export function renderOverview(props: OverviewProps) {
           <span class="muted"> · </span>
           <a
             class="session-link"
-            href="https://docs.quantclaw.ai/web/control-ui#insecure-http"
+            href="https://docs.ravbot.ai/web/control-ui#insecure-http"
             target="_blank"
             rel="noreferrer"
             title="Insecure HTTP docs (opens in new tab)"
@@ -221,7 +221,7 @@ export function renderOverview(props: OverviewProps) {
                       const v = (e.target as HTMLInputElement).value;
                       props.onSettingsChange({ ...props.settings, token: v });
                     }}
-                    placeholder="QUANTCLAW_GATEWAY_TOKEN"
+                    placeholder="RAVBOT_GATEWAY_TOKEN"
                   />
                 </label>
                 <label class="field">

@@ -1,5 +1,5 @@
 import { html, nothing } from "lit";
-import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
+import { parseAgentSessionKey } from "./session-key-utils.js";
 import { t } from "../i18n/index.ts";
 import { refreshChatAvatar } from "./app-chat.ts";
 import { renderUsageTab } from "./app-render-usage-tab.ts";
@@ -136,7 +136,7 @@ function resolveAssistantAvatarUrl(state: AppViewState): string | undefined {
 }
 
 export function renderApp(state: AppViewState) {
-  const quantClawVersion =
+  const ravBotVersion =
     (typeof state.hello?.server?.version === "string" && state.hello.server.version.trim()) ||
     state.updateAvailable?.currentVersion ||
     t("common.na");
@@ -232,10 +232,10 @@ export function renderApp(state: AppViewState) {
           </button>
           <div class="brand">
             <div class="brand-logo">
-              <img src=${basePath ? `${basePath}/quantclaw-logo.png` : "/quantclaw-logo.png"} alt="QuantClaw" />
+              <img src=${basePath ? `${basePath}/ravbot-logo.png` : "/ravbot-logo.png"} alt="RavBot" />
             </div>
             <div class="brand-text">
-              <div class="brand-title">QUANTCLAW</div>
+              <div class="brand-title">RAVBOT</div>
               <div class="brand-sub">Gateway Dashboard</div>
             </div>
           </div>
@@ -244,7 +244,7 @@ export function renderApp(state: AppViewState) {
           <div class="pill">
             <span class="statusDot ${versionStatusClass}"></span>
             <span>${t("common.version")}</span>
-            <span class="mono">${quantClawVersion}</span>
+            <span class="mono">${ravBotVersion}</span>
           </div>
           <div class="pill">
             <span class="statusDot ${state.connected ? "ok" : ""}"></span>
@@ -288,7 +288,7 @@ export function renderApp(state: AppViewState) {
           <div class="nav-group__items">
             <a
               class="nav-item nav-item--external"
-              href="https://docs.quantclaw.ai"
+              href="https://docs.ravbot.ai"
               target="_blank"
               rel="noreferrer"
               title="${t("common.docs")} (opens in new tab)"

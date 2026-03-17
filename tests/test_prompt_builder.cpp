@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <filesystem>
@@ -8,10 +8,10 @@
 #include <spdlog/sinks/null_sink.h>
 #include <spdlog/spdlog.h>
 
-#include "quantclaw/core/memory_manager.hpp"
-#include "quantclaw/core/prompt_builder.hpp"
-#include "quantclaw/core/skill_loader.hpp"
-#include "quantclaw/tools/tool_registry.hpp"
+#include "ravbot/core/memory_manager.hpp"
+#include "ravbot/core/prompt_builder.hpp"
+#include "ravbot/core/skill_loader.hpp"
+#include "ravbot/tools/tool_registry.hpp"
 
 #include "test_helpers.hpp"
 #include <gtest/gtest.h>
@@ -19,19 +19,19 @@
 class PromptBuilderTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    test_dir_ = quantclaw::test::MakeTestDir("quantclaw_prompt_test");
+    test_dir_ = ravbot::test::MakeTestDir("ravbot_prompt_test");
     std::filesystem::create_directories(test_dir_ / "skills");
 
     auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
     logger_ = std::make_shared<spdlog::logger>("test_prompt", null_sink);
 
     memory_manager_ =
-        std::make_shared<quantclaw::MemoryManager>(test_dir_, logger_);
-    skill_loader_ = std::make_shared<quantclaw::SkillLoader>(logger_);
-    tool_registry_ = std::make_shared<quantclaw::ToolRegistry>(logger_);
+        std::make_shared<ravbot::MemoryManager>(test_dir_, logger_);
+    skill_loader_ = std::make_shared<ravbot::SkillLoader>(logger_);
+    tool_registry_ = std::make_shared<ravbot::ToolRegistry>(logger_);
     tool_registry_->RegisterBuiltinTools();
 
-    builder_ = std::make_unique<quantclaw::PromptBuilder>(
+    builder_ = std::make_unique<ravbot::PromptBuilder>(
         memory_manager_, skill_loader_, tool_registry_);
   }
 
@@ -50,17 +50,17 @@ class PromptBuilderTest : public ::testing::Test {
 
   std::filesystem::path test_dir_;
   std::shared_ptr<spdlog::logger> logger_;
-  std::shared_ptr<quantclaw::MemoryManager> memory_manager_;
-  std::shared_ptr<quantclaw::SkillLoader> skill_loader_;
-  std::shared_ptr<quantclaw::ToolRegistry> tool_registry_;
-  std::unique_ptr<quantclaw::PromptBuilder> builder_;
+  std::shared_ptr<ravbot::MemoryManager> memory_manager_;
+  std::shared_ptr<ravbot::SkillLoader> skill_loader_;
+  std::shared_ptr<ravbot::ToolRegistry> tool_registry_;
+  std::unique_ptr<ravbot::PromptBuilder> builder_;
 };
 
 // --- BuildFull tests ---
 
 TEST_F(PromptBuilderTest, BuildFullContainsDefaultIdentity) {
   auto prompt = builder_->BuildFull();
-  EXPECT_NE(prompt.find("You are QuantClaw"), std::string::npos);
+  EXPECT_NE(prompt.find("You are RavBot"), std::string::npos);
   EXPECT_NE(prompt.find("personal AI assistant"), std::string::npos);
 }
 
@@ -132,7 +132,7 @@ TEST_F(PromptBuilderTest, BuildFullOmitsMissingSections) {
 
 TEST_F(PromptBuilderTest, BuildMinimalContainsIdentityFallback) {
   auto prompt = builder_->BuildMinimal();
-  EXPECT_NE(prompt.find("You are QuantClaw"), std::string::npos);
+  EXPECT_NE(prompt.find("You are RavBot"), std::string::npos);
   EXPECT_NE(prompt.find("helpful AI assistant"), std::string::npos);
 }
 
@@ -193,14 +193,14 @@ TEST_F(PromptBuilderTest, BuildFullWithAllSections) {
 
 TEST_F(PromptBuilderTest, BuildFullNoToolsRegistered) {
   // Create a fresh registry without built-in tools
-  auto empty_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto empty_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   auto builder =
-      quantclaw::PromptBuilder(memory_manager_, skill_loader_, empty_registry);
+      ravbot::PromptBuilder(memory_manager_, skill_loader_, empty_registry);
 
   auto prompt = builder.BuildFull();
   EXPECT_EQ(prompt.find("## Available Tools"), std::string::npos);
   // Default identity should still be there
-  EXPECT_NE(prompt.find("You are QuantClaw"), std::string::npos);
+  EXPECT_NE(prompt.find("You are RavBot"), std::string::npos);
 }
 
 
@@ -224,9 +224,9 @@ commands:
 This is a test skill.
 )");
 
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_skills_protocol = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -257,9 +257,9 @@ commands:
 Use the web_search tool to search the web.
 )");
 
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_skills_protocol = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -276,9 +276,9 @@ Use the web_search tool to search the web.
 
 TEST_F(PromptBuilderTest, BuildWithComponentsSkillsProtocolEmptyWhenNoSkills) {
   // No skills directory or empty skills directory
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_skills_protocol = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -298,9 +298,9 @@ always: true
 Test skill content.
 )");
 
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_skills_protocol = false;  // Disabled
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -342,9 +342,9 @@ commands:
 Skill 2 content.
 )");
 
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_skills_protocol = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -365,9 +365,9 @@ Skill 2 content.
 // --- BuildWithComponents tests for memory recall rules ---
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesMemoryRecallRules) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_memory_rules = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -381,9 +381,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesMemoryRecallRules) {
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesTriggerConditions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_memory_rules = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -397,9 +397,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesTriggerCon
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesSearchStrategy) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_memory_rules = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -412,9 +412,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesSearchStra
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesBestPractices) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_memory_rules = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -427,9 +427,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesBestPracti
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesPriority) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_memory_rules = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -442,9 +442,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesPriority) 
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesOmittedWhenDisabled) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_memory_rules = false;  // Disabled
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -454,9 +454,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesOmittedWhenDisable
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesExamples) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_memory_rules = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -471,9 +471,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsMemoryRecallRulesIncludesExamples) 
 // --- BuildWithComponents tests for channel instructions ---
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesTelegramChannelInstructions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "telegram";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -489,9 +489,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesTelegramChannelInstructions
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsTelegramInstructionsIncludeFormattingGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "telegram";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -503,9 +503,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsTelegramInstructionsIncludeFormatti
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsTelegramInstructionsIncludeReplyModes) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "telegram";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -517,9 +517,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsTelegramInstructionsIncludeReplyMod
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesDiscordChannelInstructions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "discord";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -532,9 +532,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesDiscordChannelInstructions)
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesSlackChannelInstructions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "slack";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -547,9 +547,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesSlackChannelInstructions) {
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesCLIChannelInstructions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "cli";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -562,9 +562,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesCLIChannelInstructions) {
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesWebUIChannelInstructions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "web";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -577,9 +577,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesWebUIChannelInstructions) {
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesGenericChannelInstructions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "unknown_channel";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -591,9 +591,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesGenericChannelInstructions)
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsChannelInstructionsOmittedWhenDisabled) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = false;  // Disabled
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "telegram";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -604,9 +604,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsChannelInstructionsOmittedWhenDisab
 }
 
 TEST_F(PromptBuilderTest, BuildWithComponentsChannelInstructionsOmittedWhenNoChannel) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   // No channel specified
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -619,9 +619,9 @@ TEST_F(PromptBuilderTest, SetChannelInstructionsCustomOverride) {
   // Set custom channel instructions
   builder_->SetChannelInstructions("telegram", "Custom Telegram instructions for testing.");
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.channel = "telegram";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -638,18 +638,18 @@ TEST_F(PromptBuilderTest, SetChannelInstructionsMultipleChannels) {
   builder_->SetChannelInstructions("telegram", "Telegram custom");
   builder_->SetChannelInstructions("discord", "Discord custom");
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_channel_instructions = true;
   
   // Test Telegram
-  quantclaw::PromptContext telegram_context;
+  ravbot::PromptContext telegram_context;
   telegram_context.channel = "telegram";
   auto telegram_prompt = builder_->BuildWithComponents(components, telegram_context);
   EXPECT_NE(telegram_prompt.find("Telegram custom"), std::string::npos);
   EXPECT_EQ(telegram_prompt.find("Discord custom"), std::string::npos);
   
   // Test Discord
-  quantclaw::PromptContext discord_context;
+  ravbot::PromptContext discord_context;
   discord_context.channel = "discord";
   auto discord_prompt = builder_->BuildWithComponents(components, discord_context);
   EXPECT_NE(discord_prompt.find("Discord custom"), std::string::npos);
@@ -659,9 +659,9 @@ TEST_F(PromptBuilderTest, SetChannelInstructionsMultipleChannels) {
 // --- BuildWithComponents tests for runtime metadata (Task 1.1.5) ---
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesRuntimeMetadata) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -675,9 +675,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesRuntimeMetadata) {
 }
 
 TEST_F(PromptBuilderTest, RuntimeMetadataIncludesCurrentTime) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -689,9 +689,9 @@ TEST_F(PromptBuilderTest, RuntimeMetadataIncludesCurrentTime) {
 }
 
 TEST_F(PromptBuilderTest, RuntimeMetadataIncludesWorkspacePath) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -701,9 +701,9 @@ TEST_F(PromptBuilderTest, RuntimeMetadataIncludesWorkspacePath) {
 }
 
 TEST_F(PromptBuilderTest, RuntimeMetadataIncludesPlatformInfo) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -718,9 +718,9 @@ TEST_F(PromptBuilderTest, RuntimeMetadataIncludesPlatformInfo) {
 }
 
 TEST_F(PromptBuilderTest, RuntimeMetadataIncludesToolsSummary) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -733,9 +733,9 @@ TEST_F(PromptBuilderTest, RuntimeMetadataIncludesToolsSummary) {
 }
 
 TEST_F(PromptBuilderTest, RuntimeMetadataIncludesToolCategories) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -751,9 +751,9 @@ TEST_F(PromptBuilderTest, RuntimeMetadataIncludesToolCategories) {
 }
 
 TEST_F(PromptBuilderTest, RuntimeMetadataIncludesSystemCapabilities) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -776,9 +776,9 @@ always: true
 Test skill content.
 )");
 
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -787,9 +787,9 @@ Test skill content.
 }
 
 TEST_F(PromptBuilderTest, RuntimeMetadataIncludesPerformanceHints) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -800,7 +800,7 @@ TEST_F(PromptBuilderTest, RuntimeMetadataIncludesPerformanceHints) {
 
 TEST_F(PromptBuilderTest, RuntimeMetadataLargeToolSetHint) {
   // Create a registry with many tools to trigger the large tool set hint
-  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto large_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   large_registry->RegisterBuiltinTools();
   
   // Add dummy tools to exceed 100
@@ -816,12 +816,12 @@ TEST_F(PromptBuilderTest, RuntimeMetadataLargeToolSetHint) {
         [](const nlohmann::json&) { return "dummy result"; });
   }
   
-  auto builder = quantclaw::PromptBuilder(
+  auto builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, large_registry);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder.BuildWithComponents(components, context);
   
@@ -831,9 +831,9 @@ TEST_F(PromptBuilderTest, RuntimeMetadataLargeToolSetHint) {
 }
 
 TEST_F(PromptBuilderTest, RuntimeMetadataOmittedWhenDisabled) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_runtime_metadata = false;  // Disabled
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -849,11 +849,11 @@ TEST_F(PromptBuilderTest, RuntimeMetadataOmittedWhenDisabled) {
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesSenderTrustInfo) {
   // Set sender trust level
-  builder_->SetSenderTrust("user123", quantclaw::TrustLevel::kSemiTrusted);
+  builder_->SetSenderTrust("user123", ravbot::TrustLevel::kSemiTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "user123";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -866,11 +866,11 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesSenderTrustInfo) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoTrustedUserPermissions) {
-  builder_->SetSenderTrust("admin_user", quantclaw::TrustLevel::kTrusted);
+  builder_->SetSenderTrust("admin_user", ravbot::TrustLevel::kTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "admin_user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -886,11 +886,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoTrustedUserPermissions) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoSemiTrustedUserPermissions) {
-  builder_->SetSenderTrust("regular_user", quantclaw::TrustLevel::kSemiTrusted);
+  builder_->SetSenderTrust("regular_user", ravbot::TrustLevel::kSemiTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "regular_user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -905,11 +905,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoSemiTrustedUserPermissions) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoUntrustedUserRestrictions) {
-  builder_->SetSenderTrust("unknown_user", quantclaw::TrustLevel::kUntrusted);
+  builder_->SetSenderTrust("unknown_user", ravbot::TrustLevel::kUntrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "unknown_user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -925,9 +925,9 @@ TEST_F(PromptBuilderTest, SenderTrustInfoUntrustedUserRestrictions) {
 
 TEST_F(PromptBuilderTest, SenderTrustInfoDefaultsToSemiTrusted) {
   // Don't set trust level explicitly
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "new_user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -937,11 +937,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoDefaultsToSemiTrusted) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoIncludesTrustModelOverview) {
-  builder_->SetSenderTrust("user", quantclaw::TrustLevel::kTrusted);
+  builder_->SetSenderTrust("user", ravbot::TrustLevel::kTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -954,11 +954,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoIncludesTrustModelOverview) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoIncludesContentSourceTrust) {
-  builder_->SetSenderTrust("user", quantclaw::TrustLevel::kTrusted);
+  builder_->SetSenderTrust("user", ravbot::TrustLevel::kTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -972,11 +972,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoIncludesContentSourceTrust) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoIncludesBestPractices) {
-  builder_->SetSenderTrust("user", quantclaw::TrustLevel::kTrusted);
+  builder_->SetSenderTrust("user", ravbot::TrustLevel::kTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -990,11 +990,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoIncludesBestPractices) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoOmittedWhenDisabled) {
-  builder_->SetSenderTrust("user", quantclaw::TrustLevel::kTrusted);
+  builder_->SetSenderTrust("user", ravbot::TrustLevel::kTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = false;  // Disabled
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -1005,11 +1005,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoOmittedWhenDisabled) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoOmittedWhenNoSenderId) {
-  builder_->SetSenderTrust("user", quantclaw::TrustLevel::kTrusted);
+  builder_->SetSenderTrust("user", ravbot::TrustLevel::kTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   // No sender_id specified
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -1020,15 +1020,15 @@ TEST_F(PromptBuilderTest, SenderTrustInfoOmittedWhenNoSenderId) {
 
 TEST_F(PromptBuilderTest, SetSenderTrustMultipleUsers) {
   // Set trust levels for multiple users
-  builder_->SetSenderTrust("admin", quantclaw::TrustLevel::kTrusted);
-  builder_->SetSenderTrust("user", quantclaw::TrustLevel::kSemiTrusted);
-  builder_->SetSenderTrust("guest", quantclaw::TrustLevel::kUntrusted);
+  builder_->SetSenderTrust("admin", ravbot::TrustLevel::kTrusted);
+  builder_->SetSenderTrust("user", ravbot::TrustLevel::kSemiTrusted);
+  builder_->SetSenderTrust("guest", ravbot::TrustLevel::kUntrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
   
   // Test admin - should show Trusted status
-  quantclaw::PromptContext admin_context;
+  ravbot::PromptContext admin_context;
   admin_context.sender_id = "admin";
   auto admin_prompt = builder_->BuildWithComponents(components, admin_context);
   EXPECT_NE(admin_prompt.find("**Trust level**: **Trusted** (verified user/administrator)"), std::string::npos);
@@ -1036,7 +1036,7 @@ TEST_F(PromptBuilderTest, SetSenderTrustMultipleUsers) {
   EXPECT_EQ(admin_prompt.find("**Trust level**: **Untrusted**"), std::string::npos);
   
   // Test user - should show Semi-trusted status
-  quantclaw::PromptContext user_context;
+  ravbot::PromptContext user_context;
   user_context.sender_id = "user";
   auto user_prompt = builder_->BuildWithComponents(components, user_context);
   EXPECT_NE(user_prompt.find("**Trust level**: **Semi-trusted** (regular authenticated user)"), std::string::npos);
@@ -1044,7 +1044,7 @@ TEST_F(PromptBuilderTest, SetSenderTrustMultipleUsers) {
   EXPECT_EQ(user_prompt.find("**Trust level**: **Untrusted**"), std::string::npos);
   
   // Test guest - should show Untrusted status
-  quantclaw::PromptContext guest_context;
+  ravbot::PromptContext guest_context;
   guest_context.sender_id = "guest";
   auto guest_prompt = builder_->BuildWithComponents(components, guest_context);
   EXPECT_NE(guest_prompt.find("**Trust level**: **Untrusted** (unknown or suspicious sender)"), std::string::npos);
@@ -1053,11 +1053,11 @@ TEST_F(PromptBuilderTest, SetSenderTrustMultipleUsers) {
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoTrustedIncludesSecurityConsiderations) {
-  builder_->SetSenderTrust("admin", quantclaw::TrustLevel::kTrusted);
+  builder_->SetSenderTrust("admin", ravbot::TrustLevel::kTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "admin";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -1070,11 +1070,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoTrustedIncludesSecurityConsiderations) 
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoSemiTrustedIncludesOperationalGuidelines) {
-  builder_->SetSenderTrust("user", quantclaw::TrustLevel::kSemiTrusted);
+  builder_->SetSenderTrust("user", ravbot::TrustLevel::kSemiTrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "user";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -1086,11 +1086,11 @@ TEST_F(PromptBuilderTest, SenderTrustInfoSemiTrustedIncludesOperationalGuideline
 }
 
 TEST_F(PromptBuilderTest, SenderTrustInfoUntrustedIncludesCriticalWarnings) {
-  builder_->SetSenderTrust("suspicious", quantclaw::TrustLevel::kUntrusted);
+  builder_->SetSenderTrust("suspicious", ravbot::TrustLevel::kUntrusted);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_sender_trust = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.sender_id = "suspicious";
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -1106,9 +1106,9 @@ TEST_F(PromptBuilderTest, SenderTrustInfoUntrustedIncludesCriticalWarnings) {
 // --- BuildWithComponents tests for output constraints (Task 1.1.7) ---
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesOutputConstraints) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1121,9 +1121,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesOutputConstraints) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesGeneralPrinciples) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1136,9 +1136,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesGeneralPrinciples) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesCodeFormattingGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1150,9 +1150,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesCodeFormattingGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesListStructureGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1164,9 +1164,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesListStructureGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesEmphasisGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1179,9 +1179,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesEmphasisGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesErrorMessageGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1194,9 +1194,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesErrorMessageGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesToolUsageFeedback) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1209,9 +1209,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesToolUsageFeedback) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesLengthVerbosityGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1223,9 +1223,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesLengthVerbosityGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesMultiStepProcessGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1238,9 +1238,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesMultiStepProcessGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesQuestionClarificationGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1252,9 +1252,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesQuestionClarificationGuidance
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesChannelAdaptations) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1267,9 +1267,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesChannelAdaptations) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesWhatToAvoid) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1283,9 +1283,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesWhatToAvoid) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsIncludesResponseCompleteness) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1298,9 +1298,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsIncludesResponseCompleteness) {
 }
 
 TEST_F(PromptBuilderTest, OutputConstraintsOmittedWhenDisabled) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_output_constraints = false;  // Disabled
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1312,9 +1312,9 @@ TEST_F(PromptBuilderTest, OutputConstraintsOmittedWhenDisabled) {
 // --- BuildWithComponents tests for operation guards (Task 1.1.8) ---
 
 TEST_F(PromptBuilderTest, BuildWithComponentsIncludesOperationGuards) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1327,9 +1327,9 @@ TEST_F(PromptBuilderTest, BuildWithComponentsIncludesOperationGuards) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesDestructiveFileOperations) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1343,9 +1343,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesDestructiveFileOperations) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesSystemLevelCommands) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1359,9 +1359,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesSystemLevelCommands) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesDataModificationAtScale) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1374,9 +1374,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesDataModificationAtScale) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesExternalNetworkOperations) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1389,9 +1389,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesExternalNetworkOperations) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesCodeExecutionInProduction) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1404,9 +1404,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesCodeExecutionInProduction) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesCredentialManagement) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1419,9 +1419,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesCredentialManagement) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesApprovalProcess) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1435,9 +1435,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesApprovalProcess) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesRiskAssessment) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1449,9 +1449,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesRiskAssessment) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesUserInformationGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1463,9 +1463,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesUserInformationGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesConfirmationGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1477,9 +1477,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesConfirmationGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesSafeExecutionGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1492,9 +1492,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesSafeExecutionGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesVerificationGuidance) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1506,9 +1506,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesVerificationGuidance) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesAutomaticApprovalExceptions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1522,9 +1522,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesAutomaticApprovalExceptions) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesConfigurationOptions) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1537,9 +1537,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesConfigurationOptions) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesBestPractices) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1554,9 +1554,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesBestPractices) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesExampleApprovalRequest) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1569,9 +1569,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesExampleApprovalRequest) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesSecurityNote) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1587,9 +1587,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesSecurityNote) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsOmittedWhenDisabled) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = false;  // Disabled
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1599,9 +1599,9 @@ TEST_F(PromptBuilderTest, OperationGuardsOmittedWhenDisabled) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesAllOperationCategories) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1615,9 +1615,9 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesAllOperationCategories) {
 }
 
 TEST_F(PromptBuilderTest, OperationGuardsIncludesAllApprovalSteps) {
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.include_operation_guards = true;
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   
   auto prompt = builder_->BuildWithComponents(components, context);
   
@@ -1633,7 +1633,7 @@ TEST_F(PromptBuilderTest, OperationGuardsIncludesAllApprovalSteps) {
 
 TEST_F(PromptBuilderTest, BuildWithComponentsUsesToolSummaryWhenOver100Tools) {
   // Create a mock registry with > 100 tools
-  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto large_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   
   // Add 110 mock tools
   for (int i = 0; i < 110; i++) {
@@ -1642,12 +1642,12 @@ TEST_F(PromptBuilderTest, BuildWithComponentsUsesToolSummaryWhenOver100Tools) {
     large_registry->RegisterExternalTool(tool_name, description, nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   }
   
-  auto large_builder = quantclaw::PromptBuilder(
+  auto large_builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, large_registry);
   
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.use_tool_summary = false;  // Auto-detect based on count
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.tool_count = 110;
   
   auto prompt = large_builder.BuildWithComponents(components, context);
@@ -1660,7 +1660,7 @@ TEST_F(PromptBuilderTest, BuildWithComponentsUsesToolSummaryWhenOver100Tools) {
 
 TEST_F(PromptBuilderTest, ToolSummaryIncludesCategorization) {
   // Create a registry with tools from different categories
-  auto categorized_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto categorized_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   
   // Add tools from different categories (> 100 to trigger summary mode)
   for (int i = 0; i < 30; i++) {
@@ -1680,11 +1680,11 @@ TEST_F(PromptBuilderTest, ToolSummaryIncludesCategorization) {
                                        "Recall memory " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   }
   
-  auto categorized_builder = quantclaw::PromptBuilder(
+  auto categorized_builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, categorized_registry);
   
-  quantclaw::PromptComponents components;
-  quantclaw::PromptContext context;
+  ravbot::PromptComponents components;
+  ravbot::PromptContext context;
   context.tool_count = 115;
   
   auto prompt = categorized_builder.BuildWithComponents(components, context);
@@ -1698,17 +1698,17 @@ TEST_F(PromptBuilderTest, ToolSummaryIncludesCategorization) {
 
 TEST_F(PromptBuilderTest, ToolSummaryIncludesUsageGuidelines) {
   // Create a registry with > 100 tools
-  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto large_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   for (int i = 0; i < 105; i++) {
     large_registry->RegisterExternalTool("tool_" + std::to_string(i), 
                                  "Tool description " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   }
   
-  auto large_builder = quantclaw::PromptBuilder(
+  auto large_builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, large_registry);
   
-  quantclaw::PromptComponents components;
-  quantclaw::PromptContext context;
+  ravbot::PromptComponents components;
+  ravbot::PromptContext context;
   context.tool_count = 105;
   
   auto prompt = large_builder.BuildWithComponents(components, context);
@@ -1724,17 +1724,17 @@ TEST_F(PromptBuilderTest, ToolSummaryIncludesUsageGuidelines) {
 
 TEST_F(PromptBuilderTest, ToolSummaryIncludesImportantNotes) {
   // Create a registry with > 100 tools
-  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto large_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   for (int i = 0; i < 105; i++) {
     large_registry->RegisterExternalTool("tool_" + std::to_string(i), 
                                  "Tool description " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   }
   
-  auto large_builder = quantclaw::PromptBuilder(
+  auto large_builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, large_registry);
   
-  quantclaw::PromptComponents components;
-  quantclaw::PromptContext context;
+  ravbot::PromptComponents components;
+  ravbot::PromptContext context;
   context.tool_count = 105;
   
   auto prompt = large_builder.BuildWithComponents(components, context);
@@ -1749,17 +1749,17 @@ TEST_F(PromptBuilderTest, ToolSummaryIncludesImportantNotes) {
 
 TEST_F(PromptBuilderTest, ToolSummaryIncludesPerformanceTip) {
   // Create a registry with > 100 tools
-  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto large_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   for (int i = 0; i < 105; i++) {
     large_registry->RegisterExternalTool("tool_" + std::to_string(i), 
                                  "Tool description " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   }
   
-  auto large_builder = quantclaw::PromptBuilder(
+  auto large_builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, large_registry);
   
-  quantclaw::PromptComponents components;
-  quantclaw::PromptContext context;
+  ravbot::PromptComponents components;
+  ravbot::PromptContext context;
   context.tool_count = 105;
   
   auto prompt = large_builder.BuildWithComponents(components, context);
@@ -1773,9 +1773,9 @@ TEST_F(PromptBuilderTest, ToolSummaryIncludesPerformanceTip) {
 
 TEST_F(PromptBuilderTest, ToolSummaryNotUsedWhenToolCountUnder100) {
   // Default registry has < 100 tools
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.use_tool_summary = false;  // Auto-detect
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.tool_count = 50;
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -1788,9 +1788,9 @@ TEST_F(PromptBuilderTest, ToolSummaryNotUsedWhenToolCountUnder100) {
 
 TEST_F(PromptBuilderTest, ToolSummaryCanBeForcedWithFlag) {
   // Force tool summary even with < 100 tools
-  quantclaw::PromptComponents components;
+  ravbot::PromptComponents components;
   components.use_tool_summary = true;  // Force summary mode
-  quantclaw::PromptContext context;
+  ravbot::PromptContext context;
   context.tool_count = 50;
   
   auto prompt = builder_->BuildWithComponents(components, context);
@@ -1802,7 +1802,7 @@ TEST_F(PromptBuilderTest, ToolSummaryCanBeForcedWithFlag) {
 
 TEST_F(PromptBuilderTest, ToolSummaryListsToolsWithDescriptions) {
   // Create a registry with > 100 tools
-  auto large_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto large_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   large_registry->RegisterExternalTool("read_file", "Read a file from disk", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   large_registry->RegisterExternalTool("write_file", "Write content to a file", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   large_registry->RegisterExternalTool("exec_command", "Execute a shell command", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
@@ -1813,11 +1813,11 @@ TEST_F(PromptBuilderTest, ToolSummaryListsToolsWithDescriptions) {
                                  "Description " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   }
   
-  auto large_builder = quantclaw::PromptBuilder(
+  auto large_builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, large_registry);
   
-  quantclaw::PromptComponents components;
-  quantclaw::PromptContext context;
+  ravbot::PromptComponents components;
+  ravbot::PromptContext context;
   context.tool_count = 103;
   
   auto prompt = large_builder.BuildWithComponents(components, context);
@@ -1830,7 +1830,7 @@ TEST_F(PromptBuilderTest, ToolSummaryListsToolsWithDescriptions) {
 
 TEST_F(PromptBuilderTest, ToolSummaryGroupsToolsByCategory) {
   // Create a registry with tools from specific categories
-  auto categorized_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto categorized_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   
   // File operations
   categorized_registry->RegisterExternalTool("read_config", "Read configuration", nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
@@ -1852,11 +1852,11 @@ TEST_F(PromptBuilderTest, ToolSummaryGroupsToolsByCategory) {
                                        "Filler tool " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   }
   
-  auto categorized_builder = quantclaw::PromptBuilder(
+  auto categorized_builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, categorized_registry);
   
-  quantclaw::PromptComponents components;
-  quantclaw::PromptContext context;
+  ravbot::PromptComponents components;
+  ravbot::PromptContext context;
   context.tool_count = 103;
   
   auto prompt = categorized_builder.BuildWithComponents(components, context);
@@ -1887,7 +1887,7 @@ TEST_F(PromptBuilderTest, ToolSummaryGroupsToolsByCategory) {
 
 TEST_F(PromptBuilderTest, ToolSummaryShowsToolCountPerCategory) {
   // Create a registry with categorized tools
-  auto categorized_registry = std::make_shared<quantclaw::ToolRegistry>(logger_);
+  auto categorized_registry = std::make_shared<ravbot::ToolRegistry>(logger_);
   
   // Add 10 file tools
   for (int i = 0; i < 10; i++) {
@@ -1907,11 +1907,11 @@ TEST_F(PromptBuilderTest, ToolSummaryShowsToolCountPerCategory) {
                                        "Other tool " + std::to_string(i), nlohmann::json{}, [](const nlohmann::json&) { return "{}"; });
   }
   
-  auto categorized_builder = quantclaw::PromptBuilder(
+  auto categorized_builder = ravbot::PromptBuilder(
       memory_manager_, skill_loader_, categorized_registry);
   
-  quantclaw::PromptComponents components;
-  quantclaw::PromptContext context;
+  ravbot::PromptComponents components;
+  ravbot::PromptContext context;
   context.tool_count = 105;
   
   auto prompt = categorized_builder.BuildWithComponents(components, context);
@@ -1919,4 +1919,85 @@ TEST_F(PromptBuilderTest, ToolSummaryShowsToolCountPerCategory) {
   // Verify category counts are shown
   EXPECT_NE(prompt.find("**File Operations** (10 tools)"), std::string::npos);
   EXPECT_NE(prompt.find("**Command Execution & Process Management** (15 tools)"), std::string::npos);
+}
+
+// ── P1.4: Silent Reply + Safety Constitution tests ──────────────────────────
+
+// BuildFull should include the [SILENT] token section.
+TEST_F(PromptBuilderTest, BuildFullIncludesSilentReplySection) {
+  auto prompt = builder_->BuildFull();
+  EXPECT_NE(prompt.find("Silent Reply Protocol"), std::string::npos);
+  EXPECT_NE(prompt.find("[SILENT]"), std::string::npos);
+}
+
+// BuildFull should include the Safety Constitution section.
+TEST_F(PromptBuilderTest, BuildFullIncludesSafetyConstitution) {
+  auto prompt = builder_->BuildFull();
+  EXPECT_NE(prompt.find("Safety Constitution"), std::string::npos);
+  // Verify core principles are present
+  EXPECT_NE(prompt.find("No independent goals"), std::string::npos);
+  EXPECT_NE(prompt.find("No self-preservation"), std::string::npos);
+  EXPECT_NE(prompt.find("Human oversight first"), std::string::npos);
+  EXPECT_NE(prompt.find("Unconditional corrigibility"), std::string::npos);
+}
+
+// BuildWithComponents — kFull mode: both sections present
+TEST_F(PromptBuilderTest, BuildWithComponents_kFull_HasBothSections) {
+  ravbot::PromptComponents components;
+  components.mode = ravbot::PromptMode::kFull;
+  components.include_silent_reply = true;
+  components.include_safety_constitution = true;
+
+  auto prompt = builder_->BuildWithComponents(components);
+  EXPECT_NE(prompt.find("Silent Reply Protocol"), std::string::npos);
+  EXPECT_NE(prompt.find("Safety Constitution"), std::string::npos);
+}
+
+// BuildWithComponents — kMinimal mode: silent reply included, safety omitted
+TEST_F(PromptBuilderTest, BuildWithComponents_kMinimal_OmitsSafetyConstitution) {
+  ravbot::PromptComponents components;
+  components.mode = ravbot::PromptMode::kMinimal;
+  components.include_silent_reply = true;
+  components.include_safety_constitution = true;  // flag on, but mode overrides
+
+  auto prompt = builder_->BuildWithComponents(components);
+  EXPECT_NE(prompt.find("Silent Reply Protocol"), std::string::npos);
+  // Safety constitution must be absent in kMinimal
+  EXPECT_EQ(prompt.find("Safety Constitution"), std::string::npos);
+}
+
+// BuildWithComponents — kNone mode: both sections omitted
+TEST_F(PromptBuilderTest, BuildWithComponents_kNone_OmitsBothSections) {
+  ravbot::PromptComponents components;
+  components.mode = ravbot::PromptMode::kNone;
+  components.include_silent_reply = true;
+  components.include_safety_constitution = true;
+
+  auto prompt = builder_->BuildWithComponents(components);
+  EXPECT_EQ(prompt.find("Silent Reply Protocol"), std::string::npos);
+  EXPECT_EQ(prompt.find("Safety Constitution"), std::string::npos);
+}
+
+// include_silent_reply = false suppresses the section even in kFull
+TEST_F(PromptBuilderTest, BuildWithComponents_SilentReplyFlagFalse) {
+  ravbot::PromptComponents components;
+  components.mode = ravbot::PromptMode::kFull;
+  components.include_silent_reply = false;
+  components.include_safety_constitution = true;
+
+  auto prompt = builder_->BuildWithComponents(components);
+  EXPECT_EQ(prompt.find("Silent Reply Protocol"), std::string::npos);
+  EXPECT_NE(prompt.find("Safety Constitution"), std::string::npos);
+}
+
+// include_safety_constitution = false suppresses the section even in kFull
+TEST_F(PromptBuilderTest, BuildWithComponents_SafetyConstitutionFlagFalse) {
+  ravbot::PromptComponents components;
+  components.mode = ravbot::PromptMode::kFull;
+  components.include_silent_reply = true;
+  components.include_safety_constitution = false;
+
+  auto prompt = builder_->BuildWithComponents(components);
+  EXPECT_NE(prompt.find("Silent Reply Protocol"), std::string::npos);
+  EXPECT_EQ(prompt.find("Safety Constitution"), std::string::npos);
 }

@@ -1,9 +1,9 @@
 // Test to isolate HNSW search hang issue
-#include "quantclaw/core/vector_database.hpp"
+#include "ravbot/core/vector_database.hpp"
 #include <iostream>
 #include <vector>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 int main() {
     auto logger = spdlog::default_logger();

@@ -2,7 +2,7 @@
 
 ## 问题描述
 
-用户报告 QuantClaw 在 Telegram 中搜索 GitHub 仓库时，显示的 star 数不正确：
+用户报告 RavBot 在 Telegram 中搜索 GitHub 仓库时，显示的 star 数不正确：
 
 **用户看到的结果**:
 ```
@@ -34,7 +34,7 @@ gh search repos "awesome-openclaw-skills" --sort stars --limit 3 --json name,sta
 }]
 ```
 
-### 2. QuantClaw 代码检查 ✅
+### 2. RavBot 代码检查 ✅
 
 `src/tools/tool_registry.cpp:1592`:
 ```cpp
@@ -108,7 +108,7 @@ std::string ToolRegistry::github_search_repos_tool(const nlohmann::json& params)
 查看工具执行的完整日志：
 
 ```bash
-tail -500 /tmp/quantclaw_gateway.log | grep -A 20 "github_search_repos"
+tail -500 /tmp/ravbot_gateway.log | grep -A 20 "github_search_repos"
 ```
 
 ### 步骤 3: 对比 OpenClaw

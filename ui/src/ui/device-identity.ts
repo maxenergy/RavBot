@@ -14,7 +14,7 @@ export type DeviceIdentity = {
   privateKey: string;
 };
 
-const STORAGE_KEY = "quantclaw-device-identity-v1";
+const STORAGE_KEY = "ravbot-device-identity-v1";
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let binary = "";

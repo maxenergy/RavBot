@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/slack_channel.hpp"
+#include "ravbot/channels/slack_channel.hpp"
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <chrono>
@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <fstream>
 
-namespace quantclaw {
+namespace ravbot {
 
 SlackChannel::SlackChannel(const SlackConfig& config, std::shared_ptr<spdlog::logger> logger)
     : config_(config), logger_(logger) {}
@@ -345,4 +345,4 @@ bool SlackChannel::IsAllowed(const std::string& sender_id) const {
                     sender_id) != config_.allowed_users.end();
 }
 
-} // namespace quantclaw
+} // namespace ravbot

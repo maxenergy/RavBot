@@ -132,7 +132,7 @@ server.RegisterHandler(
           {"status", status_str},
           {"uptime", server.GetUptimeSeconds()},
           {"connections", server.GetConnectionCount()},
-          {"version", quantclaw::kVersion}
+          {"version", ravbot::kVersion}
       };
 
       // 如果是降级状态,添加额外信息
@@ -164,12 +164,12 @@ server.RegisterHandler(
 
 ### 修改文件
 
-1. `include/quantclaw/gateway/protocol.hpp`
+1. `include/ravbot/gateway/protocol.hpp`
    - 添加 `HealthStatus` 枚举
    - 添加 `HealthStatusToString()` 和 `HealthStatusFromString()`
    - 添加 `methods::kGatewayProbe` 常量
 
-2. `include/quantclaw/gateway/gateway_server.hpp`
+2. `include/ravbot/gateway/gateway_server.hpp`
    - 添加 `GetHealthStatus()` 方法
    - 添加 `SetHealthStatus()` 方法
    - 添加 `ProbeHealth()` 方法
@@ -243,7 +243,7 @@ server.RegisterHandler(
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | 健康状态枚举 | ✅ | ✅ | 完成 |
 | 降级检测 | ✅ | ✅ | 完成 |

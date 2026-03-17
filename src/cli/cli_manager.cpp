@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/cli/cli_manager.hpp"
-#include "quantclaw/constants.hpp"
+#include "ravbot/cli/cli_manager.hpp"
+#include "ravbot/constants.hpp"
 #include <iostream>
 #include <algorithm>
 #include <spdlog/spdlog.h>
 
-namespace quantclaw::cli {
+namespace ravbot::cli {
 
 CLIManager::CLIManager() = default;
 
@@ -25,7 +25,7 @@ int CLIManager::Run(int argc, char** argv) {
 
     // Handle global flags
     if (command_name == "--version" || command_name == "-v") {
-        std::cout << "quantclaw " << kVersion
+        std::cout << "ravbot " << kVersion
                   << " (build " << kGitCommit << " " << kBuildDate << ")"
                   << std::endl;
         return 0;
@@ -51,9 +51,9 @@ int CLIManager::Run(int argc, char** argv) {
 }
 
 void CLIManager::ShowHelp() const {
-    std::cout << "QuantClaw - High-performance C++ AI assistant" << std::endl;
+    std::cout << "RavBot - High-performance C++ AI assistant" << std::endl;
     std::cout << std::endl;
-    std::cout << "Usage: quantclaw <command> [options]" << std::endl;
+    std::cout << "Usage: ravbot <command> [options]" << std::endl;
     std::cout << std::endl;
     std::cout << "Commands:" << std::endl;
 
@@ -77,13 +77,13 @@ void CLIManager::ShowHelp() const {
     std::cout << "  --json\tJSON output mode" << std::endl;
     std::cout << std::endl;
     std::cout << "Examples:" << std::endl;
-    std::cout << "  quantclaw gateway              Start gateway (foreground)" << std::endl;
-    std::cout << "  quantclaw gateway install       Install as system service" << std::endl;
-    std::cout << "  quantclaw gateway status         Show gateway status" << std::endl;
-    std::cout << "  quantclaw agent -m \"Hello\"       Send message to agent" << std::endl;
-    std::cout << "  quantclaw sessions list          List sessions" << std::endl;
-    std::cout << "  quantclaw health                 Health check" << std::endl;
-    std::cout << "  quantclaw config get gateway.port Get config value" << std::endl;
+    std::cout << "  ravbot gateway              Start gateway (foreground)" << std::endl;
+    std::cout << "  ravbot gateway install       Install as system service" << std::endl;
+    std::cout << "  ravbot gateway status         Show gateway status" << std::endl;
+    std::cout << "  ravbot agent -m \"Hello\"       Send message to agent" << std::endl;
+    std::cout << "  ravbot sessions list          List sessions" << std::endl;
+    std::cout << "  ravbot health                 Health check" << std::endl;
+    std::cout << "  ravbot config get gateway.port Get config value" << std::endl;
 }
 
-} // namespace quantclaw::cli
+} // namespace ravbot::cli

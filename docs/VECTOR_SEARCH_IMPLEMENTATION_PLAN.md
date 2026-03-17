@@ -1,4 +1,4 @@
-# QuantClaw 向量搜索系统实施计划
+# RavBot 向量搜索系统实施计划
 
 ## 实施日期
 2026-03-14
@@ -41,14 +41,14 @@
 
 **步骤 1**: 下载 HNSWlib
 ```bash
-cd /home/rogers/source/develop/QuantClaw
+cd /home/rogers/source/develop/RavBot
 mkdir -p third_party
 cd third_party
 git clone https://github.com/nmslib/hnswlib.git
 ```
 
 **步骤 2**: 创建 HNSW 索引包装器
-- 文件: `include/quantclaw/core/hnsw_index.hpp`
+- 文件: `include/ravbot/core/hnsw_index.hpp`
 - 文件: `src/core/hnsw_index.cpp`
 - 功能:
   - 封装 HNSWlib API

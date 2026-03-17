@@ -1,4 +1,4 @@
-# QuantClaw Sidecar 说明
+# RavBot Sidecar 说明
 
 ## 什么是 Sidecar？
 
@@ -6,12 +6,12 @@ Sidecar 是一个 **Node.js 辅助进程**，用于运行 OpenClaw 兼容的 Typ
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    QuantClaw 架构                            │
+│                    RavBot 架构                            │
 └─────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────┐         TCP Socket         ┌─────────────────────┐
 │   C++ 主进程          │ ◄────────────────────────► │  Node.js Sidecar    │
-│   (quantclaw)        │    JSON-RPC 2.0 通信        │  (插件运行时)        │
+│   (ravbot)        │    JSON-RPC 2.0 通信        │  (插件运行时)        │
 ├──────────────────────┤                            ├─────────────────────┤
 │ ✅ Agent Loop        │                            │ 🔌 加载 TS 插件      │
 │ ✅ LLM Provider      │                            │ 🔌 执行插件工具      │
@@ -24,7 +24,7 @@ Sidecar 是一个 **Node.js 辅助进程**，用于运行 OpenClaw 兼容的 Typ
 
 ## 为什么需要 Sidecar？
 
-**问题：** QuantClaw 是 C++ 实现，但 OpenClaw 的插件生态是 TypeScript
+**问题：** RavBot 是 C++ 实现，但 OpenClaw 的插件生态是 TypeScript
 
 **解决方案：** 使用 Node.js 进程运行 TypeScript 插件，通过 IPC 与 C++ 通信
 
@@ -33,7 +33,7 @@ Sidecar 是一个 **Node.js 辅助进程**，用于运行 OpenClaw 兼容的 Typ
 ### 安装位置
 
 ```
-/usr/share/quantclaw/sidecar/
+/usr/share/ravbot/sidecar/
 ├── dist/                    # 编译后的 JavaScript
 │   ├── index.js            # 入口文件
 │   ├── plugin-loader.js    # 插件加载器
@@ -56,27 +56,27 @@ DEB 包构建时会自动：
 
 ### 运行时
 
-当 QuantClaw 启动时：
+当 RavBot 启动时：
 
 ```bash
 # C++ 主进程启动
-quantclaw gateway
+ravbot gateway
   ↓
 # 检测到插件配置
 plugins.allow = ["my-plugin"]
   ↓
 # 启动 Sidecar 进程
-node /usr/share/quantclaw/sidecar/dist/index.js
+node /usr/share/ravbot/sidecar/dist/index.js
   ↓
 # 通过环境变量传递配置
-QUANTCLAW_PORT=18802
-QUANTCLAW_PLUGIN_CONFIG='{"allow":["my-plugin"]}'
+RAVBOT_PORT=18802
+RAVBOT_PLUGIN_CONFIG='{"allow":["my-plugin"]}'
   ↓
 # Sidecar 连接到 C++ 进程
 TCP Socket: 127.0.0.1:18802
   ↓
 # 加载插件
-~/.quantclaw/plugins/my-plugin/
+~/.ravbot/plugins/my-plugin/
   ↓
 # 双向 JSON-RPC 通信
 C++ ←→ Sidecar ←→ Plugin
@@ -142,9 +142,9 @@ C++ ←→ Sidecar ←→ Plugin
 ### 插件目录结构
 
 ```
-~/.quantclaw/plugins/
+~/.ravbot/plugins/
 ├── my-plugin/
-│   ├── quantclaw.plugin.json    # 插件配置
+│   ├── ravbot.plugin.json    # 插件配置
 │   ├── index.js                 # 入口文件
 │   ├── package.json             # 依赖
 │   └── node_modules/            # 插件依赖
@@ -174,11 +174,11 @@ C++ ←→ Sidecar ←→ Plugin
 
 ```bash
 # 创建插件目录
-mkdir -p ~/.quantclaw/plugins/weather-plugin
-cd ~/.quantclaw/plugins/weather-plugin
+mkdir -p ~/.ravbot/plugins/weather-plugin
+cd ~/.ravbot/plugins/weather-plugin
 
 # 创建插件文件
-cat > quantclaw.plugin.json << 'EOF'
+cat > ravbot.plugin.json << 'EOF'
 {
   "name": "weather-plugin",
   "version": "1.0.0",
@@ -207,10 +207,10 @@ EOF
 
 ```bash
 # 方法 1: 通过配置文件
-quantclaw config set plugins.allow '["weather-plugin"]'
+ravbot config set plugins.allow '["weather-plugin"]'
 
 # 方法 2: 编辑配置文件
-nano ~/.quantclaw/quantclaw.json
+nano ~/.ravbot/ravbot.json
 ```
 
 ```json
@@ -225,20 +225,20 @@ nano ~/.quantclaw/quantclaw.json
 ### 3. 重启 Gateway
 
 ```bash
-quantclaw gateway restart
+ravbot gateway restart
 ```
 
 ### 4. 验证插件
 
 ```bash
 # 查看已加载的插件
-quantclaw plugins list
+ravbot plugins list
 
 # 查看插件工具
 curl http://localhost:18801/api/plugins/tools
 
 # 调用插件工具
-quantclaw agent "What's the weather in Beijing?"
+ravbot agent "What's the weather in Beijing?"
 ```
 
 ## 调试 Sidecar
@@ -247,22 +247,22 @@ quantclaw agent "What's the weather in Beijing?"
 
 ```bash
 # 启用详细日志
-export QUANTCLAW_VERBOSE=1
-quantclaw gateway
+export RAVBOT_VERBOSE=1
+ravbot gateway
 
 # 或查看系统日志
-journalctl -u quantclaw -f | grep sidecar
+journalctl -u ravbot -f | grep sidecar
 ```
 
 ### 手动测试 Sidecar
 
 ```bash
 # 设置环境变量
-export QUANTCLAW_PORT=18802
-export QUANTCLAW_PLUGIN_CONFIG='{"allow":[]}'
+export RAVBOT_PORT=18802
+export RAVBOT_PLUGIN_CONFIG='{"allow":[]}'
 
 # 手动运行 Sidecar
-node /usr/share/quantclaw/sidecar/dist/index.js
+node /usr/share/ravbot/sidecar/dist/index.js
 ```
 
 ### 常见问题
@@ -273,26 +273,26 @@ node /usr/share/quantclaw/sidecar/dist/index.js
 node --version  # 应该 >= 18
 
 # 检查 Sidecar 文件
-ls -la /usr/share/quantclaw/sidecar/dist/
-ls -la /usr/share/quantclaw/sidecar/node_modules/
+ls -la /usr/share/ravbot/sidecar/dist/
+ls -la /usr/share/ravbot/sidecar/node_modules/
 ```
 
 **2. 插件加载失败**
 ```bash
 # 检查插件配置
-cat ~/.quantclaw/quantclaw.json | grep -A 5 plugins
+cat ~/.ravbot/ravbot.json | grep -A 5 plugins
 
 # 检查插件目录
-ls -la ~/.quantclaw/plugins/
+ls -la ~/.ravbot/plugins/
 
 # 查看详细错误
-QUANTCLAW_VERBOSE=1 quantclaw gateway
+RAVBOT_VERBOSE=1 ravbot gateway
 ```
 
 **3. 插件工具不可用**
 ```bash
 # 验证插件已加载
-quantclaw plugins list
+ravbot plugins list
 
 # 查看工具列表
 curl http://localhost:18801/api/plugins/tools
@@ -341,8 +341,8 @@ curl http://localhost:18801/api/plugins/tools
 
 ```bash
 # 1. 创建插件目录
-mkdir -p ~/.quantclaw/plugins/my-plugin
-cd ~/.quantclaw/plugins/my-plugin
+mkdir -p ~/.ravbot/plugins/my-plugin
+cd ~/.ravbot/plugins/my-plugin
 
 # 2. 初始化 npm 项目
 npm init -y
@@ -371,7 +371,7 @@ EOF
 npx tsc index.ts
 
 # 6. 创建插件配置
-cat > quantclaw.plugin.json << 'EOF'
+cat > ravbot.plugin.json << 'EOF'
 {
   "name": "my-plugin",
   "version": "1.0.0",
@@ -397,11 +397,11 @@ EOF
 **开始使用：**
 ```bash
 # 安装 DEB 包
-sudo dpkg -i quantclaw_*.deb
+sudo dpkg -i ravbot_*.deb
 
 # 启用插件
-quantclaw config set plugins.allow '["my-plugin"]'
+ravbot config set plugins.allow '["my-plugin"]'
 
 # 重启 gateway
-quantclaw gateway restart
+ravbot gateway restart
 ```

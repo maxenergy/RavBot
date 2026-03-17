@@ -19,7 +19,7 @@ class I18nManager {
   }
 
   private loadLocale() {
-    const saved = localStorage.getItem("quantclaw.i18n.locale");
+    const saved = localStorage.getItem("ravbot.i18n.locale");
     if (isSupportedLocale(saved)) {
       this.locale = saved;
     } else {
@@ -64,7 +64,7 @@ class I18nManager {
     }
 
     this.locale = locale;
-    localStorage.setItem("quantclaw.i18n.locale", locale);
+    localStorage.setItem("ravbot.i18n.locale", locale);
     this.notify();
   }
 

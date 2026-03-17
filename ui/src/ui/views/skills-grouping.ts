@@ -7,10 +7,10 @@ export type SkillGroup = {
 };
 
 const SKILL_SOURCE_GROUPS: Array<{ id: string; label: string; sources: string[] }> = [
-  { id: "workspace", label: "Workspace Skills", sources: ["quantclaw-workspace"] },
-  { id: "built-in", label: "Built-in Skills", sources: ["quantclaw-bundled"] },
-  { id: "installed", label: "Installed Skills", sources: ["quantclaw-managed"] },
-  { id: "extra", label: "Extra Skills", sources: ["quantclaw-extra"] },
+  { id: "workspace", label: "Workspace Skills", sources: ["ravbot-workspace"] },
+  { id: "built-in", label: "Built-in Skills", sources: ["ravbot-bundled"] },
+  { id: "installed", label: "Installed Skills", sources: ["ravbot-managed"] },
+  { id: "extra", label: "Extra Skills", sources: ["ravbot-extra"] },
 ];
 
 export function groupSkills(skills: SkillStatusEntry[]): SkillGroup[] {

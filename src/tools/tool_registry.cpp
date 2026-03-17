@@ -1,17 +1,17 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/tools/tool_registry.hpp"
-#include "quantclaw/security/sandbox.hpp"
-#include "quantclaw/security/tool_permissions.hpp"
-#include "quantclaw/security/exec_approval.hpp"
-#include "quantclaw/core/subagent.hpp"
-#include "quantclaw/core/cron_scheduler.hpp"
-#include "quantclaw/core/memory_search.hpp"
-#include "quantclaw/session/session_manager.hpp"
-#include "quantclaw/tools/tool_chain.hpp"
-#include "quantclaw/mcp/mcp_tool_manager.hpp"
-#include "quantclaw/platform/process.hpp"
+#include "ravbot/tools/tool_registry.hpp"
+#include "ravbot/security/sandbox.hpp"
+#include "ravbot/security/tool_permissions.hpp"
+#include "ravbot/security/exec_approval.hpp"
+#include "ravbot/core/subagent.hpp"
+#include "ravbot/core/cron_scheduler.hpp"
+#include "ravbot/core/memory_search.hpp"
+#include "ravbot/session/session_manager.hpp"
+#include "ravbot/tools/tool_chain.hpp"
+#include "ravbot/mcp/mcp_tool_manager.hpp"
+#include "ravbot/platform/process.hpp"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -24,7 +24,7 @@
 #include <httplib.h>
 #include <spdlog/spdlog.h>
 
-namespace quantclaw {
+namespace ravbot {
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -636,7 +636,7 @@ bool ToolRegistry::HasTool(const std::string& tool_name) const {
 std::string ToolRegistry::read_file_tool(const nlohmann::json& params) {
     if (!params.contains("path")) throw std::runtime_error("Missing required parameter: path");
     std::string path = params["path"].get<std::string>();
-    if (!quantclaw::SecuritySandbox::ValidateFilePath(path, "~/.quantclaw/workspace"))
+    if (!ravbot::SecuritySandbox::ValidateFilePath(path, "~/.ravbot/workspace"))
         throw std::runtime_error("Access denied: path outside workspace: " + path);
     if (!std::filesystem::exists(path)) throw std::runtime_error("File not found: " + path);
     std::ifstream f(path);
@@ -649,7 +649,7 @@ std::string ToolRegistry::write_file_tool(const nlohmann::json& params) {
         throw std::runtime_error("Missing required parameters: path, content");
     std::string path    = params["path"].get<std::string>();
     std::string content = params["content"].get<std::string>();
-    if (!quantclaw::SecuritySandbox::ValidateFilePath(path, "~/.quantclaw/workspace"))
+    if (!ravbot::SecuritySandbox::ValidateFilePath(path, "~/.ravbot/workspace"))
         throw std::runtime_error("Access denied: path outside workspace: " + path);
     std::filesystem::create_directories(std::filesystem::path(path).parent_path());
     std::ofstream f(path);
@@ -664,7 +664,7 @@ std::string ToolRegistry::edit_file_tool(const nlohmann::json& params) {
     std::string path     = params["path"].get<std::string>();
     std::string old_text = params["oldText"].get<std::string>();
     std::string new_text = params["newText"].get<std::string>();
-    if (!quantclaw::SecuritySandbox::ValidateFilePath(path, "~/.quantclaw/workspace"))
+    if (!ravbot::SecuritySandbox::ValidateFilePath(path, "~/.ravbot/workspace"))
         throw std::runtime_error("Access denied: path outside workspace: " + path);
     std::ifstream f(path);
     if (!f) throw std::runtime_error("Failed to open: " + path);
@@ -687,7 +687,7 @@ std::string ToolRegistry::exec_tool(const nlohmann::json& params) {
     std::string command = params["command"].get<std::string>();
     int timeout = params.value("timeout", 30);
 
-    if (!quantclaw::SecuritySandbox::ValidateShellCommand(command))
+    if (!ravbot::SecuritySandbox::ValidateShellCommand(command))
         throw std::runtime_error("Command not allowed: " + command);
 
     if (approval_manager_) {
@@ -701,7 +701,7 @@ std::string ToolRegistry::exec_tool(const nlohmann::json& params) {
     // NOTE: ApplyResourceLimits() causes ENOMEM (errno=12) in popen()
     // because RLIMIT_AS (256MB) is too restrictive for fork+exec.
     // Disabled for now - commands run without memory limits.
-    // quantclaw::SecuritySandbox::ApplyResourceLimits();
+    // ravbot::SecuritySandbox::ApplyResourceLimits();
 
     logger_->info("Executing command: {}", command);
 
@@ -716,6 +716,22 @@ std::string ToolRegistry::exec_tool(const nlohmann::json& params) {
     if (result.exit_code != 0)
         throw std::runtime_error("Command exited " + std::to_string(result.exit_code) +
                                   ": " + result.output);
+
+    // Truncate large output to prevent API payload overflow
+    if (result.output.size() > kToolResultMaxBytes) {
+        const size_t keep_head = kToolResultMaxBytes / 2;
+        const size_t keep_tail = kToolResultMaxBytes / 2;
+        std::string truncated = result.output.substr(0, keep_head);
+        truncated += "\n\n... [TRUNCATED: output too large (" +
+                     std::to_string(result.output.size()) + " bytes), " +
+                     "showing first " + std::to_string(keep_head) + " and last " +
+                     std::to_string(keep_tail) + " bytes] ...\n\n";
+        truncated += result.output.substr(result.output.size() - keep_tail);
+        logger_->warn("Tool output truncated: {} bytes -> {} bytes",
+                      result.output.size(), truncated.size());
+        return truncated;
+    }
+
     return result.output;
 }
 
@@ -1212,7 +1228,7 @@ std::string ToolRegistry::web_search_tool(const nlohmann::json& params) {
 
         httplib::SSLClient cli("html.duckduckgo.com");
         cli.set_default_headers({
-            {"User-Agent", "QuantClaw/1.0"},
+            {"User-Agent", "RavBot/1.0"},
             {"Accept",     "text/html"}
         });
         cli.set_connection_timeout(10);
@@ -1453,7 +1469,7 @@ std::string ToolRegistry::memory_search_tool(const nlohmann::json& params) {
 
     const char* home = std::getenv("HOME");
     std::string home_str = home ? home : "/tmp";
-    auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+    auto workspace = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
 
     MemorySearch search(logger_);
     search.IndexDirectory(workspace);
@@ -1481,7 +1497,7 @@ std::string ToolRegistry::memory_get_tool(const nlohmann::json& params) {
 
     const char* home = std::getenv("HOME");
     std::string home_str = home ? home : "/tmp";
-    auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+    auto workspace = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
     auto full_path = workspace / rel_path;
 
     // Security: must remain inside workspace
@@ -1518,7 +1534,7 @@ std::string ToolRegistry::memory_write_tool(const nlohmann::json& params) {
 
     const char* home = std::getenv("HOME");
     std::string home_str = home ? home : "/tmp";
-    auto workspace = std::filesystem::path(home_str) / ".quantclaw/agents/main/workspace";
+    auto workspace = std::filesystem::path(home_str) / ".ravbot/agents/main/workspace";
     auto full_path = workspace / rel_path;
 
     // Security: must remain inside workspace
@@ -1883,4 +1899,4 @@ std::string ToolRegistry::github_get_repo_tool(const nlohmann::json& params) {
     }
 }
 
-} // namespace quantclaw
+} // namespace ravbot

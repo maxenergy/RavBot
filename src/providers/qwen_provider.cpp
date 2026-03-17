@@ -1,7 +1,7 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/providers/qwen_provider.hpp"
+#include "ravbot/providers/qwen_provider.hpp"
 
 #include <cctype>
 #include <sstream>
@@ -11,7 +11,7 @@
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 
-namespace quantclaw {
+namespace ravbot {
 
 namespace {
 
@@ -373,4 +373,4 @@ void QwenProvider::ChatCompletionStream(
   }
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

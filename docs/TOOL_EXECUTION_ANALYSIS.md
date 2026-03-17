@@ -1,10 +1,10 @@
-# QuantClaw vs OpenClaw 工具执行对比分析
+# RavBot vs OpenClaw 工具执行对比分析
 
 ## 问题描述
 
 **用户查询**: "请你搜索github找openclaw的技能的top20列表"
 
-### QuantClaw 响应
+### RavBot 响应
 ```
 让我使用 GitHub CLI 直接搜索 OpenClaw 相关的仓库和代码：
 
@@ -15,7 +15,7 @@ gh search repos openclaw --sort stars --limit 20 --json name,description,stargaz
 根据搜索结果，GitHub 上目前没有找到专门的 OpenClaw 技能 top 20 列表...
 ```
 
-**问题**: QuantClaw 只返回了 bash 命令的文本，**没有实际执行**这些命令。
+**问题**: RavBot 只返回了 bash 命令的文本，**没有实际执行**这些命令。
 
 ### OpenClaw 响应
 ```
@@ -34,7 +34,7 @@ There is a tool use.
 
 ### 1. 工具注册差异
 
-#### QuantClaw 工具列表
+#### RavBot 工具列表
 ```cpp
 // src/tools/tool_registry.cpp
 register_tool("read", ...);
@@ -67,9 +67,9 @@ tools.register("github_get_repo", ...);
 
 ### 2. 技能系统差异
 
-#### QuantClaw 技能
+#### RavBot 技能
 ```yaml
-# include/quantclaw/builtin_skills.hpp
+# include/ravbot/builtin_skills.hpp
 name: github
 description: Interact with GitHub via gh CLI
 requires:
@@ -101,7 +101,7 @@ tools:
 
 ### 3. Agent 行为差异
 
-#### QuantClaw Agent
+#### RavBot Agent
 1. 读取 GitHub 技能说明
 2. 理解需要使用 `gh` CLI
 3. **生成命令文本** 而不是执行
@@ -129,25 +129,25 @@ When you need to search GitHub:
 3. Present them to the user
 ```
 
-而 QuantClaw 可能只是：
+而 RavBot 可能只是：
 ```
 You have access to these tools: exec, bash, read, write...
 ```
 
 ### 原因 2: 工具抽象层次
-- **QuantClaw**: 低级工具（exec, bash）
+- **RavBot**: 低级工具（exec, bash）
 - **OpenClaw**: 高级工具（github_search_repos）
 
 高级工具更容易被 Agent 正确使用。
 
 ### 原因 3: 技能加载机制
-QuantClaw 的技能可能只是文档，而 OpenClaw 的技能可能包含：
+RavBot 的技能可能只是文档，而 OpenClaw 的技能可能包含：
 - 工具绑定
 - 参数模板
 - 执行逻辑
 
 ### 原因 4: Agent Loop 实现
-QuantClaw 的 Agent Loop 可能在某些情况下跳过了工具执行，直接返回了文本响应。
+RavBot 的 Agent Loop 可能在某些情况下跳过了工具执行，直接返回了文本响应。
 
 ## 解决方案
 
@@ -287,7 +287,7 @@ if (response.contains("tool_use")) {
 
 - `src/tools/tool_registry.cpp` - 工具注册
 - `src/core/agent_loop.cpp` - Agent 执行循环
-- `include/quantclaw/builtin_skills.hpp` - 内置技能
+- `include/ravbot/builtin_skills.hpp` - 内置技能
 - `src/core/prompt_builder.cpp` - Prompt 构建
 
 ## 参考

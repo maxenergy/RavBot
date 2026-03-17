@@ -1,16 +1,16 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 // Mirrors OpenClaw: src/agents/pi-embedded-helpers/turns.ts
 // Implements validateAnthropicTurns and validateGeminiTurns logic in C++.
 
-#include "quantclaw/core/turn_validator.hpp"
+#include "ravbot/core/turn_validator.hpp"
 
 #include <set>
 #include <string>
 #include <vector>
 
-namespace quantclaw {
+namespace ravbot {
 
 TurnValidator::TurnValidator(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {
@@ -149,10 +149,20 @@ std::vector<Message> TurnValidator::merge_consecutive_role(
   result.reserve(messages.size());
 
   for (const auto& msg : messages) {
+    // P2.2: Defensive skip for messages with empty content
+    if (msg.content.empty()) {
+      continue;
+    }
+
     if (!result.empty() && result.back().role == role && msg.role == role) {
       // Merge: append content of current message into last
       for (const auto& block : msg.content) {
         result.back().content.push_back(block);
+      }
+      // P2.2: Preserve timestamp — take the most recent (current) message's
+      // timestamp if non-empty, otherwise keep the previous one.
+      if (!msg.timestamp.empty()) {
+        result.back().timestamp = msg.timestamp;
       }
     } else {
       result.push_back(msg);
@@ -162,4 +172,4 @@ std::vector<Message> TurnValidator::merge_consecutive_role(
   return result;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

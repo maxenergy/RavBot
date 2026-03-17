@@ -1,4 +1,4 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
@@ -6,9 +6,9 @@
 #include <filesystem>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/null_sink.h>
-#include "quantclaw/core/session_compaction.hpp"
-#include "quantclaw/core/cron_scheduler.hpp"
-#include "quantclaw/core/memory_search.hpp"
+#include "ravbot/core/session_compaction.hpp"
+#include "ravbot/core/cron_scheduler.hpp"
+#include "ravbot/core/memory_search.hpp"
 #include "test_helpers.hpp"
 
 namespace fs = std::filesystem;
@@ -24,7 +24,7 @@ class CompactionTest : public ::testing::Test {
  protected:
   void SetUp() override {
     logger_ = make_null_logger("compaction_test");
-    compaction_ = std::make_unique<quantclaw::SessionCompaction>(logger_);
+    compaction_ = std::make_unique<ravbot::SessionCompaction>(logger_);
   }
 
   std::vector<nlohmann::json> make_messages(int count) {
@@ -39,26 +39,26 @@ class CompactionTest : public ::testing::Test {
   }
 
   std::shared_ptr<spdlog::logger> logger_;
-  std::unique_ptr<quantclaw::SessionCompaction> compaction_;
+  std::unique_ptr<ravbot::SessionCompaction> compaction_;
 };
 
 TEST_F(CompactionTest, NoCompactionNeeded) {
   auto msgs = make_messages(10);
-  quantclaw::SessionCompaction::Options opts;
+  ravbot::SessionCompaction::Options opts;
   opts.max_messages = 100;
   EXPECT_FALSE(compaction_->NeedsCompaction(msgs, opts));
 }
 
 TEST_F(CompactionTest, CompactionNeededByMessageCount) {
   auto msgs = make_messages(150);
-  quantclaw::SessionCompaction::Options opts;
+  ravbot::SessionCompaction::Options opts;
   opts.max_messages = 100;
   EXPECT_TRUE(compaction_->NeedsCompaction(msgs, opts));
 }
 
 TEST_F(CompactionTest, TruncateKeepsRecent) {
   auto msgs = make_messages(50);
-  quantclaw::SessionCompaction::Options opts;
+  ravbot::SessionCompaction::Options opts;
   opts.keep_recent = 10;
 
   auto result = compaction_->Truncate(msgs, opts);
@@ -71,7 +71,7 @@ TEST_F(CompactionTest, TruncateKeepsRecent) {
 
 TEST_F(CompactionTest, CompactWithSummary) {
   auto msgs = make_messages(50);
-  quantclaw::SessionCompaction::Options opts;
+  ravbot::SessionCompaction::Options opts;
   opts.max_messages = 30;
   opts.keep_recent = 10;
 
@@ -89,7 +89,7 @@ TEST_F(CompactionTest, CompactWithSummary) {
 
 TEST_F(CompactionTest, CompactFallsBackToTruncate) {
   auto msgs = make_messages(50);
-  quantclaw::SessionCompaction::Options opts;
+  ravbot::SessionCompaction::Options opts;
   opts.max_messages = 30;
   opts.keep_recent = 10;
 
@@ -110,7 +110,7 @@ TEST_F(CompactionTest, EstimateTokens) {
 
 TEST_F(CompactionTest, SmallMessageListNotTruncated) {
   auto msgs = make_messages(5);
-  quantclaw::SessionCompaction::Options opts;
+  ravbot::SessionCompaction::Options opts;
   opts.keep_recent = 10;
 
   auto result = compaction_->Truncate(msgs, opts);
@@ -120,7 +120,7 @@ TEST_F(CompactionTest, SmallMessageListNotTruncated) {
 // --- Cron Expression Tests ---
 
 TEST(CronExpressionTest, EveryMinute) {
-  quantclaw::CronExpression expr("* * * * *");
+  ravbot::CronExpression expr("* * * * *");
   std::tm tm{};
   tm.tm_min = 30;
   tm.tm_hour = 12;
@@ -131,7 +131,7 @@ TEST(CronExpressionTest, EveryMinute) {
 }
 
 TEST(CronExpressionTest, SpecificMinute) {
-  quantclaw::CronExpression expr("30 * * * *");
+  ravbot::CronExpression expr("30 * * * *");
   std::tm tm{};
   tm.tm_min = 30;
   tm.tm_hour = 12;
@@ -145,7 +145,7 @@ TEST(CronExpressionTest, SpecificMinute) {
 }
 
 TEST(CronExpressionTest, StepExpression) {
-  quantclaw::CronExpression expr("*/15 * * * *");
+  ravbot::CronExpression expr("*/15 * * * *");
   std::tm tm{};
   tm.tm_hour = 10;
   tm.tm_mday = 1;
@@ -165,7 +165,7 @@ TEST(CronExpressionTest, StepExpression) {
 }
 
 TEST(CronExpressionTest, HourlyAt30) {
-  quantclaw::CronExpression expr("30 * * * *");
+  ravbot::CronExpression expr("30 * * * *");
   std::tm tm{};
   tm.tm_min = 30;
   tm.tm_hour = 8;
@@ -176,7 +176,7 @@ TEST(CronExpressionTest, HourlyAt30) {
 }
 
 TEST(CronExpressionTest, RangeExpression) {
-  quantclaw::CronExpression expr("0 9-17 * * *");
+  ravbot::CronExpression expr("0 9-17 * * *");
   std::tm tm{};
   tm.tm_min = 0;
   tm.tm_mday = 1;
@@ -194,7 +194,7 @@ TEST(CronExpressionTest, RangeExpression) {
 }
 
 TEST(CronExpressionTest, NextAfter) {
-  quantclaw::CronExpression expr("0 12 * * *");  // noon daily
+  ravbot::CronExpression expr("0 12 * * *");  // noon daily
   auto now = std::chrono::system_clock::now();
   auto next = expr.NextAfter(now);
   EXPECT_GT(next, now);
@@ -215,7 +215,7 @@ TEST(CronExpressionTest, NextAfter) {
 class CronSchedulerTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    test_dir_ = quantclaw::test::MakeTestDir("quantclaw_cron_test");
+    test_dir_ = ravbot::test::MakeTestDir("ravbot_cron_test");
     logger_ = make_null_logger("cron_test");
   }
 
@@ -228,7 +228,7 @@ class CronSchedulerTest : public ::testing::Test {
 };
 
 TEST_F(CronSchedulerTest, AddAndListJobs) {
-  quantclaw::CronScheduler sched(logger_);
+  ravbot::CronScheduler sched(logger_);
   auto id = sched.AddJob("test", "*/5 * * * *", "Hello", "agent:main:main");
   EXPECT_FALSE(id.empty());
 
@@ -240,19 +240,19 @@ TEST_F(CronSchedulerTest, AddAndListJobs) {
 }
 
 TEST_F(CronSchedulerTest, RemoveJob) {
-  quantclaw::CronScheduler sched(logger_);
+  ravbot::CronScheduler sched(logger_);
   auto id = sched.AddJob("to-remove", "0 * * * *", "msg");
   EXPECT_TRUE(sched.RemoveJob(id));
   EXPECT_TRUE(sched.ListJobs().empty());
 }
 
 TEST_F(CronSchedulerTest, RemoveNonexistentFails) {
-  quantclaw::CronScheduler sched(logger_);
+  ravbot::CronScheduler sched(logger_);
   EXPECT_FALSE(sched.RemoveJob("nonexistent"));
 }
 
 TEST_F(CronSchedulerTest, RemoveEmptyIdFails) {
-  quantclaw::CronScheduler sched(logger_);
+  ravbot::CronScheduler sched(logger_);
   // Add multiple jobs to ensure empty id doesn't delete all
   auto id1 = sched.AddJob("job1", "0 * * * *", "msg1");
   auto id2 = sched.AddJob("job2", "0 * * * *", "msg2");
@@ -266,7 +266,7 @@ TEST_F(CronSchedulerTest, RemoveEmptyIdFails) {
 }
 
 TEST_F(CronSchedulerTest, PrefixMatchAmbiguousFails) {
-  quantclaw::CronScheduler sched(logger_);
+  ravbot::CronScheduler sched(logger_);
   // Add two jobs with similar IDs (both will have prefixes that start with same chars)
   // Since job IDs are random, we can't easily create ambiguous prefixes
   // Instead, test that a short prefix matching multiple jobs fails
@@ -284,7 +284,7 @@ TEST_F(CronSchedulerTest, PrefixMatchAmbiguousFails) {
 }
 
 TEST_F(CronSchedulerTest, PrefixMatchUnambiguousSucceeds) {
-  quantclaw::CronScheduler sched(logger_);
+  ravbot::CronScheduler sched(logger_);
   auto id1 = sched.AddJob("job1", "0 * * * *", "msg1");
   auto id2 = sched.AddJob("job2", "0 * * * *", "msg2");
 
@@ -302,14 +302,14 @@ TEST_F(CronSchedulerTest, PersistAndLoad) {
   auto filepath = (test_dir_ / "cron.json").string();
 
   {
-    quantclaw::CronScheduler sched(logger_);
+    ravbot::CronScheduler sched(logger_);
     sched.Load(filepath);
     sched.AddJob("persist-test", "0 8 * * *", "good morning");
     sched.Save(filepath);
   }
 
   {
-    quantclaw::CronScheduler sched2(logger_);
+    ravbot::CronScheduler sched2(logger_);
     sched2.Load(filepath);
     auto jobs = sched2.ListJobs();
     ASSERT_EQ(jobs.size(), 1);
@@ -319,7 +319,7 @@ TEST_F(CronSchedulerTest, PersistAndLoad) {
 }
 
 TEST_F(CronSchedulerTest, JobToJson) {
-  quantclaw::CronJob job;
+  ravbot::CronJob job;
   job.id = "abc123";
   job.name = "daily";
   job.schedule = "0 9 * * *";
@@ -338,7 +338,7 @@ TEST_F(CronSchedulerTest, JobToJson) {
 class MemorySearchTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    test_dir_ = quantclaw::test::MakeTestDir("quantclaw_memsearch_test");
+    test_dir_ = ravbot::test::MakeTestDir("ravbot_memsearch_test");
     logger_ = make_null_logger("memsearch_test");
   }
 
@@ -360,7 +360,7 @@ TEST_F(MemorySearchTest, IndexAndSearch) {
                          "Machine learning is a subset of artificial intelligence.\n\n"
                          "The weather today is sunny and warm.\n");
 
-  quantclaw::MemorySearch search(logger_);
+  ravbot::MemorySearch search(logger_);
   search.IndexDirectory(test_dir_);
 
   auto results = search.Search("machine learning artificial intelligence");
@@ -371,7 +371,7 @@ TEST_F(MemorySearchTest, IndexAndSearch) {
 
 TEST_F(MemorySearchTest, EmptyQueryReturnsEmpty) {
   write_file("test.md", "Some content here");
-  quantclaw::MemorySearch search(logger_);
+  ravbot::MemorySearch search(logger_);
   search.IndexDirectory(test_dir_);
 
   auto results = search.Search("");
@@ -380,7 +380,7 @@ TEST_F(MemorySearchTest, EmptyQueryReturnsEmpty) {
 
 TEST_F(MemorySearchTest, NoMatchReturnsEmpty) {
   write_file("test.md", "The quick brown fox");
-  quantclaw::MemorySearch search(logger_);
+  ravbot::MemorySearch search(logger_);
   search.IndexDirectory(test_dir_);
 
   auto results = search.Search("quantum computing blockchain");
@@ -394,7 +394,7 @@ TEST_F(MemorySearchTest, MaxResultsLimited) {
   }
   write_file("big.md", content);
 
-  quantclaw::MemorySearch search(logger_);
+  ravbot::MemorySearch search(logger_);
   search.IndexDirectory(test_dir_);
 
   auto results = search.Search("data entry", 5);
@@ -405,7 +405,7 @@ TEST_F(MemorySearchTest, Stats) {
   write_file("a.md", "First paragraph.\n\nSecond paragraph.\n");
   write_file("b.md", "Third paragraph.\n");
 
-  quantclaw::MemorySearch search(logger_);
+  ravbot::MemorySearch search(logger_);
   search.IndexDirectory(test_dir_);
 
   auto stats = search.Stats();
@@ -414,7 +414,7 @@ TEST_F(MemorySearchTest, Stats) {
 
 TEST_F(MemorySearchTest, ClearIndex) {
   write_file("test.md", "Some content");
-  quantclaw::MemorySearch search(logger_);
+  ravbot::MemorySearch search(logger_);
   search.IndexDirectory(test_dir_);
   EXPECT_GT(search.Stats()["indexed_entries"].get<int>(), 0);
 
@@ -427,7 +427,7 @@ TEST_F(MemorySearchTest, ScoreRelevance) {
                               "Docker containers and images for development\n");
   write_file("irrelevant.md", "The weather is sunny today\n\nCooking recipes for pasta\n");
 
-  quantclaw::MemorySearch search(logger_);
+  ravbot::MemorySearch search(logger_);
   search.IndexDirectory(test_dir_);
 
   auto results = search.Search("kubernetes container deployment");

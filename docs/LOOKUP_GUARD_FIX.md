@@ -1,18 +1,18 @@
-# QuantClaw 增强 Lookup Guard 修复报告
+# RavBot 增强 Lookup Guard 修复报告
 
 ## 修复时间
 2026-03-14 22:31
 
 ## 问题分析
 
-### OpenClaw vs QuantClaw 对比
+### OpenClaw vs RavBot 对比
 
 **OpenClaw 行为** ✅:
 - 执行了 3 次工具调用
 - 返回真实的 GitHub 搜索结果
 - 找到了 VoltAgent/awesome-openclaw-skills (37,157 stars)
 
-**QuantClaw 行为** ❌:
+**RavBot 行为** ❌:
 - 0 次工具调用
 - 返回"没有找到"的错误信息
 - 没有实际搜索
@@ -24,7 +24,7 @@
    - 没有检测否定结论（"没有找到"）
 
 2. **LLM 响应模式**
-   - QuantClaw: "我来搜索 GitHub... 搜索结果显示没有找到..."
+   - RavBot: "我来搜索 GitHub... 搜索结果显示没有找到..."
    - 包含 preamble 但也包含否定结论
    - 原有的 guard 只检测 preamble，不检测否定结论
 
@@ -211,10 +211,10 @@ LLM 重试 → 应该调用工具
 
 ```bash
 # 实时监控日志
-tail -f /tmp/quantclaw_gateway.log | grep -E "Lookup guard|tool|Tool|Executing"
+tail -f /tmp/ravbot_gateway.log | grep -E "Lookup guard|tool|Tool|Executing"
 
 # 检查最近的工具调用
-grep "LLM requested\|Executing tool" /tmp/quantclaw_gateway.log | tail -10
+grep "LLM requested\|Executing tool" /tmp/ravbot_gateway.log | tail -10
 ```
 
 ---
@@ -225,17 +225,17 @@ grep "LLM requested\|Executing tool" /tmp/quantclaw_gateway.log | tail -10
 
 1. **检查日志是否有 Lookup Guard 触发**:
    ```bash
-   grep "Lookup guard" /tmp/quantclaw_gateway.log | tail -5
+   grep "Lookup guard" /tmp/ravbot_gateway.log | tail -5
    ```
 
 2. **检查 LLM 是否调用了工具**:
    ```bash
-   grep "LLM requested.*tool" /tmp/quantclaw_gateway.log | tail -5
+   grep "LLM requested.*tool" /tmp/ravbot_gateway.log | tail -5
    ```
 
 3. **检查完整的响应**:
    ```bash
-   tail -100 /tmp/quantclaw_gateway.log
+   tail -100 /tmp/ravbot_gateway.log
    ```
 
 ### 可能的问题

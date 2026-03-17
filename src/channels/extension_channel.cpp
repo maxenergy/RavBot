@@ -1,11 +1,11 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/channels/extension_channel.hpp"
+#include "ravbot/channels/extension_channel.hpp"
 #include <chrono>
 #include <thread>
 
-namespace quantclaw {
+namespace ravbot {
 
 ExtensionChannel::ExtensionChannel(const std::string& channel_id,
                                    int port,
@@ -84,4 +84,4 @@ void ExtensionChannel::HandleConnection(int client_socket) {
     logger_->info("Extension connection handler called for socket {}", client_socket);
 }
 
-} // namespace quantclaw
+} // namespace ravbot

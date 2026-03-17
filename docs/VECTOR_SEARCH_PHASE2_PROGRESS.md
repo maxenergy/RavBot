@@ -1,4 +1,4 @@
-# QuantClaw 向量搜索系统 - Phase 2 进展报告
+# RavBot 向量搜索系统 - Phase 2 进展报告
 
 ## 完成时间
 2026-03-14

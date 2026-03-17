@@ -1,4 +1,4 @@
-import type { QuantClawApp } from "./app.ts";
+import type { RavBotApp } from "./app.ts";
 import {
   loadChannels,
   logoutWhatsApp,
@@ -9,28 +9,28 @@ import { loadConfig, saveConfig } from "./controllers/config.ts";
 import type { NostrProfile } from "./types.ts";
 import { createNostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
 
-export async function handleWhatsAppStart(host: QuantClawApp, force: boolean) {
+export async function handleWhatsAppStart(host: RavBotApp, force: boolean) {
   await startWhatsAppLogin(host, force);
   await loadChannels(host, true);
 }
 
-export async function handleWhatsAppWait(host: QuantClawApp) {
+export async function handleWhatsAppWait(host: RavBotApp) {
   await waitWhatsAppLogin(host);
   await loadChannels(host, true);
 }
 
-export async function handleWhatsAppLogout(host: QuantClawApp) {
+export async function handleWhatsAppLogout(host: RavBotApp) {
   await logoutWhatsApp(host);
   await loadChannels(host, true);
 }
 
-export async function handleChannelConfigSave(host: QuantClawApp) {
+export async function handleChannelConfigSave(host: RavBotApp) {
   await saveConfig(host);
   await loadConfig(host);
   await loadChannels(host, true);
 }
 
-export async function handleChannelConfigReload(host: QuantClawApp) {
+export async function handleChannelConfigReload(host: RavBotApp) {
   await loadConfig(host);
   await loadChannels(host, true);
 }
@@ -57,7 +57,7 @@ function parseValidationErrors(details: unknown): Record<string, string> {
   return errors;
 }
 
-function resolveNostrAccountId(host: QuantClawApp): string {
+function resolveNostrAccountId(host: RavBotApp): string {
   const accounts = host.channelsSnapshot?.channelAccounts?.nostr ?? [];
   return accounts[0]?.accountId ?? host.nostrProfileAccountId ?? "default";
 }
@@ -66,7 +66,7 @@ function buildNostrProfileUrl(accountId: string, suffix = ""): string {
   return `/api/channels/nostr/${encodeURIComponent(accountId)}/profile${suffix}`;
 }
 
-function resolveGatewayHttpAuthHeader(host: QuantClawApp): string | null {
+function resolveGatewayHttpAuthHeader(host: RavBotApp): string | null {
   const deviceToken = host.hello?.auth?.deviceToken?.trim();
   if (deviceToken) {
     return `Bearer ${deviceToken}`;
@@ -82,13 +82,13 @@ function resolveGatewayHttpAuthHeader(host: QuantClawApp): string | null {
   return null;
 }
 
-function buildGatewayHttpHeaders(host: QuantClawApp): Record<string, string> {
+function buildGatewayHttpHeaders(host: RavBotApp): Record<string, string> {
   const authorization = resolveGatewayHttpAuthHeader(host);
   return authorization ? { Authorization: authorization } : {};
 }
 
 export function handleNostrProfileEdit(
-  host: QuantClawApp,
+  host: RavBotApp,
   accountId: string,
   profile: NostrProfile | null,
 ) {
@@ -96,13 +96,13 @@ export function handleNostrProfileEdit(
   host.nostrProfileFormState = createNostrProfileFormState(profile ?? undefined);
 }
 
-export function handleNostrProfileCancel(host: QuantClawApp) {
+export function handleNostrProfileCancel(host: RavBotApp) {
   host.nostrProfileFormState = null;
   host.nostrProfileAccountId = null;
 }
 
 export function handleNostrProfileFieldChange(
-  host: QuantClawApp,
+  host: RavBotApp,
   field: keyof NostrProfile,
   value: string,
 ) {
@@ -123,7 +123,7 @@ export function handleNostrProfileFieldChange(
   };
 }
 
-export function handleNostrProfileToggleAdvanced(host: QuantClawApp) {
+export function handleNostrProfileToggleAdvanced(host: RavBotApp) {
   const state = host.nostrProfileFormState;
   if (!state) {
     return;
@@ -134,7 +134,7 @@ export function handleNostrProfileToggleAdvanced(host: QuantClawApp) {
   };
 }
 
-export async function handleNostrProfileSave(host: QuantClawApp) {
+export async function handleNostrProfileSave(host: RavBotApp) {
   const state = host.nostrProfileFormState;
   if (!state || state.saving) {
     return;
@@ -206,7 +206,7 @@ export async function handleNostrProfileSave(host: QuantClawApp) {
   }
 }
 
-export async function handleNostrProfileImport(host: QuantClawApp) {
+export async function handleNostrProfileImport(host: RavBotApp) {
   const state = host.nostrProfileFormState;
   if (!state || state.importing) {
     return;

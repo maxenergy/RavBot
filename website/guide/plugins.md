@@ -1,10 +1,10 @@
 # Plugin Development Guide
 
-Learn how to create custom skills and extend QuantClaw with your own functionality.
+Learn how to create custom skills and extend RavBot with your own functionality.
 
 ## Overview
 
-QuantClaw's plugin system allows you to:
+RavBot's plugin system allows you to:
 - Create custom **skills** (tools available to the agent)
 - Implement **hooks** for lifecycle events
 - Build **channel adapters** for new chat platforms
@@ -35,9 +35,9 @@ my-plugin/
 {
   "name": "my-plugin",
   "version": "1.0.0",
-  "description": "A custom plugin for QuantClaw",
+  "description": "A custom plugin for RavBot",
   "author": "Your Name",
-  "engine": "quantclaw@1.0.0",
+  "engine": "ravbot@1.0.0",
   "entrypoint": "dist/index.js",
   "skills": ["my-skill", "another-skill"],
   "hooks": {
@@ -55,9 +55,9 @@ my-plugin/
 
 ```typescript
 // src/index.ts
-import type { QuantClawPlugin, SkillContext, ToolDefinition } from '@quantclaw/sdk'
+import type { RavBotPlugin, SkillContext, ToolDefinition } from '@ravbot/sdk'
 
-export default class MyPlugin implements QuantClawPlugin {
+export default class MyPlugin implements RavBotPlugin {
   async initialize(context: PluginContext) {
     console.log('MyPlugin initialized')
   }
@@ -291,14 +291,14 @@ async onMessageReceived(context: SkillContext, message: any) {
 ### 1. Create Plugin Project
 
 ```bash
-quantclaw skill create my-plugin
+ravbot skill create my-plugin
 cd my-plugin
 ```
 
 ### 2. Install Dependencies
 
 ```bash
-npm install @quantclaw/sdk
+npm install @ravbot/sdk
 npm install --save-dev typescript ts-node
 ```
 
@@ -315,23 +315,23 @@ npm run build  # Compiles TypeScript to JavaScript
 ### 5. Install Locally
 
 ```bash
-quantclaw skill install ./my-plugin
+ravbot skill install ./my-plugin
 
 # Or link for development
-quantclaw skill link ./my-plugin
+ravbot skill link ./my-plugin
 ```
 
 ### 6. Test Plugin
 
 ```bash
 # Check plugin status
-quantclaw skill status
+ravbot skill status
 
 # Test skill execution
-quantclaw run "Use my_skill with input: hello"
+ravbot run "Use my_skill with input: hello"
 
 # Check logs
-quantclaw logs tail | grep "my-plugin"
+ravbot logs tail | grep "my-plugin"
 ```
 
 ### 7. Publish Plugin
@@ -339,8 +339,8 @@ quantclaw logs tail | grep "my-plugin"
 ```bash
 npm publish
 
-# Register with QuantClaw hub (future)
-quantclaw skill publish
+# Register with RavBot hub (future)
+ravbot skill publish
 ```
 
 ## Best Practices
@@ -427,7 +427,7 @@ async executeSkill(skillName: string, params: any): Promise<string> {
 
 ## Example: Complete Plugin
 
-See the example plugins in the QuantClaw repository:
+See the example plugins in the RavBot repository:
 - `skills/weather/` - Weather skill
 - `skills/github/` - GitHub integration
 - `skills/healthcheck/` - System health monitoring
@@ -436,13 +436,13 @@ See the example plugins in the QuantClaw repository:
 
 ### Enable Debug Logging
 ```bash
-export QUANTCLAW_LOG_LEVEL=debug
-quantclaw agent --id=main
+export RAVBOT_LOG_LEVEL=debug
+ravbot agent --id=main
 ```
 
 ### View Plugin Logs
 ```bash
-quantclaw logs tail --plugin=my-plugin
+ravbot logs tail --plugin=my-plugin
 ```
 
 ### Test Skill Directly

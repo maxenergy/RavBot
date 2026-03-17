@@ -300,7 +300,7 @@ std::string TelegramChannel::GetFileUrl(const std::string& file_path) const {
 
 ### 修改文件
 
-1. `include/quantclaw/channels/telegram_channel.hpp`
+1. `include/ravbot/channels/telegram_channel.hpp`
    - 添加媒体处理方法声明
    - 添加私有辅助方法声明
 
@@ -352,7 +352,7 @@ std::string TelegramChannel::GetFileUrl(const std::string& file_path) const {
 
 ## 与 OpenClaw 对比
 
-| 特性 | OpenClaw | QuantClaw (实现后) | 状态 |
+| 特性 | OpenClaw | RavBot (实现后) | 状态 |
 |------|----------|-------------------|------|
 | SendPhoto | ✅ | ✅ | 完成 |
 | SendDocument | ✅ | ✅ | 完成 |
@@ -628,7 +628,7 @@ if (space.available < file_info["file_size"].get<size_t>()) {
 6. ✅ 并发安全
 7. ✅ 100% 测试覆盖率
 
-该功能使 QuantClaw 能够处理 Telegram 的媒体消息,支持照片、文档等多种文件类型的发送和接收,极大地增强了 Bot 的交互能力。
+该功能使 RavBot 能够处理 Telegram 的媒体消息,支持照片、文档等多种文件类型的发送和接收,极大地增强了 Bot 的交互能力。
 
 ---
 

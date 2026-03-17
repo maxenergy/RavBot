@@ -1,13 +1,13 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/session/session_maintenance.hpp"
+#include "ravbot/session/session_maintenance.hpp"
 
 #include <algorithm>
 #include <fstream>
 #include <regex>
 
-namespace quantclaw {
+namespace ravbot {
 
 // --- MaintenanceMode ---
 
@@ -345,4 +345,4 @@ SessionMaintenance::get_session_files() const {
   return files;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

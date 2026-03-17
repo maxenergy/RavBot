@@ -1,4 +1,4 @@
-# QuantClaw 快速上手指南
+# RavBot 快速上手指南
 
 ## 📦 安装
 
@@ -6,23 +6,23 @@
 
 ```bash
 # 1. 下载 DEB 包
-wget https://github.com/QuantClaw/QuantClaw/releases/latest/download/quantclaw_0.3.0-1_amd64.deb
+wget https://github.com/RavBot/RavBot/releases/latest/download/ravbot_0.3.0-1_amd64.deb
 
 # 2. 安装
-sudo dpkg -i quantclaw_0.3.0-1_amd64.deb
+sudo dpkg -i ravbot_0.3.0-1_amd64.deb
 sudo apt-get install -f  # 自动安装依赖
 
 # 3. 验证安装
-quantclaw --version
+ravbot --version
 ```
 
 ### 从源码构建
 
 ```bash
-git clone https://github.com/QuantClaw/QuantClaw.git
-cd QuantClaw
+git clone https://github.com/RavBot/RavBot.git
+cd RavBot
 ./scripts/build-deb.sh
-sudo dpkg -i dist/quantclaw_*.deb
+sudo dpkg -i dist/ravbot_*.deb
 ```
 
 ## 🚀 快速开始
@@ -30,11 +30,11 @@ sudo dpkg -i dist/quantclaw_*.deb
 ### 1. 初始化配置
 
 ```bash
-quantclaw onboard
+ravbot onboard
 ```
 
 交互式向导会引导你完成:
-- ✅ 创建配置目录 `~/.quantclaw/`
+- ✅ 创建配置目录 `~/.ravbot/`
 - ✅ 选择 LLM Provider (OpenAI/Anthropic/Google/Qwen)
 - ✅ 配置 API 密钥
 - ✅ 设置默认模型
@@ -43,38 +43,38 @@ quantclaw onboard
 
 **前台运行 (推荐用于测试):**
 ```bash
-quantclaw gateway
+ravbot gateway
 ```
 
 **后台服务 (推荐用于生产):**
 ```bash
 # 安装为系统服务
-quantclaw gateway install
+ravbot gateway install
 
 # 启动服务
-sudo systemctl start quantclaw
+sudo systemctl start ravbot
 
 # 开机自启
-sudo systemctl enable quantclaw
+sudo systemctl enable ravbot
 
 # 查看状态
-sudo systemctl status quantclaw
+sudo systemctl status ravbot
 
 # 查看日志
-journalctl -u quantclaw -f
+journalctl -u ravbot -f
 ```
 
 ### 3. 验证运行
 
 ```bash
 # 健康检查
-quantclaw health
+ravbot health
 
 # 查看状态
-quantclaw status
+ravbot status
 
 # 打开 Web 控制台
-quantclaw dashboard
+ravbot dashboard
 # 浏览器访问: http://localhost:18801
 ```
 
@@ -83,42 +83,42 @@ quantclaw dashboard
 ### OpenAI
 
 ```bash
-quantclaw config set providers.openai.apiKey "sk-..."
-quantclaw config set providers.openai.model "gpt-4"
+ravbot config set providers.openai.apiKey "sk-..."
+ravbot config set providers.openai.model "gpt-4"
 ```
 
 ### Anthropic (Claude)
 
 ```bash
-quantclaw config set providers.anthropic.apiKey "sk-ant-..."
-quantclaw config set providers.anthropic.model "claude-3-5-sonnet-20241022"
+ravbot config set providers.anthropic.apiKey "sk-ant-..."
+ravbot config set providers.anthropic.model "claude-3-5-sonnet-20241022"
 ```
 
 ### Google (Gemini)
 
 ```bash
-quantclaw config set providers.google.apiKey "AIza..."
-quantclaw config set providers.google.model "gemini-2.0-flash-exp"
+ravbot config set providers.google.apiKey "AIza..."
+ravbot config set providers.google.model "gemini-2.0-flash-exp"
 ```
 
 ### Qwen (通义千问)
 
 ```bash
-quantclaw config set providers.qwen.apiKey "sk-..."
-quantclaw config set providers.qwen.model "qwen-max"
+ravbot config set providers.qwen.apiKey "sk-..."
+ravbot config set providers.qwen.model "qwen-max"
 ```
 
 ### 查看配置
 
 ```bash
 # 查看所有配置
-quantclaw config get
+ravbot config get
 
 # 查看特定配置
-quantclaw config get providers.openai
+ravbot config get providers.openai
 
 # 重新加载配置
-quantclaw config reload
+ravbot config reload
 ```
 
 ## 💬 使用 Agent
@@ -127,16 +127,16 @@ quantclaw config reload
 
 ```bash
 # 发送单条消息
-quantclaw agent "你好，请介绍一下自己"
+ravbot agent "你好，请介绍一下自己"
 
 # 继续对话 (使用上次会话)
-quantclaw agent "帮我写一个 Python 快速排序"
+ravbot agent "帮我写一个 Python 快速排序"
 
 # 指定会话 ID
-quantclaw agent --session my-session "分析这段代码"
+ravbot agent --session my-session "分析这段代码"
 
 # 使用特定模型
-quantclaw agent --model gpt-4 "复杂的推理任务"
+ravbot agent --model gpt-4 "复杂的推理任务"
 ```
 
 ### WebSocket 客户端
@@ -184,19 +184,19 @@ curl http://localhost:18801/api/sessions/my-session/messages
 
 ```bash
 # 列出所有会话
-quantclaw sessions list
+ravbot sessions list
 
 # 查看会话详情
-quantclaw sessions show my-session
+ravbot sessions show my-session
 
 # 删除会话
-quantclaw sessions delete my-session
+ravbot sessions delete my-session
 
 # 导出会话
-quantclaw sessions export my-session > session.json
+ravbot sessions export my-session > session.json
 
 # 导入会话
-quantclaw sessions import < session.json
+ravbot sessions import < session.json
 ```
 
 ## 🔌 插件系统
@@ -205,10 +205,10 @@ quantclaw sessions import < session.json
 
 ```bash
 # 1. 创建插件目录
-mkdir -p ~/.quantclaw/plugins/my-plugin
+mkdir -p ~/.ravbot/plugins/my-plugin
 
 # 2. 创建插件配置
-cat > ~/.quantclaw/plugins/my-plugin/quantclaw.plugin.json << 'EOF'
+cat > ~/.ravbot/plugins/my-plugin/ravbot.plugin.json << 'EOF'
 {
   "name": "my-plugin",
   "version": "1.0.0",
@@ -218,7 +218,7 @@ cat > ~/.quantclaw/plugins/my-plugin/quantclaw.plugin.json << 'EOF'
 EOF
 
 # 3. 创建插件代码
-cat > ~/.quantclaw/plugins/my-plugin/index.js << 'EOF'
+cat > ~/.ravbot/plugins/my-plugin/index.js << 'EOF'
 export const tools = [{
   name: "my_tool",
   description: "我的自定义工具",
@@ -236,13 +236,13 @@ export const tools = [{
 EOF
 
 # 4. 启用插件
-quantclaw config set plugins.allow '["my-plugin"]'
+ravbot config set plugins.allow '["my-plugin"]'
 
 # 5. 重启服务
-quantclaw gateway restart
+ravbot gateway restart
 
 # 6. 验证插件
-quantclaw plugins list
+ravbot plugins list
 curl http://localhost:18801/api/plugins/tools
 ```
 
@@ -250,7 +250,7 @@ curl http://localhost:18801/api/plugins/tools
 
 **天气查询插件:**
 ```javascript
-// ~/.quantclaw/plugins/weather/index.js
+// ~/.ravbot/plugins/weather/index.js
 export const tools = [{
   name: "get_weather",
   description: "查询城市天气",
@@ -274,7 +274,7 @@ export const tools = [{
 
 **数据库查询插件:**
 ```javascript
-// ~/.quantclaw/plugins/database/index.js
+// ~/.ravbot/plugins/database/index.js
 import sqlite3 from 'sqlite3';
 
 export const tools = [{
@@ -305,54 +305,54 @@ export const tools = [{
 
 ```bash
 # WebSocket RPC 端口 (默认 18800)
-quantclaw config set gateway.port 19000
+ravbot config set gateway.port 19000
 
 # HTTP API 端口 (默认 18801)
-quantclaw config set gateway.controlUi.port 19001
+ravbot config set gateway.controlUi.port 19001
 
 # 重启服务
-quantclaw gateway restart
+ravbot gateway restart
 ```
 
 ### 配置日志级别
 
 ```bash
 # 设置日志级别: trace, debug, info, warn, error
-quantclaw config set logging.level "debug"
+ravbot config set logging.level "debug"
 
 # 查看日志
-quantclaw logs
+ravbot logs
 
 # 或使用系统日志
-journalctl -u quantclaw -f
+journalctl -u ravbot -f
 ```
 
 ### 配置工作区
 
 ```bash
 # 设置工作区目录
-quantclaw config set workspace.path "/path/to/workspace"
+ravbot config set workspace.path "/path/to/workspace"
 
 # 设置最大会话数
-quantclaw config set workspace.maxSessions 100
+ravbot config set workspace.maxSessions 100
 
 # 设置会话超时 (秒)
-quantclaw config set workspace.sessionTimeout 3600
+ravbot config set workspace.sessionTimeout 3600
 ```
 
 ### 配置安全选项
 
 ```bash
 # 启用 RBAC
-quantclaw config set security.rbac.enabled true
+ravbot config set security.rbac.enabled true
 
 # 配置速率限制
-quantclaw config set security.rateLimit.enabled true
-quantclaw config set security.rateLimit.maxRequests 100
-quantclaw config set security.rateLimit.windowSeconds 60
+ravbot config set security.rateLimit.enabled true
+ravbot config set security.rateLimit.maxRequests 100
+ravbot config set security.rateLimit.windowSeconds 60
 
 # 启用沙箱
-quantclaw config set security.sandbox.enabled true
+ravbot config set security.sandbox.enabled true
 ```
 
 ## 📊 监控和调试
@@ -361,42 +361,42 @@ quantclaw config set security.sandbox.enabled true
 
 ```bash
 # 健康检查
-quantclaw health
+ravbot health
 
 # 详细状态
-quantclaw status
+ravbot status
 
 # 查看进程
-ps aux | grep quantclaw
+ps aux | grep ravbot
 
 # 查看端口
-sudo netstat -tlnp | grep quantclaw
+sudo netstat -tlnp | grep ravbot
 ```
 
 ### 查看日志
 
 ```bash
 # 应用日志
-quantclaw logs
+ravbot logs
 
 # 系统服务日志
-journalctl -u quantclaw -f
+journalctl -u ravbot -f
 
 # 查看最近 100 行
-journalctl -u quantclaw -n 100
+journalctl -u ravbot -n 100
 
 # 查看错误日志
-journalctl -u quantclaw -p err
+journalctl -u ravbot -p err
 ```
 
 ### 性能监控
 
 ```bash
 # 查看资源使用
-top -p $(pgrep quantclaw)
+top -p $(pgrep ravbot)
 
 # 内存使用
-ps aux | grep quantclaw | awk '{print $6}'
+ps aux | grep ravbot | awk '{print $6}'
 
 # 查看连接数
 netstat -an | grep :18800 | wc -l
@@ -408,13 +408,13 @@ netstat -an | grep :18800 | wc -l
 
 ```bash
 # 1. 查看详细日志
-journalctl -u quantclaw -n 50 --no-pager
+journalctl -u ravbot -n 50 --no-pager
 
 # 2. 检查配置
-quantclaw config get
+ravbot config get
 
 # 3. 手动运行 (查看错误)
-quantclaw gateway
+ravbot gateway
 
 # 4. 检查端口占用
 sudo netstat -tlnp | grep -E '18800|18801'
@@ -427,21 +427,21 @@ sudo netstat -tlnp | grep -E '18800|18801'
 sudo lsof -i :18800
 
 # 修改端口
-quantclaw config set gateway.port 19000
-quantclaw config set gateway.controlUi.port 19001
+ravbot config set gateway.port 19000
+ravbot config set gateway.controlUi.port 19001
 ```
 
 ### API 密钥无效
 
 ```bash
 # 重新设置密钥
-quantclaw config set providers.openai.apiKey "sk-..."
+ravbot config set providers.openai.apiKey "sk-..."
 
 # 测试连接
-quantclaw agent "test"
+ravbot agent "test"
 
 # 查看详细错误
-QUANTCLAW_VERBOSE=1 quantclaw gateway
+RAVBOT_VERBOSE=1 ravbot gateway
 ```
 
 ### Sidecar 无法启动
@@ -451,33 +451,33 @@ QUANTCLAW_VERBOSE=1 quantclaw gateway
 node --version  # 应该 >= 18
 
 # 检查 Sidecar 文件
-ls -la /usr/share/quantclaw/sidecar/dist/
-ls -la /usr/share/quantclaw/sidecar/node_modules/
+ls -la /usr/share/ravbot/sidecar/dist/
+ls -la /usr/share/ravbot/sidecar/node_modules/
 
 # 手动测试 Sidecar
-export QUANTCLAW_PORT=18802
-node /usr/share/quantclaw/sidecar/dist/index.js
+export RAVBOT_PORT=18802
+node /usr/share/ravbot/sidecar/dist/index.js
 ```
 
 ### 插件加载失败
 
 ```bash
 # 检查插件配置
-cat ~/.quantclaw/quantclaw.json | grep -A 5 plugins
+cat ~/.ravbot/ravbot.json | grep -A 5 plugins
 
 # 检查插件目录
-ls -la ~/.quantclaw/plugins/
+ls -la ~/.ravbot/plugins/
 
 # 查看插件列表
-quantclaw plugins list
+ravbot plugins list
 
 # 启用详细日志
-QUANTCLAW_VERBOSE=1 quantclaw gateway
+RAVBOT_VERBOSE=1 ravbot gateway
 ```
 
 ## 📚 配置文件示例
 
-### 完整配置 (~/.quantclaw/quantclaw.json)
+### 完整配置 (~/.ravbot/ravbot.json)
 
 ```json
 {
@@ -500,7 +500,7 @@ QUANTCLAW_VERBOSE=1 quantclaw gateway
     }
   },
   "workspace": {
-    "path": "~/.quantclaw/agents/main/workspace",
+    "path": "~/.ravbot/agents/main/workspace",
     "maxSessions": 100,
     "sessionTimeout": 3600
   },
@@ -523,16 +523,16 @@ QUANTCLAW_VERBOSE=1 quantclaw gateway
   },
   "logging": {
     "level": "info",
-    "file": "~/.quantclaw/logs/quantclaw.log"
+    "file": "~/.ravbot/logs/ravbot.log"
   }
 }
 ```
 
 ## 🔗 相关资源
 
-- **官方文档**: https://quantclaw.github.io
-- **GitHub**: https://github.com/QuantClaw/QuantClaw
-- **问题反馈**: https://github.com/QuantClaw/QuantClaw/issues
+- **官方文档**: https://ravbot.github.io
+- **GitHub**: https://github.com/RavBot/RavBot
+- **问题反馈**: https://github.com/RavBot/RavBot/issues
 - **DEB 打包指南**: [docs/DEB_PACKAGING.md](docs/DEB_PACKAGING.md)
 - **Sidecar 指南**: [docs/SIDECAR_GUIDE.md](docs/SIDECAR_GUIDE.md)
 - **完整安装指南**: [INSTALL_DEB.md](INSTALL_DEB.md)
@@ -543,11 +543,11 @@ QUANTCLAW_VERBOSE=1 quantclaw gateway
 
 ```bash
 # 添加到 ~/.bashrc 或 ~/.zshrc
-alias qc='quantclaw'
-alias qca='quantclaw agent'
-alias qcg='quantclaw gateway'
-alias qcs='quantclaw sessions'
-alias qcc='quantclaw config'
+alias qc='ravbot'
+alias qca='ravbot agent'
+alias qcg='ravbot gateway'
+alias qcs='ravbot sessions'
+alias qcc='ravbot config'
 
 # 使用
 qca "你好"
@@ -559,8 +559,8 @@ qcc get
 
 ```bash
 # 同一问题用不同模型回答
-quantclaw agent --model gpt-4 "解释量子计算" > gpt4.txt
-quantclaw agent --model claude-3-5-sonnet-20241022 "解释量子计算" > claude.txt
+ravbot agent --model gpt-4 "解释量子计算" > gpt4.txt
+ravbot agent --model claude-3-5-sonnet-20241022 "解释量子计算" > claude.txt
 diff gpt4.txt claude.txt
 ```
 
@@ -569,7 +569,7 @@ diff gpt4.txt claude.txt
 ```bash
 # 批量发送消息
 cat questions.txt | while read line; do
-  quantclaw agent "$line" >> answers.txt
+  ravbot agent "$line" >> answers.txt
 done
 ```
 
@@ -578,20 +578,20 @@ done
 ```bash
 # 每小时执行健康检查
 crontab -e
-# 添加: 0 * * * * /usr/bin/quantclaw health >> /var/log/quantclaw-health.log
+# 添加: 0 * * * * /usr/bin/ravbot health >> /var/log/ravbot-health.log
 ```
 
 ### 5. 远程访问
 
 ```bash
 # 配置允许远程访问
-quantclaw config set gateway.host "0.0.0.0"
+ravbot config set gateway.host "0.0.0.0"
 
 # 使用 nginx 反向代理
-# /etc/nginx/sites-available/quantclaw
+# /etc/nginx/sites-available/ravbot
 server {
     listen 80;
-    server_name quantclaw.example.com;
+    server_name ravbot.example.com;
 
     location / {
         proxy_pass http://localhost:18801;
@@ -604,11 +604,11 @@ server {
 
 ## 🎯 下一步
 
-- 📖 阅读 [完整文档](https://quantclaw.github.io)
+- 📖 阅读 [完整文档](https://ravbot.github.io)
 - 🔌 开发自定义插件 ([SIDECAR_GUIDE.md](docs/SIDECAR_GUIDE.md))
 - 🤝 参与贡献 ([CONTRIBUTING.md](CONTRIBUTING.md))
 - 💬 加入社区讨论
 
 ---
 
-**需要帮助?** 访问 [GitHub Issues](https://github.com/QuantClaw/QuantClaw/issues) 或查看 [故障排查指南](#故障排查)
+**需要帮助?** 访问 [GitHub Issues](https://github.com/RavBot/RavBot/issues) 或查看 [故障排查指南](#故障排查)

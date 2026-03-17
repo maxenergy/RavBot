@@ -1,12 +1,12 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
-#include "quantclaw/tools/browser_tool.hpp"
+#include "ravbot/tools/browser_tool.hpp"
 #include <thread>
 #include <chrono>
 
-using namespace quantclaw;
+using namespace ravbot;
 
 class BrowserSessionManagerTest : public ::testing::Test {
 protected:

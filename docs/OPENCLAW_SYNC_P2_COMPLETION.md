@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-成功从 OpenClaw 同步了 3 个 P2 优先级功能，提高了 QuantClaw 的易用性、资源效率和数据准确性。所有功能已测试验证并准备提交。
+成功从 OpenClaw 同步了 3 个 P2 优先级功能，提高了 RavBot 的易用性、资源效率和数据准确性。所有功能已测试验证并准备提交。
 
 ---
 
@@ -26,7 +26,7 @@
 - 修复硬编码的 0 值问题
 
 **修改文件**:
-- `include/quantclaw/session/session_manager.hpp` - 扩展 UsageInfo 结构
+- `include/ravbot/session/session_manager.hpp` - 扩展 UsageInfo 结构
 - `src/gateway/rpc_handlers.cpp` - 更新 usage 统计逻辑
 
 **数据格式**:
@@ -87,7 +87,7 @@
 - 提供默认配置选项
 
 **修改文件**:
-- `include/quantclaw/tools/browser_tool.hpp` - 添加工厂方法和简化 API
+- `include/ravbot/tools/browser_tool.hpp` - 添加工厂方法和简化 API
 
 **新增 API**:
 ```cpp
@@ -112,13 +112,13 @@ session.initialize();  // 使用默认配置
 
 ### 编译测试
 ```bash
-cmake --build build --target quantclaw
+cmake --build build --target ravbot
 ```
 **结果**: ✅ 编译成功，无错误
 
 ### 功能测试
 ```bash
-./build/quantclaw --version
+./build/ravbot --version
 ```
 **结果**: ✅ 程序正常运行
 

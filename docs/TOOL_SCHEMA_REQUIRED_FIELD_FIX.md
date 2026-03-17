@@ -7,7 +7,7 @@
 
 ## 执行摘要
 
-成功修复了 QuantClaw 中的 "Improperly formed request" 错误。问题根源是 `sessions_list` 工具的 JSON schema 缺少 `required` 字段，导致 Anthropic API 严格验证失败并拒绝请求。
+成功修复了 RavBot 中的 "Improperly formed request" 错误。问题根源是 `sessions_list` 工具的 JSON schema 缺少 `required` 字段，导致 Anthropic API 严格验证失败并拒绝请求。
 
 ---
 
@@ -48,7 +48,7 @@ tool_schemas_.push_back({"sessions_list", "List agent sessions.",
 
 ### 3. 错误 Payload 分析
 
-**文件**: `/tmp/quantclaw_error_payload.json`
+**文件**: `/tmp/ravbot_error_payload.json`
 
 ```json
 {
@@ -177,7 +177,7 @@ tool_schemas_.push_back({"sessions_list", "List agent sessions.",
 
 检查结果显示，其他 20 个工具都正确包含了 `required` 字段：
 ```bash
-$ cat /tmp/quantclaw_error_payload.json | jq '.tools[] | select(.input_schema.required == null) | .name'
+$ cat /tmp/ravbot_error_payload.json | jq '.tools[] | select(.input_schema.required == null) | .name'
 # 无输出 - 所有工具都有 required 字段
 ```
 

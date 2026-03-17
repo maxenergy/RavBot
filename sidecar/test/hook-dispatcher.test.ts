@@ -1,4 +1,4 @@
-// Copyright 2024 QuantClaw Contributors
+// Copyright 2024 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect, beforeEach } from "vitest";

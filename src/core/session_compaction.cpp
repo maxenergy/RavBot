@@ -1,9 +1,9 @@
-// Copyright 2025 QuantClaw Contributors
+// Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "quantclaw/core/session_compaction.hpp"
+#include "ravbot/core/session_compaction.hpp"
 
-namespace quantclaw {
+namespace ravbot {
 
 SessionCompaction::SessionCompaction(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {}
@@ -106,4 +106,4 @@ int SessionCompaction::EstimateTokens(
   return total_chars / 4;
 }
 
-}  // namespace quantclaw
+}  // namespace ravbot

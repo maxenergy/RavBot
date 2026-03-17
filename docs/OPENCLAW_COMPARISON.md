@@ -1,30 +1,30 @@
-# OpenClaw vs QuantClaw 技术对比分析
+# OpenClaw vs RavBot 技术对比分析
 
 ## 版本信息
 
 - **OpenClaw**: v2026.3.13-beta.1
-- **QuantClaw**: v0.3.1
+- **RavBot**: v0.3.1
 - **分析日期**: 2026-03-14
 
 ## 架构对比
 
 ### 1. 编程语言和技术栈
 
-| 组件 | OpenClaw | QuantClaw | 差异 |
+| 组件 | OpenClaw | RavBot | 差异 |
 |------|----------|-----------|------|
 | 核心语言 | TypeScript/Node.js | C++17 | 完全不同 |
-| 运行时 | Node.js 22.16.0+ | 原生二进制 | QuantClaw 更快 |
+| 运行时 | Node.js 22.16.0+ | 原生二进制 | RavBot 更快 |
 | 包管理 | npm/pnpm | CMake/vcpkg | 不同生态系统 |
 | 依赖管理 | package.json | CMakeLists.txt | 不同工具链 |
 | 构建系统 | TypeScript Compiler | CMake | 不同构建方式 |
 
 **优势对比**:
 - **OpenClaw**: 开发速度快，生态丰富，易于调试
-- **QuantClaw**: 性能高，内存占用低，启动快，适合嵌入式
+- **RavBot**: 性能高，内存占用低，启动快，适合嵌入式
 
 ### 2. Gateway 架构
 
-| 特性 | OpenClaw | QuantClaw | 状态 |
+| 特性 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | WebSocket 服务器 | ✅ ws/uWebSockets | ✅ IXWebSocket | 相似 |
 | RPC 协议 | ✅ JSON-RPC | ✅ JSON-RPC | 相同 |
@@ -36,13 +36,13 @@
 | 请求队列 | ✅ 完善 | ✅ CommandQueue | 相似 |
 
 **关键差异**:
-1. **请求超时**: OpenClaw 有完善的 watchdog 机制，QuantClaw 需要增强
-2. **健康检查**: OpenClaw 支持降级状态，QuantClaw 只有简单的健康检查
-3. **并发模型**: OpenClaw 使用异步 I/O，QuantClaw 使用线程池
+1. **请求超时**: OpenClaw 有完善的 watchdog 机制，RavBot 需要增强
+2. **健康检查**: OpenClaw 支持降级状态，RavBot 只有简单的健康检查
+3. **并发模型**: OpenClaw 使用异步 I/O，RavBot 使用线程池
 
 ### 3. Agent Loop
 
-| 特性 | OpenClaw | QuantClaw | 状态 |
+| 特性 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 核心循环 | ✅ 完善 | ✅ 完善 | 相似 |
 | 上下文管理 | ✅ 完善 | ✅ 完善 | 相似 |
@@ -54,12 +54,12 @@
 | Cron 任务 | ✅ 完善 | ✅ 完善 | 相似 |
 
 **关键差异**:
-1. **流式响应**: OpenClaw 有完善的流式响应，QuantClaw 需要增强
-2. **性能**: QuantClaw 的 C++ 实现性能更高
+1. **流式响应**: OpenClaw 有完善的流式响应，RavBot 需要增强
+2. **性能**: RavBot 的 C++ 实现性能更高
 
 ### 4. 提供商支持
 
-| 提供商 | OpenClaw | QuantClaw | 状态 |
+| 提供商 | OpenClaw | RavBot | 状态 |
 |--------|----------|-----------|------|
 | Anthropic | ✅ | ✅ | 完成 |
 | OpenAI | ✅ | ✅ | 完成 |
@@ -73,12 +73,12 @@
 | 冷却管理 | ✅ | ✅ | 完成 |
 
 **关键差异**:
-1. **提供商数量**: OpenClaw 支持 6 个，QuantClaw 支持 2 个
-2. **模型规范化**: OpenClaw 有完善的模型 ID 规范化，QuantClaw 需要实现
+1. **提供商数量**: OpenClaw 支持 6 个，RavBot 支持 2 个
+2. **模型规范化**: OpenClaw 有完善的模型 ID 规范化，RavBot 需要实现
 
 ### 5. 通道支持
 
-| 通道 | OpenClaw | QuantClaw | 状态 |
+| 通道 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | Telegram | ✅ 完善 | ✅ 基础 | 需要增强 |
 | Slack | ✅ | ❌ | 需要实现 |
@@ -92,7 +92,7 @@
 
 **Telegram 功能对比**:
 
-| 功能 | OpenClaw | QuantClaw | 状态 |
+| 功能 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 基础消息 | ✅ | ✅ | 完成 |
 | Typing 状态 | ✅ 持续刷新 | ✅ 单次 | 需要增强 |
@@ -105,12 +105,12 @@
 | 安全验证 | ✅ | ⚠️ | 需要增强 |
 
 **关键差异**:
-1. **通道数量**: OpenClaw 支持 9 个，QuantClaw 支持 1 个
-2. **Telegram 功能**: OpenClaw 更完善，QuantClaw 需要增强
+1. **通道数量**: OpenClaw 支持 9 个，RavBot 支持 1 个
+2. **Telegram 功能**: OpenClaw 更完善，RavBot 需要增强
 
 ### 6. 工具系统
 
-| 特性 | OpenClaw | QuantClaw | 状态 |
+| 特性 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 工具注册 | ✅ | ✅ | 完成 |
 | 工具链 | ✅ | ✅ | 完成 |
@@ -124,7 +124,7 @@
 
 **浏览器工具对比**:
 
-| 功能 | OpenClaw | QuantClaw | 状态 |
+| 功能 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 基础导航 | ✅ | ✅ | 完成 |
 | 会话管理 | ✅ 完善 | ⚠️ 基础 | 需要增强 |
@@ -135,12 +135,12 @@
 | 网络监控 | ✅ | ✅ | 完成 |
 
 **关键差异**:
-1. **浏览器会话**: OpenClaw 有完善的会话管理，QuantClaw 需要增强
+1. **浏览器会话**: OpenClaw 有完善的会话管理，RavBot 需要增强
 2. **工具数量**: 基本相同
 
 ### 7. 内存和向量数据库
 
-| 特性 | OpenClaw | QuantClaw | 状态 |
+| 特性 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 内存管理 | ✅ | ✅ | 完成 |
 | 向量数据库 | ✅ SQLite/LanceDB | ✅ SQLite | 需要扩展 |
@@ -150,12 +150,12 @@
 | 内存搜索 | ✅ | ✅ | 完成 |
 
 **关键差异**:
-1. **向量数据库**: OpenClaw 支持 LanceDB，QuantClaw 只支持 SQLite
-2. **嵌入模型**: OpenClaw 支持 6 个，QuantClaw 未实现
+1. **向量数据库**: OpenClaw 支持 LanceDB，RavBot 只支持 SQLite
+2. **嵌入模型**: OpenClaw 支持 6 个，RavBot 未实现
 
 ### 8. 安全性
 
-| 特性 | OpenClaw | QuantClaw | 状态 |
+| 特性 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | RBAC | ✅ | ✅ | 完成 |
 | 沙箱 | ✅ | ✅ | 完成 |
@@ -169,12 +169,12 @@
 | Webhook 验证 | ✅ | ❌ | 需要实现 |
 
 **关键差异**:
-1. **路径注入防护**: OpenClaw 有完善的防护，QuantClaw 需要增强
-2. **Webhook 验证**: OpenClaw 有完善的验证，QuantClaw 未实现
+1. **路径注入防护**: OpenClaw 有完善的防护，RavBot 需要增强
+2. **Webhook 验证**: OpenClaw 有完善的验证，RavBot 未实现
 
 ### 9. 配置系统
 
-| 特性 | OpenClaw | QuantClaw | 状态 |
+| 特性 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | JSON5 配置 | ✅ | ✅ | 完成 |
 | 环境变量 | ✅ | ✅ | 完成 |
@@ -185,11 +185,11 @@
 | 配置迁移 | ✅ | ✅ | 完成 |
 
 **关键差异**:
-1. **热重载**: OpenClaw 支持，QuantClaw 需要实现
+1. **热重载**: OpenClaw 支持，RavBot 需要实现
 
 ### 10. 插件系统
 
-| 特性 | OpenClaw | QuantClaw | 状态 |
+| 特性 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 插件注册 | ✅ | ✅ | 完成 |
 | 插件加载 | ✅ | ✅ | 完成 |
@@ -200,43 +200,43 @@
 | 插件市场 | ✅ | ❌ | 需要实现 |
 
 **关键差异**:
-1. **插件 API**: OpenClaw 更丰富，QuantClaw 需要扩展
-2. **插件沙箱**: OpenClaw 有完善的沙箱，QuantClaw 需要实现
+1. **插件 API**: OpenClaw 更丰富，RavBot 需要扩展
+2. **插件沙箱**: OpenClaw 有完善的沙箱，RavBot 需要实现
 
 ## 性能对比
 
 ### 1. 启动时间
 
-| 指标 | OpenClaw | QuantClaw | 优势 |
+| 指标 | OpenClaw | RavBot | 优势 |
 |------|----------|-----------|------|
-| 冷启动 | ~2-3s | ~0.5s | QuantClaw 6x 快 |
-| 热启动 | ~1-2s | ~0.3s | QuantClaw 5x 快 |
-| 内存占用 | ~200MB | ~50MB | QuantClaw 4x 小 |
+| 冷启动 | ~2-3s | ~0.5s | RavBot 6x 快 |
+| 热启动 | ~1-2s | ~0.3s | RavBot 5x 快 |
+| 内存占用 | ~200MB | ~50MB | RavBot 4x 小 |
 
 ### 2. 运行时性能
 
-| 指标 | OpenClaw | QuantClaw | 优势 |
+| 指标 | OpenClaw | RavBot | 优势 |
 |------|----------|-----------|------|
-| 响应时间 | ~100-200ms | ~50-100ms | QuantClaw 2x 快 |
-| 吞吐量 | ~500 req/s | ~1700 req/s | QuantClaw 3.4x 高 |
-| 内存使用 | ~300-500MB | ~100-200MB | QuantClaw 2-3x 小 |
-| CPU 使用 | ~20-30% | ~10-15% | QuantClaw 2x 低 |
+| 响应时间 | ~100-200ms | ~50-100ms | RavBot 2x 快 |
+| 吞吐量 | ~500 req/s | ~1700 req/s | RavBot 3.4x 高 |
+| 内存使用 | ~300-500MB | ~100-200MB | RavBot 2-3x 小 |
+| CPU 使用 | ~20-30% | ~10-15% | RavBot 2x 低 |
 
 ### 3. 资源占用
 
-| 资源 | OpenClaw | QuantClaw | 优势 |
+| 资源 | OpenClaw | RavBot | 优势 |
 |------|----------|-----------|------|
-| 磁盘空间 | ~500MB | ~150MB | QuantClaw 3x 小 |
-| 依赖数量 | ~1000+ | ~10 | QuantClaw 100x 少 |
+| 磁盘空间 | ~500MB | ~150MB | RavBot 3x 小 |
+| 依赖数量 | ~1000+ | ~10 | RavBot 100x 少 |
 | 二进制大小 | ~100MB | ~150MB | 相似 |
 
-**结论**: QuantClaw 在性能和资源占用方面有显著优势。
+**结论**: RavBot 在性能和资源占用方面有显著优势。
 
 ## 功能完整性对比
 
 ### 1. 核心功能
 
-| 功能类别 | OpenClaw | QuantClaw | 完成度 |
+| 功能类别 | OpenClaw | RavBot | 完成度 |
 |----------|----------|-----------|--------|
 | Agent Loop | 100% | 100% | ✅ |
 | Gateway | 100% | 85% | ⚠️ |
@@ -252,7 +252,7 @@
 
 ### 2. 高级功能
 
-| 功能类别 | OpenClaw | QuantClaw | 完成度 |
+| 功能类别 | OpenClaw | RavBot | 完成度 |
 |----------|----------|-----------|--------|
 | 流式响应 | ✅ | ⚠️ | 50% |
 | 设备配对 | ✅ | ❌ | 0% |
@@ -267,7 +267,7 @@
 
 ### 1. 测试覆盖率
 
-| 类别 | OpenClaw | QuantClaw | 状态 |
+| 类别 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 单元测试 | ~80% | ~70% | 需要提升 |
 | 集成测试 | ~60% | ~50% | 需要提升 |
@@ -276,7 +276,7 @@
 
 ### 2. 代码规范
 
-| 指标 | OpenClaw | QuantClaw | 状态 |
+| 指标 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 代码风格 | ✅ ESLint | ✅ clang-format | 完成 |
 | 类型检查 | ✅ TypeScript | ✅ C++ 强类型 | 完成 |
@@ -285,7 +285,7 @@
 
 ### 3. 代码复杂度
 
-| 指标 | OpenClaw | QuantClaw | 状态 |
+| 指标 | OpenClaw | RavBot | 状态 |
 |------|----------|-----------|------|
 | 圈复杂度 | 中 | 中 | 相似 |
 | 代码重复 | 低 | 中 | 需要降低 |
@@ -296,16 +296,16 @@
 
 ### 1. 依赖管理
 
-| 方面 | OpenClaw | QuantClaw | 差异 |
+| 方面 | OpenClaw | RavBot | 差异 |
 |------|----------|-----------|------|
 | 包管理器 | npm/pnpm | vcpkg/CMake | 不同生态 |
-| 依赖数量 | ~1000+ | ~10 | QuantClaw 更少 |
+| 依赖数量 | ~1000+ | ~10 | RavBot 更少 |
 | 更新频率 | 高 | 低 | OpenClaw 更活跃 |
 | 安全审计 | ✅ npm audit | ⚠️ 手动 | OpenClaw 更好 |
 
 ### 2. 社区支持
 
-| 方面 | OpenClaw | QuantClaw | 差异 |
+| 方面 | OpenClaw | RavBot | 差异 |
 |------|----------|-----------|------|
 | 开发者数量 | 多 | 少 | OpenClaw 更多 |
 | 文档质量 | 高 | 中 | OpenClaw 更好 |
@@ -314,12 +314,12 @@
 
 ### 3. 部署方式
 
-| 方面 | OpenClaw | QuantClaw | 差异 |
+| 方面 | OpenClaw | RavBot | 差异 |
 |------|----------|-----------|------|
 | 二进制分发 | ✅ | ✅ | 相似 |
 | Docker 支持 | ✅ | ⚠️ | OpenClaw 更好 |
 | 云部署 | ✅ | ⚠️ | OpenClaw 更好 |
-| 嵌入式部署 | ❌ | ✅ | QuantClaw 更好 |
+| 嵌入式部署 | ❌ | ✅ | RavBot 更好 |
 
 ## 优势总结
 
@@ -331,7 +331,7 @@
 4. **易于调试**: TypeScript 调试工具完善
 5. **快速迭代**: 更新频率高，新功能快速上线
 
-### QuantClaw 优势
+### RavBot 优势
 
 1. **性能**: 启动快 6x，响应快 2x，吞吐量高 3.4x
 2. **资源占用**: 内存占用低 4x，CPU 使用低 2x
@@ -364,7 +364,7 @@
 
 ## 结论
 
-QuantClaw 在性能和资源占用方面有显著优势，但在功能完整性和生态系统方面需要追赶 OpenClaw。建议采用渐进式同步策略，优先实现核心功能，逐步扩展高级功能。
+RavBot 在性能和资源占用方面有显著优势，但在功能完整性和生态系统方面需要追赶 OpenClaw。建议采用渐进式同步策略，优先实现核心功能，逐步扩展高级功能。
 
 ---
 
