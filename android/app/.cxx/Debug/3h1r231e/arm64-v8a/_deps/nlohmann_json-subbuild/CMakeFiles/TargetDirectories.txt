@@ -1,3 +1,0 @@
-/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/_deps/nlohmann_json-subbuild/CMakeFiles/nlohmann_json-populate.dir
-/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/_deps/nlohmann_json-subbuild/CMakeFiles/edit_cache.dir
-/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/_deps/nlohmann_json-subbuild/CMakeFiles/rebuild_cache.dir
