@@ -262,6 +262,96 @@ class FakeMemorySearchToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
+class FakeMemoryListToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("shopping.txt") !=
+              std::string::npos &&
+          last.content.front().content.find("project.md") !=
+              std::string::npos) {
+        response.content = "I found the mobile memory files.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_memory_list";
+    tool_call.name = "memory_list";
+    tool_call.arguments = {{"path", "notes"}, {"recursive", true}};
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override { return "fake-memory-list"; }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-memory-list-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
+class FakeMemoryDeleteToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("\"removedCount\": 1") !=
+              std::string::npos) {
+        response.content = "Mobile memory delete completed.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_memory_delete";
+    tool_call.name = "memory_delete";
+    tool_call.arguments = {{"path", "notes/trash.md"}};
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override { return "fake-memory-delete"; }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-memory-delete-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
 class FakeTimeToolCallingTextProvider : public ravbot::LLMProvider {
  public:
   ravbot::ChatCompletionResponse ChatCompletion(
@@ -794,7 +884,11 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
             names.end());
   EXPECT_NE(std::find(names.begin(), names.end(), "camera_snapshot"),
             names.end());
+  EXPECT_NE(std::find(names.begin(), names.end(), "memory_list"),
+            names.end());
   EXPECT_NE(std::find(names.begin(), names.end(), "memory_search"),
+            names.end());
+  EXPECT_NE(std::find(names.begin(), names.end(), "memory_delete"),
             names.end());
   EXPECT_NE(std::find(names.begin(), names.end(), "time"), names.end());
 
@@ -975,6 +1069,94 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesMemorySearchToolRoundTrip) {
   EXPECT_EQ(history[1].content[0].name, "memory_search");
   EXPECT_EQ(history[3].content[0].text,
             "I found the dragonfruit project note in memory.");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryListToolRoundTrip) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider = std::make_shared<FakeMemoryListToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+
+  const auto notes_dir = test_dir_ / "workspace" / "notes";
+  std::filesystem::create_directories(notes_dir / "nested");
+  {
+    std::ofstream output(notes_dir / "shopping.txt");
+    output << "milk\n";
+  }
+  {
+    std::ofstream output(notes_dir / "nested" / "project.md");
+    output << "project note\n";
+  }
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents(
+      [&events](const ravbot::mobile::MobileEvent& event) {
+        events.push_back(event);
+      });
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:memory-list",
+                                  "List the mobile memory files."));
+
+  auto tool_result = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventToolResult &&
+               event.payload.value("name", "") == "memory_list";
+      });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  const auto result = tool_result->payload["result"].get<std::string>();
+  EXPECT_NE(result.find("\"path\": \"notes/shopping.txt\""), std::string::npos);
+  EXPECT_NE(result.find("\"path\": \"notes/nested/project.md\""),
+            std::string::npos);
+
+  auto history = engine.session_manager().GetHistory("agent:main:memory-list");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "memory_list");
+  EXPECT_EQ(history[3].content[0].text, "I found the mobile memory files.");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryDeleteToolRoundTrip) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider = std::make_shared<FakeMemoryDeleteToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+
+  const auto memory_file = test_dir_ / "workspace" / "notes" / "trash.md";
+  std::filesystem::create_directories(memory_file.parent_path());
+  {
+    std::ofstream output(memory_file);
+    output << "obsolete note\n";
+  }
+  ASSERT_TRUE(std::filesystem::exists(memory_file));
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents(
+      [&events](const ravbot::mobile::MobileEvent& event) {
+        events.push_back(event);
+      });
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:memory-delete",
+                                  "Delete the obsolete note."));
+
+  EXPECT_FALSE(std::filesystem::exists(memory_file));
+  auto tool_result = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventToolResult &&
+               event.payload.value("name", "") == "memory_delete";
+      });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"removedCount\": 1"),
+            std::string::npos);
+
+  auto history =
+      engine.session_manager().GetHistory("agent:main:memory-delete");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "memory_delete");
+  EXPECT_EQ(history[3].content[0].text, "Mobile memory delete completed.");
 }
 
 TEST_F(MobileEngineTest, SendTextTurnExecutesTimeToolRoundTrip) {

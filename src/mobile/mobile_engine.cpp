@@ -3,6 +3,7 @@
 
 #include "ravbot/mobile/mobile_engine.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <ctime>
@@ -24,9 +25,11 @@ namespace {
 constexpr char kDeviceStatusToolName[] = "device_status";
 constexpr char kCameraSnapshotToolName[] = "camera_snapshot";
 constexpr char kTimeToolName[] = "time";
+constexpr char kMemoryListToolName[] = "memory_list";
 constexpr char kMemorySearchToolName[] = "memory_search";
 constexpr char kMemoryGetToolName[] = "memory_get";
 constexpr char kMemoryWriteToolName[] = "memory_write";
+constexpr char kMemoryDeleteToolName[] = "memory_delete";
 constexpr int kMaxMobileToolRounds = 4;
 
 nlohmann::json make_avatar_payload(AvatarState state) {
@@ -68,6 +71,26 @@ std::string format_timezone_name(const std::tm& tm) {
   std::ostringstream stream;
   stream << std::put_time(&tm, "%Z");
   return stream.str();
+}
+
+nlohmann::json make_workspace_entry_json(
+    const std::filesystem::path& workspace,
+    const std::filesystem::path& full_path) {
+  std::error_code ec;
+  const auto relative = std::filesystem::relative(full_path, workspace, ec);
+  const std::string relative_path =
+      ec ? full_path.filename().generic_string() : relative.generic_string();
+  const bool is_directory = std::filesystem::is_directory(full_path, ec);
+
+  nlohmann::json entry{{"path", relative_path},
+                       {"kind", is_directory ? "directory" : "file"}};
+  if (!is_directory) {
+    entry["sizeBytes"] = std::filesystem::file_size(full_path, ec);
+    if (ec) {
+      entry["sizeBytes"] = 0;
+    }
+  }
+  return entry;
 }
 
 class PlaceholderMobileVisionProvider : public MobileVisionProvider {
@@ -531,6 +554,32 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
       nlohmann::json{
           {"type", "function"},
           {"function",
+           {{"name", kMemoryListToolName},
+            {"description",
+             "List files and directories in the mobile memory workspace or "
+             "under a specific subdirectory."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties",
+               {{"path",
+                 {{"type", "string"},
+                  {"description",
+                   "Optional subdirectory inside the mobile memory "
+                   "workspace. Empty means the workspace root."}}},
+                {"recursive",
+                 {{"type", "boolean"},
+                  {"description",
+                   "Whether to recursively include nested directories."}}},
+                {"maxEntries",
+                 {{"type", "integer"},
+                  {"minimum", 1},
+                  {"maximum", 500},
+                  {"description",
+                   "Maximum number of entries to return."}}}}},
+              {"additionalProperties", false}}}}}},
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
            {{"name", kMemorySearchToolName},
             {"description",
              "Search the mobile workspace memory files stored on device."},
@@ -580,6 +629,26 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
                   {"enum", {"overwrite", "append"}},
                   {"description", "Write mode."}}}}},
               {"required", {"path", "content"}},
+              {"additionalProperties", false}}}}}},
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
+           {{"name", kMemoryDeleteToolName},
+            {"description",
+             "Delete a file or directory from the mobile memory workspace."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties",
+               {{"path",
+                 {{"type", "string"},
+                  {"description",
+                   "Relative file or directory path inside the mobile memory "
+                   "workspace."}}},
+                {"recursive",
+                 {{"type", "boolean"},
+                  {"description",
+                   "Required when deleting a non-empty directory."}}}}},
+              {"required", {"path"}},
               {"additionalProperties", false}}}}}}};
 }
 
@@ -679,6 +748,57 @@ std::filesystem::path MobileEngine::ResolveWorkspacePath(
   return resolved;
 }
 
+std::string MobileEngine::BuildMemoryListToolResult(
+    const nlohmann::json& arguments) const {
+  const std::string relative_path = arguments.value("path", "");
+  const bool recursive = arguments.value("recursive", false);
+  const size_t max_entries =
+      static_cast<size_t>(arguments.value("maxEntries", 100));
+
+  const std::filesystem::path workspace = WorkspaceRoot();
+  std::filesystem::create_directories(workspace);
+  const std::filesystem::path full_path =
+      relative_path.empty() ? workspace : ResolveWorkspacePath(relative_path);
+  if (!std::filesystem::exists(full_path)) {
+    throw std::runtime_error("Path not found: " + relative_path);
+  }
+
+  std::vector<nlohmann::json> entries;
+  if (std::filesystem::is_regular_file(full_path)) {
+    entries.push_back(make_workspace_entry_json(workspace, full_path));
+  } else if (std::filesystem::is_directory(full_path)) {
+    if (recursive) {
+      for (const auto& entry :
+           std::filesystem::recursive_directory_iterator(full_path)) {
+        entries.push_back(make_workspace_entry_json(workspace, entry.path()));
+        if (entries.size() >= max_entries) {
+          break;
+        }
+      }
+    } else {
+      for (const auto& entry : std::filesystem::directory_iterator(full_path)) {
+        entries.push_back(make_workspace_entry_json(workspace, entry.path()));
+        if (entries.size() >= max_entries) {
+          break;
+        }
+      }
+    }
+    std::sort(entries.begin(), entries.end(),
+              [](const nlohmann::json& lhs, const nlohmann::json& rhs) {
+                return lhs.value("path", "") < rhs.value("path", "");
+              });
+  } else {
+    throw std::runtime_error("Unsupported path type: " + relative_path);
+  }
+
+  return nlohmann::json{{"workspace", workspace.string()},
+                        {"path", relative_path},
+                        {"recursive", recursive},
+                        {"count", entries.size()},
+                        {"entries", entries}}
+      .dump(2);
+}
+
 std::string MobileEngine::BuildMemorySearchToolResult(
     const nlohmann::json& arguments) const {
   const std::string query = arguments.value("query", "");
@@ -772,6 +892,48 @@ std::string MobileEngine::BuildMemoryWriteToolResult(
       .dump(2);
 }
 
+std::string MobileEngine::BuildMemoryDeleteToolResult(
+    const nlohmann::json& arguments) const {
+  const std::string relative_path = arguments.value("path", "");
+  const bool recursive = arguments.value("recursive", false);
+  if (relative_path.empty()) {
+    throw std::runtime_error("path is required");
+  }
+
+  const std::filesystem::path workspace = WorkspaceRoot().lexically_normal();
+  const std::filesystem::path full_path =
+      ResolveWorkspacePath(relative_path).lexically_normal();
+  if (full_path == workspace) {
+    throw std::runtime_error("Refusing to delete mobile workspace root");
+  }
+  if (!std::filesystem::exists(full_path)) {
+    throw std::runtime_error("Path not found: " + relative_path);
+  }
+
+  const bool is_directory = std::filesystem::is_directory(full_path);
+  uintmax_t removed_count = 0;
+  if (is_directory) {
+    if (recursive) {
+      removed_count = std::filesystem::remove_all(full_path);
+    } else {
+      if (!std::filesystem::is_empty(full_path)) {
+        throw std::runtime_error(
+            "directory delete requires recursive=true when not empty");
+      }
+      removed_count = std::filesystem::remove(full_path) ? 1 : 0;
+    }
+  } else {
+    removed_count = std::filesystem::remove(full_path) ? 1 : 0;
+  }
+
+  return nlohmann::json{{"ok", removed_count > 0},
+                        {"path", relative_path},
+                        {"kind", is_directory ? "directory" : "file"},
+                        {"recursive", recursive},
+                        {"removedCount", removed_count}}
+      .dump(2);
+}
+
 std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
   if (tool_call.name == kDeviceStatusToolName) {
     return BuildDeviceStatusToolResult();
@@ -782,6 +944,9 @@ std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
   if (tool_call.name == kTimeToolName) {
     return BuildTimeToolResult();
   }
+  if (tool_call.name == kMemoryListToolName) {
+    return BuildMemoryListToolResult(tool_call.arguments);
+  }
   if (tool_call.name == kMemorySearchToolName) {
     return BuildMemorySearchToolResult(tool_call.arguments);
   }
@@ -790,6 +955,9 @@ std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
   }
   if (tool_call.name == kMemoryWriteToolName) {
     return BuildMemoryWriteToolResult(tool_call.arguments);
+  }
+  if (tool_call.name == kMemoryDeleteToolName) {
+    return BuildMemoryDeleteToolResult(tool_call.arguments);
   }
   throw std::runtime_error("Unsupported mobile tool: " + tool_call.name);
 }

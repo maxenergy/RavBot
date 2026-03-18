@@ -101,9 +101,12 @@ class MobileEngine {
   std::string BuildDeviceStatusToolResult() const;
   std::string BuildCameraSnapshotToolResult() const;
   std::string BuildTimeToolResult() const;
+  std::string BuildMemoryListToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemorySearchToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryGetToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryWriteToolResult(const nlohmann::json& arguments) const;
+  std::string BuildMemoryDeleteToolResult(
+      const nlohmann::json& arguments) const;
   std::filesystem::path WorkspaceRoot() const;
   std::filesystem::path ResolveWorkspacePath(
       const std::string& relative_path) const;

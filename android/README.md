@@ -24,9 +24,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   state and mobile tool activity
 - A first native `mobile_safe` tool path: local models can call
   `device_status` and `camera_snapshot`, receive the latest host/device
-  snapshots, use `time` plus `memory_search` / `memory_get` / `memory_write`
-  against the mobile workspace, and continue generation with the tool results
-  persisted in session history
+  snapshots, use `time` plus `memory_list` / `memory_search` / `memory_get` /
+  `memory_write` / `memory_delete` against the mobile workspace, and continue
+  generation with the tool results persisted in session history
 - Avatar mouth motion driven by microphone level while listening and by a
   synthetic speaking envelope while Android `TextToSpeech` is active
 - Native `SpeechPipeline` facade for STT/TTS asset readiness and placeholder ASR
