@@ -14,11 +14,15 @@ static const std::unordered_map<std::string, std::vector<std::string>> kGroups =
     {"memory",  {"memory_search", "memory_get", "memory_write"}},
     {"mobile_safe",
      {"message", "web_search", "web_fetch",
-      "memory_search", "memory_get", "memory_write"}},
+      "device_status", "camera_snapshot", "time",
+      "memory_list", "memory_search", "memory_get",
+      "memory_write", "memory_delete"}},
     {"all",     {"read", "write", "edit", "exec", "message",
                  "apply_patch", "process",
                  "web_search", "web_fetch",
-                 "memory_search", "memory_get", "memory_write",
+                 "device_status", "camera_snapshot", "time",
+                 "memory_list", "memory_search", "memory_get",
+                 "memory_write", "memory_delete",
                  "github_search_repos", "github_search_code", "github_get_repo"}},
 };
 
