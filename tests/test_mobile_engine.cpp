@@ -1339,6 +1339,36 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesTimeToolRoundTrip) {
   EXPECT_EQ(history[3].content[0].text, "Device time snapshot received.");
 }
 
+TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {
+  ravbot::mobile::MobileEngine without_bridge(MakeConfig(), test_dir_, test_dir_,
+                                              logger_);
+  auto plain_provider =
+      std::make_shared<FakeTextProvider>("reply without bridge");
+  without_bridge.SetTextProvider(plain_provider);
+
+  ASSERT_TRUE(without_bridge.SendTextTurn("agent:main:no-web-tools", "hello"));
+  auto without_names = tool_names(plain_provider->last_request_);
+  EXPECT_EQ(std::find(without_names.begin(), without_names.end(), "web_search"),
+            without_names.end());
+  EXPECT_EQ(std::find(without_names.begin(), without_names.end(), "web_fetch"),
+            without_names.end());
+
+  ravbot::mobile::MobileEngine with_bridge(MakeConfig(), test_dir_, test_dir_,
+                                           logger_);
+  auto bridge = std::make_shared<FakeDeviceBridge>();
+  auto bridge_provider =
+      std::make_shared<FakeTextProvider>("reply with bridge");
+  with_bridge.SetDeviceBridge(bridge);
+  with_bridge.SetTextProvider(bridge_provider);
+
+  ASSERT_TRUE(with_bridge.SendTextTurn("agent:main:with-web-tools", "hello"));
+  auto with_names = tool_names(bridge_provider->last_request_);
+  EXPECT_NE(std::find(with_names.begin(), with_names.end(), "web_search"),
+            with_names.end());
+  EXPECT_NE(std::find(with_names.begin(), with_names.end(), "web_fetch"),
+            with_names.end());
+}
+
 TEST_F(MobileEngineTest, SendTextTurnExecutesWebSearchToolThroughDeviceBridge) {
   ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
                                       logger_);
