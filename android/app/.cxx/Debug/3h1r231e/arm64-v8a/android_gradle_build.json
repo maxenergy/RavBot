@@ -1,0 +1,58 @@
+{
+  "buildFiles": [
+    "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/_deps/nlohmann_json-src/CMakeLists.txt",
+    "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/_deps/spdlog-src/CMakeLists.txt",
+    "/home/rogers/source/develop/RavBot/android/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/rogers/Android/Sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/rogers/Android/Sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "ravbot_mobile_android::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "ravbot_mobile_android",
+      "output": "/home/rogers/source/develop/RavBot/android/app/build/intermediates/cxx/Debug/3h1r231e/obj/arm64-v8a/libravbot_mobile_android.so",
+      "runtimeFiles": []
+    },
+    "ravbot_mobile_core_android::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "ravbot_mobile_core_android",
+      "output": "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/libravbot_mobile_core_android.a"
+    },
+    "ravbot_mobile_foundation::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "ravbot_mobile_foundation",
+      "output": "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/libravbot_mobile_foundation.a"
+    },
+    "spdlog::@eb35cfce7893ccfeff1e": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "spdlog",
+      "output": "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/_deps/spdlog-build/libspdlogd.a"
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/home/rogers/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/home/rogers/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}

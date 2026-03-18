@@ -228,6 +228,12 @@ ToolConfig ToolConfig::FromJson(const nlohmann::json& json) {
 
 ToolPermissionConfig ToolPermissionConfig::FromJson(const nlohmann::json& json) {
     ToolPermissionConfig config;
+    std::string profile = json.value("profile", "");
+    if (profile == "mobile_safe") {
+        config.allow = {"group:mobile_safe"};
+        config.deny = json.value("deny", std::vector<std::string>{});
+        return config;
+    }
     config.allow = json.value("allow", std::vector<std::string>{"group:fs", "group:runtime"});
     config.deny = json.value("deny", std::vector<std::string>{});
     return config;
@@ -247,6 +253,86 @@ MCPConfig MCPConfig::FromJson(const nlohmann::json& json) {
         for (const auto& server_json : json["servers"]) {
             config.servers.push_back(MCPServerConfig::FromJson(server_json));
         }
+    }
+    return config;
+}
+
+MobileRuntimeConfig MobileRuntimeConfig::FromJson(const nlohmann::json& json) {
+    MobileRuntimeConfig config;
+    config.enabled = json.value("enabled", false);
+    config.mode = json.value("mode", "local");
+    config.foreground_only = json.value("foregroundOnly",
+                                        json.value("foreground_only", true));
+    config.continuous_vision = json.value("continuousVision",
+                                          json.value("continuous_vision", true));
+    return config;
+}
+
+MobileModelsConfig MobileModelsConfig::FromJson(const nlohmann::json& json) {
+    MobileModelsConfig config;
+    config.llm_model = json.value("llmModel", json.value("llm_model", config.llm_model));
+    config.vlm_model = json.value("vlmModel", json.value("vlm_model", config.vlm_model));
+    config.mmproj_model = json.value("mmprojModel",
+                                     json.value("mmproj_model", config.mmproj_model));
+    config.stt_model = json.value("sttModel", json.value("stt_model", config.stt_model));
+    config.tts_voice = json.value("ttsVoice", json.value("tts_voice", config.tts_voice));
+    config.use_vulkan = json.value("useVulkan", json.value("use_vulkan", true));
+    return config;
+}
+
+MobileAudioConfig MobileAudioConfig::FromJson(const nlohmann::json& json) {
+    MobileAudioConfig config;
+    config.auto_listen = json.value("autoListen", json.value("auto_listen", true));
+    config.tap_to_talk_enabled = json.value("tapToTalkEnabled",
+                                            json.value("tap_to_talk_enabled", true));
+    config.wake_word_enabled = json.value("wakeWordEnabled",
+                                          json.value("wake_word_enabled", false));
+    config.barge_in_enabled = json.value("bargeInEnabled",
+                                         json.value("barge_in_enabled", true));
+    config.sample_rate = json.value("sampleRate", json.value("sample_rate", 16000));
+    return config;
+}
+
+MobileVisionConfig MobileVisionConfig::FromJson(const nlohmann::json& json) {
+    MobileVisionConfig config;
+    config.enabled = json.value("enabled", true);
+    config.sample_fps = json.value("sampleFps", json.value("sample_fps", 0.5));
+    config.foreground_only = json.value("foregroundOnly",
+                                        json.value("foreground_only", true));
+    config.persist_raw_frames = json.value("persistRawFrames",
+                                           json.value("persist_raw_frames", false));
+    config.scene_change_threshold = json.value(
+        "sceneChangeThreshold",
+        json.value("scene_change_threshold", 0.2));
+    return config;
+}
+
+MobileAvatarConfig MobileAvatarConfig::FromJson(const nlohmann::json& json) {
+    MobileAvatarConfig config;
+    config.renderer = json.value("renderer", "face2d");
+    config.default_state = json.value("defaultState",
+                                      json.value("default_state", "idle"));
+    config.lip_sync_enabled = json.value("lipSyncEnabled",
+                                         json.value("lip_sync_enabled", true));
+    return config;
+}
+
+MobileConfig MobileConfig::FromJson(const nlohmann::json& json) {
+    MobileConfig config;
+    if (json.contains("runtime") && json["runtime"].is_object()) {
+        config.runtime = MobileRuntimeConfig::FromJson(json["runtime"]);
+    }
+    if (json.contains("models") && json["models"].is_object()) {
+        config.models = MobileModelsConfig::FromJson(json["models"]);
+    }
+    if (json.contains("audio") && json["audio"].is_object()) {
+        config.audio = MobileAudioConfig::FromJson(json["audio"]);
+    }
+    if (json.contains("vision") && json["vision"].is_object()) {
+        config.vision = MobileVisionConfig::FromJson(json["vision"]);
+    }
+    if (json.contains("avatar") && json["avatar"].is_object()) {
+        config.avatar = MobileAvatarConfig::FromJson(json["avatar"]);
     }
     return config;
 }
@@ -433,6 +519,13 @@ RavBotConfig RavBotConfig::FromJsonExpanded(const nlohmann::json& json) {
     // ================================================================
     if (json.contains("security") && json["security"].is_object()) {
         config.security = SecurityConfig::FromJson(json["security"]);
+    }
+
+    // ================================================================
+    // Mobile runtime
+    // ================================================================
+    if (json.contains("mobile") && json["mobile"].is_object()) {
+        config.mobile = MobileConfig::FromJson(json["mobile"]);
     }
 
     // ================================================================
@@ -832,6 +925,80 @@ std::vector<std::string> RavBotConfig::Validate(const nlohmann::json& json) {
             // 验证 allowLocalExecute 字段
             if (security.contains("allowLocalExecute") && !security["allowLocalExecute"].is_boolean()) {
                 errors.push_back("security.allowLocalExecute: must be a boolean");
+            }
+        }
+    }
+
+    // Validate mobile config
+    if (json.contains("mobile")) {
+        const auto& mobile = json["mobile"];
+        if (!mobile.is_object()) {
+            errors.push_back("mobile: must be an object");
+        } else {
+            if (mobile.contains("runtime") && !mobile["runtime"].is_object()) {
+                errors.push_back("mobile.runtime: must be an object");
+            }
+            if (mobile.contains("models") && !mobile["models"].is_object()) {
+                errors.push_back("mobile.models: must be an object");
+            }
+            if (mobile.contains("audio") && !mobile["audio"].is_object()) {
+                errors.push_back("mobile.audio: must be an object");
+            }
+            if (mobile.contains("vision") && !mobile["vision"].is_object()) {
+                errors.push_back("mobile.vision: must be an object");
+            }
+            if (mobile.contains("avatar") && !mobile["avatar"].is_object()) {
+                errors.push_back("mobile.avatar: must be an object");
+            }
+
+            if (mobile.contains("runtime") && mobile["runtime"].is_object()) {
+                const auto& runtime = mobile["runtime"];
+                if (runtime.contains("enabled") && !runtime["enabled"].is_boolean()) {
+                    errors.push_back("mobile.runtime.enabled: must be a boolean");
+                }
+                if (runtime.contains("mode") && runtime["mode"].is_string()) {
+                    std::string mode = runtime["mode"].get<std::string>();
+                    if (mode != "local" && mode != "remote") {
+                        errors.push_back("mobile.runtime.mode: must be one of 'local', 'remote'");
+                    }
+                }
+                if (runtime.contains("foregroundOnly") &&
+                    !runtime["foregroundOnly"].is_boolean()) {
+                    errors.push_back("mobile.runtime.foregroundOnly: must be a boolean");
+                }
+                if (runtime.contains("continuousVision") &&
+                    !runtime["continuousVision"].is_boolean()) {
+                    errors.push_back("mobile.runtime.continuousVision: must be a boolean");
+                }
+            }
+
+            if (mobile.contains("audio") && mobile["audio"].is_object()) {
+                const auto& audio = mobile["audio"];
+                if (audio.contains("sampleRate") &&
+                    !audio["sampleRate"].is_number_integer()) {
+                    errors.push_back("mobile.audio.sampleRate: must be an integer");
+                }
+            }
+
+            if (mobile.contains("vision") && mobile["vision"].is_object()) {
+                const auto& vision = mobile["vision"];
+                if (vision.contains("sampleFps") && !vision["sampleFps"].is_number()) {
+                    errors.push_back("mobile.vision.sampleFps: must be a number");
+                }
+                if (vision.contains("persistRawFrames") &&
+                    !vision["persistRawFrames"].is_boolean()) {
+                    errors.push_back("mobile.vision.persistRawFrames: must be a boolean");
+                }
+            }
+
+            if (mobile.contains("avatar") && mobile["avatar"].is_object()) {
+                const auto& avatar = mobile["avatar"];
+                if (avatar.contains("renderer") && avatar["renderer"].is_string()) {
+                    std::string renderer = avatar["renderer"].get<std::string>();
+                    if (renderer != "face2d") {
+                        errors.push_back("mobile.avatar.renderer: must be 'face2d' in MVP");
+                    }
+                }
             }
         }
     }

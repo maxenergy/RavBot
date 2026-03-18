@@ -21,6 +21,18 @@ TEST(ProtocolTest, FrameTypeFromString) {
     EXPECT_THROW(FrameTypeFromString("invalid"), std::runtime_error);
 }
 
+TEST(ProtocolTest, MobileEventNames) {
+    EXPECT_EQ(std::string(events::kAssistantDelta), "assistant_delta");
+    EXPECT_EQ(std::string(events::kAssistantFinal), "assistant_final");
+    EXPECT_EQ(std::string(events::kMobileAsrPartial), "mobile.asr_partial");
+    EXPECT_EQ(std::string(events::kMobileRuntimeStatus), "mobile.runtime_status");
+    EXPECT_EQ(std::string(events::kMobileDeviceStatus), "mobile.device_status");
+    EXPECT_TRUE(events::IsMobileEventName(events::kMobileAsrFinal));
+    EXPECT_TRUE(events::IsMobileEventName(events::kMobileRuntimeStatus));
+    EXPECT_TRUE(events::IsMobileEventName(events::kMobileDeviceStatus));
+    EXPECT_FALSE(events::IsMobileEventName(events::kAssistantDelta));
+}
+
 // --- RpcRequest ---
 
 TEST(ProtocolTest, RpcRequestToJson) {

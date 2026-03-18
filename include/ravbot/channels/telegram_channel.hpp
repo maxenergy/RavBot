@@ -45,11 +45,16 @@ public:
     void Start() override;
     void Stop() override;
     void SendMessage(const std::string& chat_id, const std::string& message) override;
+    bool SendMessageChecked(const std::string& chat_id,
+                            const std::string& message);
     bool IsAllowed(const std::string& sender_id) const override;
     std::string GetChannelName() const override { return "telegram"; }
 
     // Telegram-specific methods
     void SendReply(const std::string& chat_id, int message_id, const std::string& message);
+    bool SendReplyChecked(const std::string& chat_id,
+                          int message_id,
+                          const std::string& message);
     void SendPhoto(const std::string& chat_id, const std::string& photo_path, const std::string& caption = "");
     void SendDocument(const std::string& chat_id, const std::string& file_path, const std::string& caption = "");
     void EditMessage(const std::string& chat_id, int message_id, const std::string& new_text);
@@ -89,7 +94,7 @@ private:
     void HandleMessage(const nlohmann::json& message);
     void HandleCallbackQuery(const nlohmann::json& callback_query);
 
-    void SendTextChunks(const std::string& chat_id,
+    bool SendTextChunks(const std::string& chat_id,
                         const std::string& message,
                         std::optional<int> reply_to_message_id = std::nullopt);
     std::string GetApiUrl(const std::string& method) const;

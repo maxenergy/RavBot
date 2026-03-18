@@ -676,13 +676,23 @@ int GatewayCommands::ForegroundCommand(const std::vector<std::string>& args) {
               }
 
               // Send response back to Telegram
-              telegram_channel->SendMessage(msg.channel_id, response);
-
-              logger->info("Sent response to Telegram chat {}", msg.channel_id);
+              if (telegram_channel->SendMessageChecked(msg.channel_id,
+                                                       response)) {
+                logger->info("Sent response to Telegram chat {}",
+                             msg.channel_id);
+              } else {
+                logger->error("Failed to deliver response to Telegram chat {}",
+                              msg.channel_id);
+              }
             } catch (const std::exception& e) {
               logger->error("Error processing Telegram message: {}", e.what());
-              telegram_channel->SendMessage(
-                  msg.channel_id, "抱歉，处理消息时出错了。请稍后再试。");
+              if (!telegram_channel->SendMessageChecked(
+                      msg.channel_id,
+                      "抱歉，处理消息时出错了。请稍后再试。")) {
+                logger->error(
+                    "Failed to deliver Telegram error reply to chat {}",
+                    msg.channel_id);
+              }
             }
           });
 

@@ -82,6 +82,16 @@ TEST_F(ToolPermissionsTest, MultipleAllowGroups) {
     EXPECT_FALSE(checker.IsAllowed("message"));
 }
 
+TEST_F(ToolPermissionsTest, MobileSafeGroupAllowsOnlyMobileFriendlyTools) {
+    auto checker =
+        ravbot::ToolPermissionChecker(make_config({"group:mobile_safe"}, {}));
+    EXPECT_TRUE(checker.IsAllowed("message"));
+    EXPECT_TRUE(checker.IsAllowed("web_search"));
+    EXPECT_TRUE(checker.IsAllowed("memory_search"));
+    EXPECT_FALSE(checker.IsAllowed("exec"));
+    EXPECT_FALSE(checker.IsAllowed("apply_patch"));
+}
+
 // --- MCP tool permissions ---
 
 TEST_F(ToolPermissionsTest, McpAllowAllWhenConfigEmpty) {

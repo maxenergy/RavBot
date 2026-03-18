@@ -998,6 +998,44 @@ TEST_F(ConfigTest, EnvVarNoSubstitutionWithoutDollarBrace) {
     EXPECT_EQ(config.providers.at("openai").api_key, "literal-string-no-vars");
 }
 
+TEST_F(ConfigTest, ParseMobileConfig) {
+    nlohmann::json json_config = {
+        {"mobile", {
+            {"runtime", {
+                {"enabled", true},
+                {"mode", "local"},
+                {"foregroundOnly", true},
+                {"continuousVision", true}
+            }},
+            {"models", {
+                {"llmModel", "Qwen3.5-0.8B-Q4_K_M.gguf"},
+                {"useVulkan", false}
+            }},
+            {"audio", {
+                {"sampleRate", 22050},
+                {"bargeInEnabled", true}
+            }},
+            {"vision", {
+                {"sampleFps", 1.0},
+                {"persistRawFrames", false}
+            }},
+            {"avatar", {
+                {"renderer", "face2d"},
+                {"defaultState", "idle"}
+            }}
+        }}
+    };
+
+    auto config = ravbot::RavBotConfig::FromJson(json_config);
+    EXPECT_TRUE(config.mobile.runtime.enabled);
+    EXPECT_EQ(config.mobile.runtime.mode, "local");
+    EXPECT_EQ(config.mobile.models.llm_model, "Qwen3.5-0.8B-Q4_K_M.gguf");
+    EXPECT_FALSE(config.mobile.models.use_vulkan);
+    EXPECT_EQ(config.mobile.audio.sample_rate, 22050);
+    EXPECT_DOUBLE_EQ(config.mobile.vision.sample_fps, 1.0);
+    EXPECT_EQ(config.mobile.avatar.renderer, "face2d");
+}
+
 // --- Requirements: 21.2, 21.5 - 配置验证测试 ---
 
 TEST_F(ConfigTest, Validate_ValidConfig) {
@@ -1199,6 +1237,28 @@ TEST_F(ConfigTest, Validate_MultipleErrors) {
     EXPECT_EQ(errors.size(), 4u);
 }
 
+TEST_F(ConfigTest, Validate_InvalidMobileConfig) {
+    nlohmann::json json_config = {
+        {"mobile", {
+            {"runtime", {
+                {"mode", "hybrid"}
+            }},
+            {"audio", {
+                {"sampleRate", "bad"}
+            }},
+            {"vision", {
+                {"sampleFps", "bad"}
+            }},
+            {"avatar", {
+                {"renderer", "live2d"}
+            }}
+        }}
+    };
+
+    auto errors = ravbot::RavBotConfig::Validate(json_config);
+    EXPECT_EQ(errors.size(), 4u);
+}
+
 // --- Requirements: 21.6 - 配置合并测试 ---
 
 TEST_F(ConfigTest, Merge_SimpleOverride) {
@@ -1329,4 +1389,3 @@ TEST_F(ConfigTest, PrettyPrint_EmptyObject) {
     std::string pretty = ravbot::RavBotConfig::PrettyPrint(json_config);
     EXPECT_EQ(pretty, "{}");
 }
-

@@ -49,6 +49,7 @@ class TurnValidator {
   // - Strips dangling tool_use blocks from assistant messages that lack
   //   matching tool_result in the following user message.
   // - Merges consecutive user messages.
+  // - Drops leading non-system fragments until the first real user turn.
   // Mirrors OpenClaw validateAnthropicTurns().
   static std::vector<Message> FixAnthropicTurns(
       const std::vector<Message>& messages);

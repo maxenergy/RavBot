@@ -1,6 +1,7 @@
 // Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -11,9 +12,12 @@
 
 #include "ravbot/config.hpp"
 #include "ravbot/core/agent_loop.hpp"
+#include "ravbot/core/embedding_manager.hpp"
 #include "ravbot/core/memory_manager.hpp"
+#include "ravbot/core/mock_embedding_provider.hpp"
 #include "ravbot/core/skill_loader.hpp"
 #include "ravbot/core/usage_accumulator.hpp"
+#include "ravbot/core/vector_database.hpp"
 #include "ravbot/providers/llm_provider.hpp"
 #include "ravbot/providers/provider_error.hpp"
 #include "ravbot/providers/failover_resolver.hpp"
@@ -289,6 +293,25 @@ class AgentLoopTest : public ::testing::Test {
     if (std::filesystem::exists(test_dir_)) {
       std::filesystem::remove_all(test_dir_);
     }
+  }
+
+  std::shared_ptr<ravbot::EmbeddingManager> CreateEmbeddingManager(
+      int dimension = 128) {
+    auto registry = std::make_shared<ravbot::EmbeddingProviderRegistry>();
+    registry->RegisterProvider(
+        "mock", std::make_shared<ravbot::MockEmbeddingProvider>(dimension));
+    registry->SetDefaultProvider("mock");
+
+    ravbot::VectorDatabaseConfig vector_config;
+    vector_config.use_hnsw = false;
+    auto vector_db = std::make_shared<ravbot::VectorDatabase>(
+        (test_dir_ / "embeddings.db").string(), logger_, vector_config);
+    EXPECT_TRUE(vector_db->Initialize());
+
+    auto manager =
+        std::make_shared<ravbot::EmbeddingManager>(registry, vector_db, logger_);
+    manager->SetProvider("mock");
+    return manager;
   }
 
   std::filesystem::path test_dir_;
@@ -803,16 +826,16 @@ TEST_F(AgentLoopTest, AnthropicSanitizationAlsoAppliesToStreamingRequests) {
       });
 
   const auto& sent = mock_provider_->last_request.messages;
-  ASSERT_EQ(sent.size(), 3u);
-  EXPECT_EQ(sent[0].role, "system");
-  ASSERT_EQ(sent[1].role, "assistant");
-  ASSERT_EQ(sent[1].content.size(), 1u);
-  EXPECT_EQ(sent[1].content[0].type, "text");
-  EXPECT_EQ(sent[1].content[0].text, "[tool calls omitted]");
-  ASSERT_EQ(sent[2].role, "user");
-  ASSERT_EQ(sent[2].content.size(), 2u);
-  EXPECT_EQ(sent[2].content[0].text, "follow-up");
-  EXPECT_EQ(sent[2].content[1].text, "continue");
+  auto first_non_system = std::find_if(
+      sent.begin(), sent.end(),
+      [](const ravbot::Message& msg) { return msg.role != "system"; });
+  ASSERT_NE(first_non_system, sent.end());
+  EXPECT_EQ(first_non_system->role, "user");
+  ASSERT_EQ(first_non_system->content.size(), 2u);
+  EXPECT_EQ(first_non_system->content[0].type, "text");
+  EXPECT_EQ(first_non_system->content[0].text, "follow-up");
+  EXPECT_EQ(first_non_system->content[1].type, "text");
+  EXPECT_EQ(first_non_system->content[1].text, "continue");
 }
 
 TEST_F(AgentLoopTest,
@@ -860,7 +883,7 @@ TEST_F(AgentLoopTest,
   EXPECT_EQ(sent[3].content[0].text, "What else can you do?");
 }
 
-TEST_F(AgentLoopTest, AnthropicReplayNarrowsToolsToMatchedToolNames) {
+TEST_F(AgentLoopTest, AnthropicReplayKeepsFullToolListToMatchSystemPrompt) {
   auto replay_provider = std::make_shared<ToolReplayFilteringMockProvider>();
 
   const auto read_file = test_dir_ / "replay-read-target.txt";
@@ -886,9 +909,17 @@ TEST_F(AgentLoopTest, AnthropicReplayNarrowsToolsToMatchedToolNames) {
   ASSERT_FALSE(new_msgs.empty());
   ASSERT_EQ(replay_provider->requests.size(), 2u);
   EXPECT_GT(replay_provider->requests[0].tools.size(), 1u);
-  ASSERT_EQ(replay_provider->requests[1].tools.size(), 1u);
-  ASSERT_TRUE(replay_provider->requests[1].tools[0].contains("function"));
-  EXPECT_EQ(replay_provider->requests[1].tools[0]["function"]["name"], "read");
+  EXPECT_EQ(replay_provider->requests[1].tools.size(),
+            replay_provider->requests[0].tools.size());
+  bool found_read = false;
+  for (const auto& tool : replay_provider->requests[1].tools) {
+    if (tool.contains("function") && tool["function"].contains("name") &&
+        tool["function"]["name"] == "read") {
+      found_read = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found_read);
 }
 
 TEST_F(AgentLoopTest,
@@ -953,6 +984,116 @@ TEST_F(AgentLoopTest,
   }
 }
 
+TEST_F(AgentLoopTest, AnthropicFollowUpDoesNotStartWithAssistantTurn) {
+  mock_provider_->provider_name = "anthropic";
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"assistant", "There is a tool use."},
+      ravbot::Message{"assistant", "找到了！"},
+  };
+
+  agent_loop_->ProcessMessage("继续", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  auto first_non_system = std::find_if(
+      sent.begin(), sent.end(),
+      [](const ravbot::Message& msg) { return msg.role != "system"; });
+  ASSERT_NE(first_non_system, sent.end());
+  EXPECT_EQ(first_non_system->role, "user");
+  EXPECT_EQ(first_non_system->text(), "继续");
+}
+
+TEST_F(AgentLoopTest, BriefContinuationPromptsSuppressDuplicateNotice) {
+  auto embedding_manager = CreateEmbeddingManager();
+  agent_loop_->SetEmbeddingManager(embedding_manager);
+  mock_provider_->response_text = "ok";
+
+  const std::vector<std::string> prompts = {"continue", u8"请继续"};
+  for (size_t i = 0; i < prompts.size(); ++i) {
+    const auto& prompt = prompts[i];
+    const auto session_key = "dup-continue-" + std::to_string(i);
+    const std::string metadata =
+        std::string("{\"role\":\"user\",\"session\":\"") + session_key +
+        "\"}";
+    ASSERT_TRUE(embedding_manager->IndexText(
+        "seed-" + std::to_string(i), prompt, metadata));
+
+    agent_loop_->ProcessMessage(prompt, {}, "System.", session_key);
+    const auto& sent = mock_provider_->last_request.messages;
+
+    bool has_duplicate_notice = false;
+    for (const auto& msg : sent) {
+      if (msg.role == "system" &&
+          msg.text().find("very similar message") != std::string::npos) {
+        has_duplicate_notice = true;
+      }
+    }
+    EXPECT_FALSE(has_duplicate_notice) << prompt;
+  }
+}
+
+TEST_F(AgentLoopTest, RepeatedQuestionsStillAddDuplicateNotice) {
+  auto embedding_manager = CreateEmbeddingManager();
+  agent_loop_->SetEmbeddingManager(embedding_manager);
+  mock_provider_->response_text = "ok";
+
+  const std::string session_key = "dup-question";
+  ASSERT_TRUE(embedding_manager->IndexText(
+      "seed-question", "What is RavBot?",
+      std::string("{\"role\":\"user\",\"session\":\"") + session_key +
+          "\"}"));
+
+  agent_loop_->ProcessMessage("What is RavBot?", {}, "System.", session_key);
+  const auto& sent = mock_provider_->last_request.messages;
+
+  bool has_duplicate_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("very similar message") != std::string::npos) {
+      has_duplicate_notice = true;
+    }
+  }
+  EXPECT_TRUE(has_duplicate_notice);
+}
+
+TEST_F(AgentLoopTest, NonAnthropicRequestsAlsoRepairOrphanToolResults) {
+  mock_provider_->provider_name = "openai";
+  mock_provider_->response_text = "ok";
+
+  ravbot::Message assistant;
+  assistant.role = "assistant";
+  assistant.content.push_back(
+      ravbot::ContentBlock::MakeText("I called a tool."));
+  assistant.content.push_back(ravbot::ContentBlock::MakeToolUse(
+      "call_openai", "read", {{"path", "/tmp/demo"}}));
+
+  ravbot::Message orphan_user;
+  orphan_user.role = "user";
+  orphan_user.content.push_back(
+      ravbot::ContentBlock::MakeToolResult("wrong_call", "bad result"));
+  orphan_user.content.push_back(
+      ravbot::ContentBlock::MakeText("follow-up"));
+
+  agent_loop_->ProcessMessage("continue", {assistant, orphan_user}, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  ASSERT_EQ(sent.size(), 4u);
+  EXPECT_EQ(sent[0].role, "system");
+  EXPECT_EQ(sent[1].role, "assistant");
+  ASSERT_EQ(sent[1].content.size(), 1u);
+  EXPECT_EQ(sent[1].content[0].type, "text");
+  EXPECT_EQ(sent[1].content[0].text, "I called a tool.");
+  EXPECT_EQ(sent[2].role, "user");
+  ASSERT_EQ(sent[2].content.size(), 1u);
+  EXPECT_EQ(sent[2].content[0].type, "text");
+  EXPECT_EQ(sent[2].content[0].text, "follow-up");
+  EXPECT_EQ(sent[3].role, "user");
+  ASSERT_EQ(sent[3].content.size(), 1u);
+  EXPECT_EQ(sent[3].content[0].type, "text");
+  EXPECT_EQ(sent[3].content[0].text, "continue");
+}
+
 TEST_F(AgentLoopTest, ExplicitLookupRequestRetriesOnDeferredPreamble) {
   auto lookup_provider = std::make_shared<LookupRetryMockProvider>();
 
@@ -987,7 +1128,7 @@ TEST_F(AgentLoopTest, ExplicitLookupRequestRetriesOnDeferredPreamble) {
             std::string::npos);
 }
 
-TEST_F(AgentLoopTest, AnthropicWebSearchReplayNarrowsToMatchedToolAndAddsHint) {
+TEST_F(AgentLoopTest, AnthropicWebSearchReplayKeepsToolsAndAddsHint) {
   auto replay_provider = std::make_shared<WebSearchReplayMockProvider>();
 
   tool_registry_->RegisterExternalTool(
@@ -1023,9 +1164,16 @@ TEST_F(AgentLoopTest, AnthropicWebSearchReplayNarrowsToMatchedToolAndAddsHint) {
   ASSERT_EQ(replay_provider->requests.size(), 2u);
 
   const auto& second_request = replay_provider->requests[1];
-  ASSERT_EQ(second_request.tools.size(), 1u);
-  ASSERT_TRUE(second_request.tools[0].contains("function"));
-  EXPECT_EQ(second_request.tools[0]["function"]["name"], "web_search");
+  EXPECT_GT(second_request.tools.size(), 1u);
+  bool found_web_search = false;
+  for (const auto& tool : second_request.tools) {
+    if (tool.contains("function") && tool["function"].contains("name") &&
+        tool["function"]["name"] == "web_search") {
+      found_web_search = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found_web_search);
 
   bool has_replay_hint = false;
   for (const auto& msg : second_request.messages) {

@@ -12,6 +12,61 @@
 
 namespace ravbot {
 
+namespace {
+
+bool has_non_tool_result_blocks_for_anthropic(const Message& msg) {
+  if (msg.role != "user") {
+    return false;
+  }
+  for (const auto& block : msg.content) {
+    if (block.type != "tool_result") {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::vector<Message> drop_leading_messages_before_first_user_turn(
+    const std::vector<Message>& messages) {
+  size_t first_non_system = 0;
+  while (first_non_system < messages.size() &&
+         messages[first_non_system].role == "system") {
+    ++first_non_system;
+  }
+
+  size_t first_user_turn = first_non_system;
+  while (first_user_turn < messages.size()) {
+    if (has_non_tool_result_blocks_for_anthropic(messages[first_user_turn])) {
+      break;
+    }
+    ++first_user_turn;
+  }
+
+  if (first_user_turn == first_non_system ||
+      first_user_turn >= messages.size()) {
+    return messages;
+  }
+
+  std::vector<Message> result;
+  result.reserve(first_non_system + (messages.size() - first_user_turn));
+  result.insert(result.end(), messages.begin(),
+                messages.begin() + first_non_system);
+  result.insert(result.end(), messages.begin() + first_user_turn,
+                messages.end());
+
+  if (result.size() > first_non_system &&
+      result[first_non_system].role == "user") {
+    auto& first_user = result[first_non_system];
+    while (!first_user.content.empty() &&
+           first_user.content.front().type == "tool_result") {
+      first_user.content.erase(first_user.content.begin());
+    }
+  }
+  return result;
+}
+
+}  // namespace
+
 TurnValidator::TurnValidator(std::shared_ptr<spdlog::logger> logger)
     : logger_(std::move(logger)) {
   // Register built-in validators
@@ -53,7 +108,10 @@ std::vector<Message> TurnValidator::FixAnthropicTurns(
   auto stripped = strip_dangling_tool_uses(messages);
 
   // Step 2: merge consecutive user messages (Anthropic requires alternation)
-  return merge_consecutive_role(stripped, "user");
+  auto merged = merge_consecutive_role(stripped, "user");
+
+  // Step 3: Anthropic requires the first non-system turn to be a real user turn.
+  return drop_leading_messages_before_first_user_turn(merged);
 }
 
 // static

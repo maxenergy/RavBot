@@ -6,6 +6,8 @@
 #include <spdlog/sinks/null_sink.h>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
 #include <thread>
 
 #include "ravbot/channels/telegram_channel.hpp"
@@ -60,7 +62,24 @@ protected:
 
 } // namespace
 
-TEST(TelegramChannelTest, SendMessageSplitsLongMessagesIntoChunks) {
+class TelegramChannelTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        state_file_ = std::filesystem::temp_directory_path() /
+                      "ravbot_test_telegram_channel_state.json";
+        std::filesystem::remove(state_file_);
+        setenv("RAVBOT_TELEGRAM_STATE_FILE", state_file_.c_str(), 1);
+    }
+
+    void TearDown() override {
+        unsetenv("RAVBOT_TELEGRAM_STATE_FILE");
+        std::filesystem::remove(state_file_);
+    }
+
+    std::filesystem::path state_file_;
+};
+
+TEST_F(TelegramChannelTest, SendMessageSplitsLongMessagesIntoChunks) {
     StubTelegramChannel channel(make_null_logger());
     std::string message(9005, 'a');
 
@@ -73,7 +92,7 @@ TEST(TelegramChannelTest, SendMessageSplitsLongMessagesIntoChunks) {
     EXPECT_FALSE(channel.calls[0].contains("parse_mode"));
 }
 
-TEST(TelegramChannelTest, SendReplyUsesReplyToOnlyForFirstChunk) {
+TEST_F(TelegramChannelTest, SendReplyUsesReplyToOnlyForFirstChunk) {
     StubTelegramChannel channel(make_null_logger());
     std::string message(4500, 'b');
 
@@ -84,7 +103,7 @@ TEST(TelegramChannelTest, SendReplyUsesReplyToOnlyForFirstChunk) {
     EXPECT_FALSE(channel.calls[1].contains("reply_to_message_id"));
 }
 
-TEST(TelegramChannelTest, StartContinuesPollingWhenInitialGetMeFails) {
+TEST_F(TelegramChannelTest, StartContinuesPollingWhenInitialGetMeFails) {
     StartupStubTelegramChannel channel(make_null_logger());
 
     channel.Start();

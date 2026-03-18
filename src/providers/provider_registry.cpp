@@ -5,6 +5,7 @@
 #include "ravbot/providers/openai_provider.hpp"
 #include "ravbot/providers/anthropic_provider.hpp"
 #include "ravbot/providers/google_provider.hpp"
+#include "ravbot/providers/llama_cpp_mobile_provider.hpp"
 #include "ravbot/providers/qwen_provider.hpp"
 
 #include <cstdlib>
@@ -91,6 +92,25 @@ void ProviderRegistry::RegisterBuiltinFactories() {
     return std::make_shared<QwenProvider>(
         entry.api_key, url, entry.timeout, logger);
   });
+
+  // Android/mobile local llama.cpp provider.
+  RegisterFactory("llama_cpp", [](const ProviderEntry& entry,
+                                   std::shared_ptr<spdlog::logger> logger) {
+    LlamaCppMobileProvider::Options options;
+    if (entry.extra.is_object()) {
+      options.model_path = entry.extra.value("modelPath", std::string{});
+      options.vision_model_path =
+          entry.extra.value("visionModelPath",
+                            entry.extra.value("vlmModelPath",
+                                              std::string{}));
+      options.mmproj_path = entry.extra.value("mmprojPath", std::string{});
+      options.models_dir = entry.extra.value("modelsDir", std::string{});
+      options.enable_vulkan = entry.extra.value("enableVulkan", true);
+    }
+    return std::make_shared<LlamaCppMobileProvider>(
+        std::move(options), logger);
+  });
+  RegisterFactory("llama.cpp", factories_["llama_cpp"]);
 
   // Bedrock (uses OpenAI-compatible gateway)
   RegisterFactory("bedrock", [](const ProviderEntry& entry,

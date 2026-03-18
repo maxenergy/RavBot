@@ -1,0 +1,8 @@
+<resources>
+  <string name="app_name">RavBot</string>
+  <string name="foreground_service_channel_name">RavBot Runtime</string>
+  <string name="foreground_service_title">RavBot active</string>
+  <string name="foreground_service_text">Audio and vision runtime is ready to be attached.</string>
+  <string name="foreground_service_action_open">Open</string>
+  <string name="foreground_service_action_stop">Stop</string>
+</resources>

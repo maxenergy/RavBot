@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
+#include <cstdlib>
+#include <filesystem>
 #include "ravbot/channels/telegram_channel.hpp"
 #include <nlohmann/json.hpp>
 
@@ -56,6 +58,10 @@ class TelegramWebhookTest : public ::testing::Test {
 protected:
     void SetUp() override {
         logger_ = spdlog::default_logger();
+        state_file_ = std::filesystem::temp_directory_path() /
+                      "ravbot_test_telegram_webhook_state.json";
+        std::filesystem::remove(state_file_);
+        setenv("RAVBOT_TELEGRAM_STATE_FILE", state_file_.c_str(), 1);
 
         // 轮询模式配置
         polling_config_.bot_token = "test-token";
@@ -69,9 +75,15 @@ protected:
         webhook_config_.webhook_path = "/telegram/webhook";
     }
 
+    void TearDown() override {
+        unsetenv("RAVBOT_TELEGRAM_STATE_FILE");
+        std::filesystem::remove(state_file_);
+    }
+
     std::shared_ptr<spdlog::logger> logger_;
     TelegramConfig polling_config_;
     TelegramConfig webhook_config_;
+    std::filesystem::path state_file_;
 };
 
 // 测试配置结构

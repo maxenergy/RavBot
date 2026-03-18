@@ -10,6 +10,31 @@
 
 namespace ravbot::gateway {
 
+namespace events {
+
+inline constexpr const char* kAssistantDelta = "assistant_delta";
+inline constexpr const char* kAssistantFinal = "assistant_final";
+inline constexpr const char* kMobileAsrPartial = "mobile.asr_partial";
+inline constexpr const char* kMobileAsrFinal = "mobile.asr_final";
+inline constexpr const char* kMobileTtsState = "mobile.tts_state";
+inline constexpr const char* kMobileAvatarState = "mobile.avatar_state";
+inline constexpr const char* kMobileRuntimeStatus = "mobile.runtime_status";
+inline constexpr const char* kMobileDeviceStatus = "mobile.device_status";
+inline constexpr const char* kMobileVisionObservation =
+    "mobile.vision_observation";
+
+inline bool IsMobileEventName(const std::string& event_name) {
+    return event_name == kMobileAsrPartial ||
+           event_name == kMobileAsrFinal ||
+           event_name == kMobileTtsState ||
+           event_name == kMobileAvatarState ||
+           event_name == kMobileRuntimeStatus ||
+           event_name == kMobileDeviceStatus ||
+           event_name == kMobileVisionObservation;
+}
+
+}  // namespace events
+
 // --- Frame Types ---
 
 enum class FrameType {

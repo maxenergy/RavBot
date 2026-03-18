@@ -1,0 +1,141 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.10.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				},
+				{
+					"build" : "_deps/nlohmann_json-build",
+					"jsonFile" : "directory-_deps.nlohmann_json-build-Debug-025e8e4f0f440458114c.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.1"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/_deps/nlohmann_json-src"
+				},
+				{
+					"build" : "_deps/spdlog-build",
+					"jsonFile" : "directory-_deps.spdlog-build-Debug-17aa487b16db05ebf95f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.10"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a/_deps/spdlog-src",
+					"targetIndexes" : 
+					[
+						3
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "ravbot_mobile_android",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "nlohmann_json",
+					"parentIndex" : 0
+				},
+				{
+					"directoryIndexes" : 
+					[
+						2
+					],
+					"name" : "spdlog",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "ravbot_mobile_android::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ravbot_mobile_android-Debug-56a2af001d5e13f778c4.json",
+					"name" : "ravbot_mobile_android",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ravbot_mobile_core_android::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ravbot_mobile_core_android-Debug-6ada04ac2360cacecff7.json",
+					"name" : "ravbot_mobile_core_android",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ravbot_mobile_foundation::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ravbot_mobile_foundation-Debug-222cb66446005d8bd82d.json",
+					"name" : "ravbot_mobile_foundation",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "spdlog::@eb35cfce7893ccfeff1e",
+					"jsonFile" : "target-spdlog-Debug-25229e7d1dbe4b3bb17a.json",
+					"name" : "spdlog",
+					"projectIndex" : 2
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/rogers/source/develop/RavBot/android/app/.cxx/Debug/3h1r231e/arm64-v8a",
+		"source" : "/home/rogers/source/develop/RavBot/android/app/src/main/cpp"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

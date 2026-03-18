@@ -75,10 +75,15 @@ if(NOT EXISTS ${HNSWLIB_INCLUDE_DIR}/hnswlib/hnswlib.h)
 endif()
 
 # Source files - explicitly listed
+set(RAVBOT_FOUNDATION_SOURCES
+    src/core/config.cpp
+    src/providers/llama_cpp_mobile_provider.cpp
+    src/session/session_manager.cpp
+)
+
 set(RAVBOT_CORE_SOURCES
     # Core
     src/core/agent_loop.cpp
-    src/core/config.cpp
     src/core/memory_manager.cpp
     src/core/skill_loader.cpp
     src/core/prompt_builder.cpp
@@ -129,7 +134,6 @@ set(RAVBOT_CORE_SOURCES
     src/gateway/message_sanitizer.cpp
     src/gateway/route_manager.cpp
     # Session
-    src/session/session_manager.cpp
     src/session/session_maintenance.cpp
     # Tools
     src/tools/tool_registry.cpp
@@ -190,6 +194,12 @@ else()
     )
 endif()
 
+set(RAVBOT_MOBILE_SOURCES
+    src/mobile/speech_pipeline.cpp
+    src/mobile/mobile_engine.cpp
+    src/mobile/mobile_c_api.cpp
+)
+
 # ── Build-time metadata ────────────────────────────────────────────────────
 # Git commit hash (short, 7 chars).  Falls back to "unknown" outside a repo.
 execute_process(
@@ -203,6 +213,24 @@ if(NOT RB_GIT_COMMIT)
     set(RB_GIT_COMMIT "unknown")
 endif()
 string(TIMESTAMP RB_BUILD_DATE "%Y-%m-%d")
+
+add_library(ravbot_foundation STATIC ${RAVBOT_FOUNDATION_SOURCES})
+target_include_directories(ravbot_foundation
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_compile_definitions(ravbot_foundation PUBLIC
+    RAVBOT_VERSION="${PROJECT_VERSION}"
+    RAVBOT_BUILD_DATE="${RB_BUILD_DATE}"
+    RAVBOT_GIT_COMMIT="${RB_GIT_COMMIT}"
+)
+target_link_libraries(ravbot_foundation
+    PUBLIC
+        spdlog::spdlog
+        nlohmann_json::nlohmann_json
+)
 
 add_library(ravbot_core STATIC ${RAVBOT_CORE_SOURCES})
 
@@ -226,8 +254,7 @@ target_compile_definitions(ravbot_core PUBLIC
 
 target_link_libraries(ravbot_core
     PUBLIC
-        spdlog::spdlog
-        nlohmann_json::nlohmann_json
+        ravbot_foundation
         ixwebsocket
         httplib::httplib
     PRIVATE
@@ -236,6 +263,15 @@ target_link_libraries(ravbot_core
         OpenSSL::Crypto
         SQLite::SQLite3
 )
+
+add_library(ravbot_mobile_core STATIC ${RAVBOT_MOBILE_SOURCES})
+target_include_directories(ravbot_mobile_core
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_link_libraries(ravbot_mobile_core PUBLIC ravbot_foundation)
 
 # WinSock2 required by ipc_tcp.cpp on Windows
 if(WIN32)
@@ -251,9 +287,11 @@ target_include_directories(ravbot PRIVATE
 
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(ravbot_foundation PRIVATE -Wall -Wextra -O2)
     target_compile_options(ravbot_core PRIVATE -Wall -Wextra -O2)
     target_compile_options(ravbot PRIVATE -Wall -Wextra -O2)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(ravbot_foundation PRIVATE /W4 /O2)
     target_compile_options(ravbot_core PRIVATE /W4 /O2)
     target_compile_options(ravbot PRIVATE /W4 /O2)
 endif()
@@ -325,6 +363,7 @@ if(BUILD_TESTS)
         tests/test_session_maintenance.cpp
         tests/test_subagent.cpp
         tests/test_telegram_channel.cpp
+        tests/test_telegram_delivery.cpp
         tests/test_telegram_webhook.cpp
         tests/test_telegram_media.cpp
         tests/test_browser_tool.cpp
@@ -345,6 +384,9 @@ if(BUILD_TESTS)
         tests/test_trust_model.cpp
         tests/test_audit_logger.cpp
         tests/test_message_sanitizer.cpp
+        tests/test_mobile_engine.cpp
+        tests/test_mobile_c_api.cpp
+        tests/test_speech_pipeline.cpp
         tests/performance/test_load.cpp
         tests/performance/test_memory.cpp
         # P1.3 / P1.4 / P2.1 / P2.2 new tests
@@ -356,6 +398,7 @@ if(BUILD_TESTS)
     add_executable(ravbot_tests ${TEST_SOURCES})
     target_link_libraries(ravbot_tests PRIVATE
         ravbot_core
+        ravbot_mobile_core
         GTest::gtest_main
     )
     target_include_directories(ravbot_tests PRIVATE

@@ -4,7 +4,11 @@
 #include <spdlog/sinks/null_sink.h>
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
+#include <fstream>
+
 #include "ravbot/providers/google_provider.hpp"
+#include "ravbot/providers/llama_cpp_mobile_provider.hpp"
 #include "ravbot/providers/provider_registry.hpp"
 #include "ravbot/providers/qwen_provider.hpp"
 
@@ -177,6 +181,76 @@ TEST(ProviderRegistryTest, ProviderEntryInspection) {
   ASSERT_NE(e, nullptr);
   EXPECT_EQ(e->display_name, "Local Ollama");
   EXPECT_EQ(e->base_url, "http://localhost:11434/v1");
+}
+
+TEST(ProviderRegistryTest, LlamaCppProviderUsesMobileModelOptions) {
+  auto reg = std::make_unique<ProviderRegistry>(make_logger("providers"));
+  reg->RegisterBuiltinFactories();
+
+  ProviderEntry entry;
+  entry.id = "llama_cpp";
+  entry.extra = {{"modelPath", "models/Qwen3.5-0.8B-Q4_K_M.gguf"},
+                 {"mmprojPath", "models/mmproj.gguf"},
+                 {"enableVulkan", false}};
+  reg->AddProvider(entry);
+
+  auto provider = reg->GetProvider("llama_cpp");
+  ASSERT_NE(provider, nullptr);
+  EXPECT_EQ(provider->GetProviderName(), "llama_cpp_mobile");
+
+  auto* llama_provider =
+      dynamic_cast<LlamaCppMobileProvider*>(provider.get());
+  ASSERT_NE(llama_provider, nullptr);
+  EXPECT_EQ(llama_provider->options().model_path,
+            "models/Qwen3.5-0.8B-Q4_K_M.gguf");
+  EXPECT_EQ(llama_provider->options().mmproj_path, "models/mmproj.gguf");
+  EXPECT_FALSE(llama_provider->options().enable_vulkan);
+}
+
+TEST(ProviderRegistryTest, LlamaCppProviderResolvesRelativePathsAgainstModelsDir) {
+  auto logger = make_logger("providers-llama-runtime");
+  auto test_dir = std::filesystem::temp_directory_path() /
+                  "ravbot_llama_cpp_mobile_provider";
+  std::filesystem::remove_all(test_dir);
+  std::filesystem::create_directories(test_dir);
+
+  std::filesystem::path llm_path = test_dir / "Qwen3.5-0.8B-Q4_K_M.gguf";
+  std::filesystem::path vlm_path =
+      test_dir / "SmolVLM-500M-Instruct-Q8_0.gguf";
+  std::filesystem::path mmproj_path =
+      test_dir / "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf";
+  std::ofstream(llm_path.string()).put('\n');
+  std::ofstream(vlm_path.string()).put('\n');
+  std::ofstream(mmproj_path.string()).put('\n');
+
+  LlamaCppMobileProvider::Options options;
+  options.model_path = "Qwen3.5-0.8B-Q4_K_M.gguf";
+  options.vision_model_path = "SmolVLM-500M-Instruct-Q8_0.gguf";
+  options.mmproj_path = "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf";
+  options.models_dir = test_dir.string();
+  options.enable_vulkan = true;
+
+  LlamaCppMobileProvider provider(options, logger);
+
+  const auto& status = provider.runtime_status();
+  EXPECT_EQ(status.models_dir, test_dir.string());
+  EXPECT_EQ(status.llm_model_path, llm_path.string());
+  EXPECT_EQ(status.vision_model_path, vlm_path.string());
+  EXPECT_EQ(status.mmproj_path, mmproj_path.string());
+  EXPECT_TRUE(status.llm_model_exists);
+  EXPECT_TRUE(status.vision_model_exists);
+  EXPECT_TRUE(status.mmproj_exists);
+  EXPECT_EQ(status.text_ready, status.backend_linked && status.llm_model_exists);
+  EXPECT_EQ(status.vision_ready, status.backend_linked);
+  EXPECT_EQ(status.vulkan_enabled,
+            status.backend_linked && status.vulkan_requested);
+
+  auto supported_models = provider.GetSupportedModels();
+  ASSERT_EQ(supported_models.size(), 2u);
+  EXPECT_EQ(supported_models[0], llm_path.string());
+  EXPECT_EQ(supported_models[1], vlm_path.string());
+
+  std::filesystem::remove_all(test_dir);
 }
 
 class TransportStubGoogleProvider : public ravbot::GoogleProvider {

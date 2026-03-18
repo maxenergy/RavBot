@@ -26,6 +26,20 @@ bool telegram_response_ok(const nlohmann::json& response) {
     return response.contains("ok") && response["ok"].is_boolean() && response["ok"].get<bool>();
 }
 
+std::filesystem::path resolve_telegram_state_file() {
+    const char* env_state_file = std::getenv("RAVBOT_TELEGRAM_STATE_FILE");
+    if (env_state_file != nullptr && *env_state_file != '\0') {
+        return std::filesystem::path(env_state_file);
+    }
+
+    const char* home = std::getenv("HOME");
+    if (home != nullptr && *home != '\0') {
+        return std::filesystem::path(home) / ".ravbot" / "telegram_state.json";
+    }
+
+    return std::filesystem::path(".ravbot") / "telegram_state.json";
+}
+
 std::vector<std::string> split_telegram_message(const std::string& message) {
     if (message.empty()) {
         return {""};
@@ -119,17 +133,27 @@ void TelegramChannel::Stop() {
 }
 
 void TelegramChannel::SendMessage(const std::string& chat_id, const std::string& message) {
+    (void)SendMessageChecked(chat_id, message);
+}
+
+bool TelegramChannel::SendMessageChecked(const std::string& chat_id,
+                                         const std::string& message) {
     std::lock_guard<std::mutex> lock(send_mutex_);
-    SendTextChunks(chat_id, message);
+    return SendTextChunks(chat_id, message);
 }
 
 void TelegramChannel::SendReply(const std::string& chat_id, int message_id, const std::string& message) {
-    std::lock_guard<std::mutex> lock(send_mutex_);
-
-    SendTextChunks(chat_id, message, message_id);
+    (void)SendReplyChecked(chat_id, message_id, message);
 }
 
-void TelegramChannel::SendTextChunks(const std::string& chat_id,
+bool TelegramChannel::SendReplyChecked(const std::string& chat_id,
+                                       int message_id,
+                                       const std::string& message) {
+    std::lock_guard<std::mutex> lock(send_mutex_);
+    return SendTextChunks(chat_id, message, message_id);
+}
+
+bool TelegramChannel::SendTextChunks(const std::string& chat_id,
                                      const std::string& message,
                                      std::optional<int> reply_to_message_id) {
     // 清理系统标签
@@ -150,47 +174,38 @@ void TelegramChannel::SendTextChunks(const std::string& chat_id,
         auto response = MakeApiRequest("sendMessage", params);
         if (!telegram_response_ok(response)) {
             logger_->error("Failed to send message to {}: {}", chat_id, response.dump());
+            return false;
         }
-        return;
+        return true;
     }
 
-    // 多个分块时使用线程化发送
-    // 使用 shared_ptr 确保数据在异步操作中有效
-    auto chunks_ptr = std::make_shared<std::vector<std::string>>(std::move(chunks));
-    auto chat_id_ptr = std::make_shared<std::string>(chat_id);
-    auto reply_id_ptr = std::make_shared<std::optional<int>>(reply_to_message_id);
+    for (size_t i = 0; i < chunks.size(); ++i) {
+        nlohmann::json params = {
+            {"chat_id", chat_id},
+            {"text", chunks[i]}
+        };
 
-    // 启动异步发送线程
-    std::thread([this, chunks_ptr, chat_id_ptr, reply_id_ptr]() {
-        for (size_t i = 0; i < chunks_ptr->size(); ++i) {
-            nlohmann::json params = {
-                {"chat_id", *chat_id_ptr},
-                {"text", (*chunks_ptr)[i]}
-            };
-
-            // 只在第一个分块添加 reply_to
-            if (reply_id_ptr->has_value() && i == 0) {
-                params["reply_to_message_id"] = **reply_id_ptr;
-            }
-
-            auto response = MakeApiRequest("sendMessage", params);
-            if (!telegram_response_ok(response)) {
-                logger_->error("Failed to send message chunk {}/{} to {}: {}",
-                               i + 1,
-                               chunks_ptr->size(),
-                               *chat_id_ptr,
-                               response.dump());
-                return;
-            }
-
-            // 添加小延迟避免 Telegram API 速率限制
-            if (i < chunks_ptr->size() - 1) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            }
+        if (reply_to_message_id.has_value() && i == 0) {
+            params["reply_to_message_id"] = *reply_to_message_id;
         }
 
-        logger_->debug("Sent {} message chunks to {}", chunks_ptr->size(), *chat_id_ptr);
-    }).detach();
+        auto response = MakeApiRequest("sendMessage", params);
+        if (!telegram_response_ok(response)) {
+            logger_->error("Failed to send message chunk {}/{} to {}: {}",
+                           i + 1,
+                           chunks.size(),
+                           chat_id,
+                           response.dump());
+            return false;
+        }
+
+        if (i < chunks.size() - 1) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+    }
+
+    logger_->debug("Sent {} message chunks to {}", chunks.size(), chat_id);
+    return true;
 }
 
 void TelegramChannel::SendPhoto(const std::string& chat_id, const std::string& photo_path, const std::string& caption) {
@@ -547,8 +562,8 @@ std::string TelegramChannel::ExtractUserId(const nlohmann::json& user) const {
 }
 
 void TelegramChannel::LoadLastUpdateId() {
-    std::string state_file = std::string(std::getenv("HOME")) + "/.ravbot/telegram_state.json";
     try {
+        auto state_file = resolve_telegram_state_file();
         if (std::filesystem::exists(state_file)) {
             std::ifstream file(state_file);
             nlohmann::json state;
@@ -564,8 +579,9 @@ void TelegramChannel::LoadLastUpdateId() {
 }
 
 void TelegramChannel::SaveLastUpdateId() {
-    std::string state_file = std::string(std::getenv("HOME")) + "/.ravbot/telegram_state.json";
     try {
+        auto state_file = resolve_telegram_state_file();
+        std::filesystem::create_directories(state_file.parent_path());
         nlohmann::json state;
         state["last_update_id"] = last_update_id_;
         std::ofstream file(state_file);

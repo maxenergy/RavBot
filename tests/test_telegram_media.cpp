@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <gtest/gtest.h>
+#include <cstdlib>
+#include <filesystem>
 #include "ravbot/channels/telegram_channel.hpp"
 #include <nlohmann/json.hpp>
 #include <fstream>
-#include <filesystem>
 
 using namespace ravbot;
 
@@ -63,6 +64,10 @@ class TelegramMediaTest : public ::testing::Test {
 protected:
     void SetUp() override {
         logger_ = spdlog::default_logger();
+        state_file_ = std::filesystem::temp_directory_path() /
+                      "ravbot_test_telegram_media_state.json";
+        std::filesystem::remove(state_file_);
+        setenv("RAVBOT_TELEGRAM_STATE_FILE", state_file_.c_str(), 1);
 
         config_.bot_token = "test-token";
         config_.mode = "polling";
@@ -87,6 +92,8 @@ protected:
     }
 
     void TearDown() override {
+        unsetenv("RAVBOT_TELEGRAM_STATE_FILE");
+        std::filesystem::remove(state_file_);
         // 清理测试文件
         if (std::filesystem::exists(test_file_path_)) {
             std::filesystem::remove(test_file_path_);
@@ -98,6 +105,7 @@ protected:
 
     std::shared_ptr<spdlog::logger> logger_;
     TelegramConfig config_;
+    std::filesystem::path state_file_;
     std::string test_file_path_;
     std::string test_image_path_;
 };

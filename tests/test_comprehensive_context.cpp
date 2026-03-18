@@ -189,9 +189,9 @@ TEST_F(ComprehensiveContextTest, MultiTurnToolReplayDoesNotCarryOldHistory) {
 }
 
 // ================================================================
-// 测试 2: 工具续轮时工具列表被正确过滤
+// 测试 2: 工具续轮时保留完整工具列表，避免和 system prompt 不一致
 // ================================================================
-TEST_F(ComprehensiveContextTest, ToolReplayNarrowsToolList) {
+TEST_F(ComprehensiveContextTest, ToolReplayKeepsFullToolList) {
   auto new_msgs = agent_loop_->ProcessMessage(
       "Read the file /test/data.txt", {}, "You are a helpful assistant.");
 
@@ -202,15 +202,20 @@ TEST_F(ComprehensiveContextTest, ToolReplayNarrowsToolList) {
   EXPECT_GT(first_req.tools.size(), 1u)
       << "First request should have multiple tools";
 
-  // 第二次请求（工具续轮）：应该只有匹配的工具
+  // 第二次请求（工具续轮）：应该保留完整工具列表
   const auto& second_req = mock_provider_->all_requests[1];
-  EXPECT_EQ(second_req.tools.size(), 1u)
-      << "Tool replay should narrow to matched tool only";
+  EXPECT_EQ(second_req.tools.size(), first_req.tools.size())
+      << "Tool replay should keep the full tool list";
 
-  // 验证工具名称匹配
-  if (!second_req.tools.empty() && second_req.tools[0].contains("function")) {
-    EXPECT_EQ(second_req.tools[0]["function"]["name"], "read");
+  bool found_read = false;
+  for (const auto& tool : second_req.tools) {
+    if (tool.contains("function") && tool["function"].contains("name") &&
+        tool["function"]["name"] == "read") {
+      found_read = true;
+      break;
+    }
   }
+  EXPECT_TRUE(found_read);
 }
 
 // ================================================================

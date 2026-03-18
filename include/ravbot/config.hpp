@@ -205,6 +205,66 @@ struct SecurityConfig {
     }
 };
 
+// --- Mobile (Android/native host) ---
+
+struct MobileRuntimeConfig {
+    bool enabled = false;
+    std::string mode = "local";  // "local" | "remote"
+    bool foreground_only = true;
+    bool continuous_vision = true;
+
+    static MobileRuntimeConfig FromJson(const nlohmann::json& json);
+};
+
+struct MobileModelsConfig {
+    std::string llm_model = "Qwen3.5-0.8B-Q4_K_M.gguf";
+    std::string vlm_model = "SmolVLM-500M-Instruct-Q8_0.gguf";
+    std::string mmproj_model = "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf";
+    std::string stt_model = "SenseVoiceSmall";
+    std::string tts_voice = "kokoro-multi-lang-v1_1";
+    bool use_vulkan = true;
+
+    static MobileModelsConfig FromJson(const nlohmann::json& json);
+};
+
+struct MobileAudioConfig {
+    bool auto_listen = true;
+    bool tap_to_talk_enabled = true;
+    bool wake_word_enabled = false;
+    bool barge_in_enabled = true;
+    int sample_rate = 16000;
+
+    static MobileAudioConfig FromJson(const nlohmann::json& json);
+};
+
+struct MobileVisionConfig {
+    bool enabled = true;
+    double sample_fps = 0.5;
+    bool foreground_only = true;
+    bool persist_raw_frames = false;
+    double scene_change_threshold = 0.2;
+
+    static MobileVisionConfig FromJson(const nlohmann::json& json);
+};
+
+struct MobileAvatarConfig {
+    std::string renderer = "face2d";
+    std::string default_state = "idle";
+    bool lip_sync_enabled = true;
+
+    static MobileAvatarConfig FromJson(const nlohmann::json& json);
+};
+
+struct MobileConfig {
+    MobileRuntimeConfig runtime;
+    MobileModelsConfig models;
+    MobileAudioConfig audio;
+    MobileVisionConfig vision;
+    MobileAvatarConfig avatar;
+
+    static MobileConfig FromJson(const nlohmann::json& json);
+};
+
 // --- Skills ---
 
 struct SkillEntryConfig {
@@ -239,6 +299,7 @@ struct RavBotConfig {
     ToolPermissionConfig tools_permission;
     MCPConfig mcp;
     SkillsConfig skills;
+    MobileConfig mobile;
 
     // Plugins raw config (plugins section from JSON)
     nlohmann::json plugins_config;

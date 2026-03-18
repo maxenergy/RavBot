@@ -301,6 +301,48 @@ static bool looks_like_follow_up_message(const std::string& text) {
                      });
 }
 
+static bool is_brief_continuation_prompt(const std::string& text) {
+  auto trimmed = text;
+  const auto is_ascii_space = [](unsigned char ch) {
+    return std::isspace(ch) != 0;
+  };
+
+  while (!trimmed.empty() &&
+         is_ascii_space(static_cast<unsigned char>(trimmed.front()))) {
+    trimmed.erase(trimmed.begin());
+  }
+  while (!trimmed.empty() &&
+         is_ascii_space(static_cast<unsigned char>(trimmed.back()))) {
+    trimmed.pop_back();
+  }
+
+  while (!trimmed.empty()) {
+    const unsigned char tail = static_cast<unsigned char>(trimmed.back());
+    if (tail == '.' || tail == '!' || tail == '?' || tail == ',' ||
+        tail == ';' || tail == ':' || tail == '~') {
+      trimmed.pop_back();
+      continue;
+    }
+    break;
+  }
+
+  if (trimmed.empty() || trimmed.size() > 32) {
+    return false;
+  }
+
+  std::string lower = trimmed;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  static const std::unordered_set<std::string> kExactMarkers = {
+      "continue",       "please continue", "continue please", "go on",
+      "please go on",   "keep going",      "carry on",        u8"继续",
+      u8"请继续",       u8"继续吧",        u8"继续呀",        u8"继续说",
+      u8"接着",         u8"接着说",        u8"接着来",        u8"继续下去"};
+  return kExactMarkers.count(lower) > 0;
+}
+
 static bool has_lookup_intent(const std::string& text) {
   std::string lower = text;
   std::transform(
@@ -599,7 +641,7 @@ collect_tool_use_ids(const Message& msg) {
 }
 
 static std::vector<Message>
-repair_anthropic_tool_pairing(const std::vector<Message>& messages) {
+repair_tool_message_pairing(const std::vector<Message>& messages) {
   std::vector<Message> repaired;
   repaired.reserve(messages.size());
 
@@ -925,9 +967,10 @@ static void sanitize_request_messages_for_provider(
     const std::shared_ptr<spdlog::logger>& logger) {
   size_t before_count = request.messages.size();
 
+  request.messages = repair_tool_message_pairing(request.messages);
+
   // Anthropic-specific sanitization
   if (is_anthropic_provider(provider)) {
-    request.messages = repair_anthropic_tool_pairing(request.messages);
     request.messages =
         collapse_completed_anthropic_tool_turns(request.messages);
     request.messages = merge_consecutive_user_messages(request.messages);
@@ -1036,6 +1079,7 @@ AgentLoop::AgentLoop(std::shared_ptr<MemoryManager> memory_manager,
       skill_loader_(skill_loader),
       tool_registry_(tool_registry),
       llm_provider_(llm_provider),
+      turn_validator_(std::make_shared<TurnValidator>(logger)),
       context_pruner_(std::make_shared<ContextPruner>()),
       logger_(logger),
       agent_config_(agent_config),
@@ -1395,6 +1439,7 @@ std::vector<Message> AgentLoop::ProcessMessage(
 
   // Check for duplicate messages
   std::string duplicate_notice;
+  const bool suppress_duplicate_notice = is_brief_continuation_prompt(message);
   if (embedding_manager_ && !effective_session_key.empty()) {
     try {
       auto similar_results = embedding_manager_->SearchText(message, 10, 0.80f);
@@ -1419,11 +1464,20 @@ std::vector<Message> AgentLoop::ProcessMessage(
       // If found similar messages, this is a repeat (total_occurrences + 1 for current)
       if (total_occurrences > 0) {
         int repeat_count = total_occurrences + 1;
-        duplicate_notice = "[SYSTEM NOTICE: The user has sent a very similar message " +
-                          std::to_string(repeat_count) + " times. " +
-                          "Please acknowledge this repetition in your response and ask if " +
-                          "there's something unclear or if they need different information.]";
-        logger_->info("Duplicate message detected: total occurrences={}", repeat_count);
+        if (suppress_duplicate_notice) {
+          logger_->info(
+              "Duplicate notice suppressed for brief continuation prompt "
+              "(occurrences={})",
+              repeat_count);
+        } else {
+          duplicate_notice =
+              "[SYSTEM NOTICE: The user has sent a very similar message " +
+              std::to_string(repeat_count) + " times. " +
+              "Please acknowledge this repetition in your response and ask if "
+              "there's something unclear or if they need different information.]";
+          logger_->info("Duplicate message detected: total occurrences={}",
+                        repeat_count);
+        }
       }
     } catch (const std::exception& e) {
       logger_->warn("Failed to search for duplicate messages: {}", e.what());

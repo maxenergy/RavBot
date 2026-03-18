@@ -164,5 +164,32 @@ TEST(TurnValidatorCombined, EmptyMsgSkippedTimestampPreserved) {
   EXPECT_EQ(fixed[0].content.size(), 2u);
 }
 
+TEST(TurnValidatorAnthropic, DropsLeadingAssistantHistoryBeforeFirstUserTurn) {
+  Message system_msg{"system", "System prompt"};
+
+  Message leading_assistant;
+  leading_assistant.role = "assistant";
+  leading_assistant.content.push_back(ContentBlock::MakeText("There is a tool use."));
+  leading_assistant.content.push_back(
+      ContentBlock::MakeToolUse("call_1", "read", {{"path", "/tmp/demo"}}));
+
+  Message tool_result_only;
+  tool_result_only.role = "user";
+  tool_result_only.content.push_back(
+      ContentBlock::MakeToolResult("call_1", "demo result"));
+
+  Message follow_up{"user", "继续"};
+
+  auto fixed = TurnValidator::FixAnthropicTurns(
+      {system_msg, leading_assistant, tool_result_only, follow_up});
+
+  ASSERT_EQ(fixed.size(), 2u);
+  EXPECT_EQ(fixed[0].role, "system");
+  EXPECT_EQ(fixed[1].role, "user");
+  ASSERT_EQ(fixed[1].content.size(), 1u);
+  EXPECT_EQ(fixed[1].content[0].type, "text");
+  EXPECT_EQ(fixed[1].content[0].text, "继续");
+}
+
 }  // namespace
 }  // namespace ravbot

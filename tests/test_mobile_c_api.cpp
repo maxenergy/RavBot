@@ -1,0 +1,331 @@
+// Copyright 2026 RavBot Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+#include <filesystem>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
+
+#include "ravbot/mobile/mobile_c_api.h"
+
+namespace {
+
+struct CapturedEvent {
+  std::string name;
+  nlohmann::json payload;
+};
+
+struct EventSink {
+  std::mutex mutex;
+  std::vector<CapturedEvent> events;
+  std::vector<std::string> avatar_states;
+  std::vector<std::string> speech_requests;
+  int speech_interrupt_count = 0;
+};
+
+void capture_event(const char* event_name,
+                   const char* payload_json,
+                   void* user_data) {
+  auto* sink = static_cast<EventSink*>(user_data);
+  ASSERT_NE(sink, nullptr);
+
+  nlohmann::json payload = nlohmann::json::object();
+  if (payload_json != nullptr && *payload_json != '\0') {
+    payload = nlohmann::json::parse(payload_json, nullptr, false);
+    if (payload.is_discarded()) {
+      payload = nlohmann::json::object();
+    }
+  }
+
+  std::lock_guard<std::mutex> lock(sink->mutex);
+  sink->events.push_back(
+      {event_name != nullptr ? event_name : "", std::move(payload)});
+}
+
+void capture_avatar_state(const char* state, void* user_data) {
+  auto* sink = static_cast<EventSink*>(user_data);
+  ASSERT_NE(sink, nullptr);
+  std::lock_guard<std::mutex> lock(sink->mutex);
+  sink->avatar_states.push_back(state != nullptr ? state : "");
+}
+
+void capture_speech_request(const char* text, void* user_data) {
+  auto* sink = static_cast<EventSink*>(user_data);
+  ASSERT_NE(sink, nullptr);
+  std::lock_guard<std::mutex> lock(sink->mutex);
+  sink->speech_requests.push_back(text != nullptr ? text : "");
+}
+
+void capture_speech_interrupt(void* user_data) {
+  auto* sink = static_cast<EventSink*>(user_data);
+  ASSERT_NE(sink, nullptr);
+  std::lock_guard<std::mutex> lock(sink->mutex);
+  sink->speech_interrupt_count += 1;
+}
+
+class MobileCApiTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    test_dir_ = std::filesystem::temp_directory_path() / "ravbot_mobile_c_api";
+    std::filesystem::remove_all(test_dir_);
+    std::filesystem::create_directories(test_dir_);
+  }
+
+  void TearDown() override { std::filesystem::remove_all(test_dir_); }
+
+  std::string MakeConfigJson() const {
+    nlohmann::json config = {
+        {"mobile",
+         {{"runtime", {{"enabled", true}, {"mode", "local"}}},
+          {"vision", {{"enabled", true}}}}},
+    };
+    return config.dump();
+  }
+
+  std::filesystem::path test_dir_;
+};
+
+TEST_F(MobileCApiTest, InitEngineRejectsInvalidJson) {
+  ravbot_mobile_engine_t* engine =
+      ravbot_mobile_init_engine("{", test_dir_.c_str(), test_dir_.c_str(),
+                                "info");
+  EXPECT_EQ(engine, nullptr);
+}
+
+TEST_F(MobileCApiTest, SendTextTurnEmitsAssistantFinalEvent) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  EXPECT_TRUE(
+      ravbot_mobile_start_session(engine, "agent:main:capi", "Android C API"));
+  EXPECT_TRUE(
+      ravbot_mobile_send_text_turn(engine, "agent:main:capi", "hello ravbot"));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  bool saw_avatar = false;
+  bool saw_final = false;
+  bool saw_runtime = false;
+  for (const auto& event : sink.events) {
+    if (event.name == "mobile.avatar_state") {
+      saw_avatar = true;
+    }
+    if (event.name == "mobile.runtime_status") {
+      saw_runtime = true;
+      EXPECT_EQ(event.payload["modelsDir"], test_dir_.string());
+      EXPECT_EQ(event.payload["speechProvider"], "sherpa_onnx_mobile");
+      EXPECT_TRUE(event.payload.contains("detail"));
+      EXPECT_TRUE(event.payload.contains("speechDetail"));
+    }
+    if (event.name == "assistant_final") {
+      saw_final = true;
+      EXPECT_TRUE(event.payload.contains("text"));
+      EXPECT_FALSE(event.payload["text"].get<std::string>().empty());
+    }
+  }
+
+  EXPECT_TRUE(saw_avatar);
+  EXPECT_TRUE(saw_runtime);
+  EXPECT_TRUE(saw_final);
+}
+
+TEST_F(MobileCApiTest, UnsubscribeStopsFutureCallbacks) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:unsubscribe",
+                                          "Before unsubscribe"));
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+
+  const size_t event_count_after_unsubscribe = sink.events.size();
+  EXPECT_TRUE(ravbot_mobile_send_text_turn(engine, "agent:main:unsubscribe",
+                                           "should not notify"));
+  EXPECT_EQ(sink.events.size(), event_count_after_unsubscribe);
+
+  ravbot_mobile_free_engine(engine);
+}
+
+TEST_F(MobileCApiTest, CameraFrameEmitsVisionObservationByDefault) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  EXPECT_TRUE(
+      ravbot_mobile_start_session(engine, "agent:main:camera", "Camera path"));
+
+  const uint8_t frame_bytes[] = {0, 1, 2, 3};
+  EXPECT_TRUE(ravbot_mobile_push_camera_frame(
+      engine, "agent:main:camera", frame_bytes, sizeof(frame_bytes), 2, 2,
+      "rgba8888", 42));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  bool saw_vision = false;
+  for (const auto& event : sink.events) {
+    if (event.name == "mobile.vision_observation") {
+      saw_vision = true;
+      EXPECT_TRUE(event.payload.contains("summary"));
+    }
+  }
+  EXPECT_TRUE(saw_vision);
+}
+
+TEST_F(MobileCApiTest, ReportTtsStateEmitsPlaybackUpdate) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:tts",
+                                          "Playback state"));
+  EXPECT_TRUE(
+      ravbot_mobile_report_tts_state(engine, "agent:main:tts", "speaking"));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  bool saw_tts = false;
+  for (const auto& event : sink.events) {
+    if (event.name == "mobile.tts_state" &&
+        event.payload.value("state", "") == "speaking") {
+      saw_tts = true;
+    }
+  }
+  EXPECT_TRUE(saw_tts);
+}
+
+TEST_F(MobileCApiTest, ReportDeviceStatusEmitsNativeSnapshot) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  EXPECT_TRUE(ravbot_mobile_report_device_status(
+      engine, true, true, true, "running", "running", "speaking"));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  bool saw_device_status = false;
+  for (const auto& event : sink.events) {
+    if (event.name == "mobile.device_status") {
+      saw_device_status = true;
+      EXPECT_TRUE(event.payload["foreground"]);
+      EXPECT_TRUE(event.payload["serviceRunning"]);
+      EXPECT_TRUE(event.payload["captureRequested"]);
+      EXPECT_TRUE(event.payload["permissionsGranted"]);
+      EXPECT_EQ(event.payload["microphoneStatus"], "running");
+      EXPECT_EQ(event.payload["cameraStatus"], "running");
+      EXPECT_EQ(event.payload["speakerStatus"], "speaking");
+    }
+  }
+
+  EXPECT_TRUE(saw_device_status);
+}
+
+TEST_F(MobileCApiTest, FlushAudioTurnPromotesBufferedSpeechToFinalTurn) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:flush",
+                                          "Buffered speech"));
+  int16_t samples[] = {1, 2, 3, 4};
+  EXPECT_TRUE(ravbot_mobile_push_pcm16(engine, "agent:main:flush", samples, 4,
+                                       16000, false));
+  EXPECT_TRUE(ravbot_mobile_flush_audio_turn(engine, "agent:main:flush"));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  bool saw_partial = false;
+  bool saw_final = false;
+  for (const auto& event : sink.events) {
+    if (event.name == "mobile.asr_partial") {
+      saw_partial = true;
+      EXPECT_EQ(event.payload["segmentIndex"], 1);
+      EXPECT_EQ(event.payload["endReason"], "streaming");
+    }
+    if (event.name == "mobile.asr_final") {
+      saw_final = true;
+      EXPECT_NE(event.payload.value("text", "").find("audio segment 1"),
+                std::string::npos);
+      EXPECT_EQ(event.payload["segmentIndex"], 1);
+      EXPECT_EQ(event.payload["sampleRateHz"], 16000);
+      EXPECT_EQ(event.payload["endReason"], "flush");
+    }
+  }
+
+  EXPECT_TRUE(saw_partial);
+  EXPECT_TRUE(saw_final);
+}
+
+TEST_F(MobileCApiTest, DeviceCallbacksReceiveAvatarAndSpeechRequests) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  ravbot_mobile_device_callbacks_t callbacks{};
+  callbacks.on_avatar_state = capture_avatar_state;
+  callbacks.on_speech_request = capture_speech_request;
+  callbacks.on_speech_interrupt = capture_speech_interrupt;
+  ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, &callbacks, &sink));
+
+  EXPECT_TRUE(
+      ravbot_mobile_start_session(engine, "agent:main:device", "Device bridge"));
+  EXPECT_TRUE(
+      ravbot_mobile_send_text_turn(engine, "agent:main:device", "hello device"));
+  ravbot_mobile_interrupt_generation(engine, "agent:main:device");
+
+  ravbot_mobile_free_engine(engine);
+
+  EXPECT_FALSE(sink.avatar_states.empty());
+  EXPECT_FALSE(sink.speech_requests.empty());
+  EXPECT_GT(sink.speech_interrupt_count, 0);
+}
+
+}  // namespace
