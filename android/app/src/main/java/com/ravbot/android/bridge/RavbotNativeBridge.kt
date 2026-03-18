@@ -3,6 +3,7 @@ package com.ravbot.android.bridge
 import android.os.Handler
 import android.os.Looper
 import com.ravbot.android.network.HostWebToolClient
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 data class NativeLoadStatus(
@@ -21,7 +22,7 @@ class RavbotNativeBridge {
   private var eventListener: ((NativeEvent) -> Unit)? = null
   private val mainHandler = Handler(Looper.getMainLooper())
   private val webToolClient = HostWebToolClient()
-  private val hostExecutor = Executors.newSingleThreadExecutor()
+  @Volatile private var hostExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
   val loadStatus: NativeLoadStatus
     get() = sharedLoadStatus
@@ -42,6 +43,7 @@ class RavbotNativeBridge {
       engineHandle = 0L
     }
 
+    ensureHostExecutor()
     engineHandle = nativeInitEngine(configJson, stateDir, modelsDir)
     if (engineHandle != 0L && eventListener != null) {
       nativeSubscribeEvents(engineHandle)
@@ -143,6 +145,7 @@ class RavbotNativeBridge {
       nativeFreeEngine(engineHandle)
       engineHandle = 0L
     }
+    hostExecutor.shutdownNow()
   }
 
   @Suppress("unused")
@@ -159,7 +162,7 @@ class RavbotNativeBridge {
       count: Int,
       freshness: String,
   ): String =
-      hostExecutor
+      ensureHostExecutor()
           .submit<String> {
             webToolClient.webSearch(
                 query = query,
@@ -173,7 +176,15 @@ class RavbotNativeBridge {
   fun onNativeWebFetch(
       url: String,
       maxChars: Int,
-  ): String = hostExecutor.submit<String> { webToolClient.webFetch(url, maxChars) }.get()
+  ): String = ensureHostExecutor().submit<String> { webToolClient.webFetch(url, maxChars) }.get()
+
+  @Synchronized
+  private fun ensureHostExecutor(): ExecutorService {
+    if (hostExecutor.isShutdown || hostExecutor.isTerminated) {
+      hostExecutor = Executors.newSingleThreadExecutor()
+    }
+    return hostExecutor
+  }
 
   private external fun nativeInitEngine(
       configJson: String,
