@@ -563,6 +563,8 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   std::string ResolveStateDirectory() const override { return "/tmp/state"; }
   std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
   bool IsForeground() const override { return true; }
+  bool SupportsWebSearch() const override { return true; }
+  bool SupportsWebFetch() const override { return true; }
 
   void SetAvatarState(ravbot::mobile::AvatarState state) override {
     avatar_states.push_back(ravbot::mobile::AvatarStateToString(state));
@@ -606,6 +608,71 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   int speech_interrupts = 0;
   std::vector<std::tuple<std::string, int, std::string>> web_search_calls;
   std::vector<std::pair<std::string, int>> web_fetch_calls;
+};
+
+class FakeSpeechOnlyDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
+ public:
+  std::string ResolveStateDirectory() const override { return "/tmp/state"; }
+  std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
+  bool IsForeground() const override { return true; }
+  bool SupportsWebSearch() const override { return false; }
+  bool SupportsWebFetch() const override { return false; }
+
+  void SetAvatarState(ravbot::mobile::AvatarState /*state*/) override {}
+  void RequestSpeechPlayback(const std::string& /*text*/) override {}
+  void InterruptSpeechPlayback() override {}
+  std::string WebSearch(const std::string& /*query*/,
+                        int /*count*/,
+                        const std::string& /*freshness*/) override {
+    return "{}";
+  }
+  std::string WebFetch(const std::string& /*url*/, int /*max_chars*/) override {
+    return "{}";
+  }
+};
+
+class FakeWebSearchOnlyDeviceBridge
+    : public ravbot::mobile::DeviceCapabilityBridge {
+ public:
+  std::string ResolveStateDirectory() const override { return "/tmp/state"; }
+  std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
+  bool IsForeground() const override { return true; }
+  bool SupportsWebSearch() const override { return true; }
+  bool SupportsWebFetch() const override { return false; }
+
+  void SetAvatarState(ravbot::mobile::AvatarState /*state*/) override {}
+  void RequestSpeechPlayback(const std::string& /*text*/) override {}
+  void InterruptSpeechPlayback() override {}
+  std::string WebSearch(const std::string& /*query*/,
+                        int /*count*/,
+                        const std::string& /*freshness*/) override {
+    return "{}";
+  }
+  std::string WebFetch(const std::string& /*url*/, int /*max_chars*/) override {
+    return "{}";
+  }
+};
+
+class FakeWebFetchOnlyDeviceBridge
+    : public ravbot::mobile::DeviceCapabilityBridge {
+ public:
+  std::string ResolveStateDirectory() const override { return "/tmp/state"; }
+  std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
+  bool IsForeground() const override { return true; }
+  bool SupportsWebSearch() const override { return false; }
+  bool SupportsWebFetch() const override { return true; }
+
+  void SetAvatarState(ravbot::mobile::AvatarState /*state*/) override {}
+  void RequestSpeechPlayback(const std::string& /*text*/) override {}
+  void InterruptSpeechPlayback() override {}
+  std::string WebSearch(const std::string& /*query*/,
+                        int /*count*/,
+                        const std::string& /*freshness*/) override {
+    return "{}";
+  }
+  std::string WebFetch(const std::string& /*url*/, int /*max_chars*/) override {
+    return "{}";
+  }
 };
 
 class FakeVisionProvider : public ravbot::mobile::MobileVisionProvider {
@@ -930,9 +997,62 @@ TEST_F(MobileEngineTest, StartSessionEmitsRuntimeStatusWithResolvedModelPaths) {
   EXPECT_EQ(it->payload["modelsDir"], test_dir_.string());
   EXPECT_EQ(it->payload["llmModelPath"],
             (test_dir_ / "Qwen3.5-0.8B-Q4_K_M.gguf").string());
-  EXPECT_EQ(it->payload["sttModelPath"], (test_dir_ / "SenseVoiceSmall").string());
+  EXPECT_EQ(it->payload["sttModelPath"],
+            (test_dir_ / "SenseVoiceSmall").string());
   EXPECT_FALSE(it->payload["llmModelExists"].get<bool>());
   EXPECT_FALSE(it->payload["sttModelExists"].get<bool>());
+  EXPECT_FALSE(it->payload["deviceBridgeAttached"].get<bool>());
+  EXPECT_FALSE(it->payload["webSearchReady"].get<bool>());
+  EXPECT_FALSE(it->payload["webFetchReady"].get<bool>());
+}
+
+TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
+  ravbot::mobile::MobileEngine speech_only_engine(MakeConfig(), test_dir_,
+                                                  test_dir_, logger_);
+  speech_only_engine.SetDeviceBridge(
+      std::make_shared<FakeSpeechOnlyDeviceBridge>());
+
+  std::vector<ravbot::mobile::MobileEvent> speech_only_events;
+  speech_only_engine.SubscribeEvents(
+      [&speech_only_events](const ravbot::mobile::MobileEvent& event) {
+        speech_only_events.push_back(event);
+      });
+
+  ASSERT_EQ(speech_only_engine.StartSession("agent:main:runtime-speech-only"),
+            "agent:main:runtime-speech-only");
+
+  auto speech_only_status = std::find_if(
+      speech_only_events.begin(), speech_only_events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventMobileRuntimeStatus;
+      });
+  ASSERT_NE(speech_only_status, speech_only_events.end());
+  EXPECT_TRUE(speech_only_status->payload["deviceBridgeAttached"].get<bool>());
+  EXPECT_FALSE(speech_only_status->payload["webSearchReady"].get<bool>());
+  EXPECT_FALSE(speech_only_status->payload["webFetchReady"].get<bool>());
+
+  ravbot::mobile::MobileEngine full_bridge_engine(MakeConfig(), test_dir_,
+                                                  test_dir_, logger_);
+  full_bridge_engine.SetDeviceBridge(std::make_shared<FakeDeviceBridge>());
+
+  std::vector<ravbot::mobile::MobileEvent> full_bridge_events;
+  full_bridge_engine.SubscribeEvents(
+      [&full_bridge_events](const ravbot::mobile::MobileEvent& event) {
+        full_bridge_events.push_back(event);
+      });
+
+  ASSERT_EQ(full_bridge_engine.StartSession("agent:main:runtime-web-ready"),
+            "agent:main:runtime-web-ready");
+
+  auto full_bridge_status = std::find_if(
+      full_bridge_events.begin(), full_bridge_events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventMobileRuntimeStatus;
+      });
+  ASSERT_NE(full_bridge_status, full_bridge_events.end());
+  EXPECT_TRUE(full_bridge_status->payload["deviceBridgeAttached"].get<bool>());
+  EXPECT_TRUE(full_bridge_status->payload["webSearchReady"].get<bool>());
+  EXPECT_TRUE(full_bridge_status->payload["webFetchReady"].get<bool>());
 }
 
 TEST_F(MobileEngineTest, ReportTtsPlaybackStateEmitsEventAndAvatarState) {
@@ -1352,6 +1472,24 @@ TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {
             without_names.end());
   EXPECT_EQ(std::find(without_names.begin(), without_names.end(), "web_fetch"),
             without_names.end());
+
+  ravbot::mobile::MobileEngine with_speech_only_bridge(
+      MakeConfig(), test_dir_, test_dir_, logger_);
+  auto speech_only_bridge = std::make_shared<FakeSpeechOnlyDeviceBridge>();
+  auto speech_only_provider =
+      std::make_shared<FakeTextProvider>("reply with speech-only bridge");
+  with_speech_only_bridge.SetDeviceBridge(speech_only_bridge);
+  with_speech_only_bridge.SetTextProvider(speech_only_provider);
+
+  ASSERT_TRUE(with_speech_only_bridge.SendTextTurn(
+      "agent:main:speech-only-web-tools", "hello"));
+  auto speech_only_names = tool_names(speech_only_provider->last_request_);
+  EXPECT_EQ(std::find(speech_only_names.begin(), speech_only_names.end(),
+                      "web_search"),
+            speech_only_names.end());
+  EXPECT_EQ(std::find(speech_only_names.begin(), speech_only_names.end(),
+                      "web_fetch"),
+            speech_only_names.end());
 
   ravbot::mobile::MobileEngine with_bridge(MakeConfig(), test_dir_, test_dir_,
                                            logger_);

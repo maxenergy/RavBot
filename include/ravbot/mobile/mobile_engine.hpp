@@ -112,6 +112,7 @@ class MobileEngine {
   std::filesystem::path WorkspaceRoot() const;
   std::filesystem::path ResolveWorkspacePath(
       const std::string& relative_path) const;
+  std::shared_ptr<DeviceCapabilityBridge> CopyDeviceBridge() const;
   bool HandleUserTextTurn(const std::string& session_key,
                           const std::string& text,
                           bool emit_asr_final);

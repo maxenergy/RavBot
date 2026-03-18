@@ -161,6 +161,15 @@ private fun RavbotHostScreen() {
   var runtimeModelsDir by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeModelsDir)
   }
+  var runtimeDeviceBridgeStatus by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeDeviceBridgeStatus)
+  }
+  var runtimeWebSearchStatus by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeWebSearchStatus)
+  }
+  var runtimeWebFetchStatus by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeWebFetchStatus)
+  }
   var runtimeTextStatus by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeTextStatus)
   }
@@ -396,6 +405,12 @@ private fun RavbotHostScreen() {
         runtimeProvider = parseJsonString(event.payload, "provider") ?: runtimeProvider
         runtimeDetail = parseJsonString(event.payload, "detail") ?: runtimeDetail
         runtimeModelsDir = parseJsonString(event.payload, "modelsDir") ?: runtimeModelsDir
+        runtimeDeviceBridgeStatus =
+            describeRuntimeFlag(parseJsonBoolean(event.payload, "deviceBridgeAttached"))
+        runtimeWebSearchStatus =
+            describeRuntimeFlag(parseJsonBoolean(event.payload, "webSearchReady"))
+        runtimeWebFetchStatus =
+            describeRuntimeFlag(parseJsonBoolean(event.payload, "webFetchReady"))
         runtimeTextStatus =
             describeRuntimeFlag(parseJsonBoolean(event.payload, "textReady"))
         runtimeVisionStatus =
@@ -562,6 +577,9 @@ private fun RavbotHostScreen() {
           runtimeProvider = runtimeProvider,
           runtimeDetail = runtimeDetail,
           runtimeModelsDir = runtimeModelsDir,
+          runtimeDeviceBridgeStatus = runtimeDeviceBridgeStatus,
+          runtimeWebSearchStatus = runtimeWebSearchStatus,
+          runtimeWebFetchStatus = runtimeWebFetchStatus,
           runtimeTextStatus = runtimeTextStatus,
           runtimeVisionStatus = runtimeVisionStatus,
           runtimeVulkanStatus = runtimeVulkanStatus,
@@ -725,6 +743,9 @@ private fun RavbotHostScreen() {
         lines =
             listOf(
                 "Provider: $runtimeProvider",
+                "Device bridge: $runtimeDeviceBridgeStatus",
+                "Web search: $runtimeWebSearchStatus",
+                "Web fetch: $runtimeWebFetchStatus",
                 "Text runtime: $runtimeTextStatus",
                 "Vision runtime: $runtimeVisionStatus",
                 "Vulkan: $runtimeVulkanStatus",

@@ -186,6 +186,7 @@ void MobileEngine::SetVisionProvider(
 
 void MobileEngine::SetDeviceBridge(
     std::shared_ptr<DeviceCapabilityBridge> bridge) {
+  std::unique_lock<std::shared_mutex> lock(state_mutex_);
   device_bridge_ = std::move(bridge);
 }
 
@@ -317,8 +318,8 @@ void MobileEngine::InterruptGeneration(const std::string& session_key) {
   if (asr_provider_) {
     asr_provider_->Interrupt();
   }
-  if (device_bridge_) {
-    device_bridge_->InterruptSpeechPlayback();
+  if (auto bridge = CopyDeviceBridge(); bridge) {
+    bridge->InterruptSpeechPlayback();
   }
   Emit(kEventMobileTtsState, {{"state", "interrupted"}});
   SetAvatarState(AvatarState::kIdle);
@@ -387,12 +388,20 @@ void MobileEngine::Emit(const std::string& event_name,
 }
 
 void MobileEngine::EmitRuntimeStatus() const {
+  const auto bridge = CopyDeviceBridge();
+  const bool device_bridge_attached = bridge != nullptr;
+  const bool web_search_ready =
+      bridge != nullptr && bridge->SupportsWebSearch();
+  const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
   nlohmann::json payload = {{"modelsDir", models_dir_.string()},
                             {"sttModel", config_.mobile.models.stt_model},
                             {"ttsVoice", config_.mobile.models.tts_voice},
                             {"visionEnabled", config_.mobile.vision.enabled},
                             {"continuousVision",
-                             config_.mobile.runtime.continuous_vision}};
+                             config_.mobile.runtime.continuous_vision},
+                            {"deviceBridgeAttached", device_bridge_attached},
+                            {"webSearchReady", web_search_ready},
+                            {"webFetchReady", web_fetch_ready}};
 
   if (auto* llama_provider =
           dynamic_cast<ravbot::LlamaCppMobileProvider*>(text_provider_.get())) {
@@ -423,8 +432,8 @@ void MobileEngine::SetAvatarState(AvatarState state) {
     std::unique_lock<std::shared_mutex> lock(state_mutex_);
     avatar_state_ = state;
   }
-  if (device_bridge_) {
-    device_bridge_->SetAvatarState(state);
+  if (auto bridge = CopyDeviceBridge(); bridge) {
+    bridge->SetAvatarState(state);
   }
   Emit(kEventMobileAvatarState, make_avatar_payload(state));
 }
@@ -519,6 +528,10 @@ bool MobileEngine::HandleAsrUpdate(const std::string& session_key,
 }
 
 std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
+  const auto bridge = CopyDeviceBridge();
+  const bool web_search_ready =
+      bridge != nullptr && bridge->SupportsWebSearch();
+  const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
   std::vector<nlohmann::json> tools = {nlohmann::json{
       {"type", "function"},
       {"function",
@@ -652,7 +665,7 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
                    "Required when deleting a non-empty directory."}}}}},
               {"required", {"path"}},
               {"additionalProperties", false}}}}}}};
-  if (device_bridge_ != nullptr) {
+  if (web_search_ready) {
     tools.push_back(nlohmann::json{
         {"type", "function"},
         {"function",
@@ -677,6 +690,8 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
                 {"description", "Optional recency filter."}}}}},
             {"required", {"query"}},
             {"additionalProperties", false}}}}}});
+  }
+  if (web_fetch_ready) {
     tools.push_back(nlohmann::json{
         {"type", "function"},
         {"function",
@@ -774,8 +789,12 @@ std::string MobileEngine::BuildTimeToolResult() const {
 
 std::string MobileEngine::BuildWebSearchToolResult(
     const nlohmann::json& arguments) const {
-  if (device_bridge_ == nullptr) {
+  const auto bridge = CopyDeviceBridge();
+  if (bridge == nullptr) {
     throw std::runtime_error("web_search requires a device bridge");
+  }
+  if (!bridge->SupportsWebSearch()) {
+    throw std::runtime_error("web_search is not supported by the device bridge");
   }
   const std::string query = arguments.value("query", "");
   const int count = arguments.value("count", 5);
@@ -783,20 +802,24 @@ std::string MobileEngine::BuildWebSearchToolResult(
   if (query.empty()) {
     throw std::runtime_error("query is required");
   }
-  return device_bridge_->WebSearch(query, count, freshness);
+  return bridge->WebSearch(query, count, freshness);
 }
 
 std::string MobileEngine::BuildWebFetchToolResult(
     const nlohmann::json& arguments) const {
-  if (device_bridge_ == nullptr) {
+  const auto bridge = CopyDeviceBridge();
+  if (bridge == nullptr) {
     throw std::runtime_error("web_fetch requires a device bridge");
+  }
+  if (!bridge->SupportsWebFetch()) {
+    throw std::runtime_error("web_fetch is not supported by the device bridge");
   }
   const std::string url = arguments.value("url", "");
   const int max_chars = arguments.value("maxChars", 50000);
   if (url.empty()) {
     throw std::runtime_error("url is required");
   }
-  return device_bridge_->WebFetch(url, max_chars);
+  return bridge->WebFetch(url, max_chars);
 }
 
 std::filesystem::path MobileEngine::WorkspaceRoot() const {
@@ -822,6 +845,11 @@ std::filesystem::path MobileEngine::ResolveWorkspacePath(
     throw std::runtime_error("Access denied: path outside mobile workspace");
   }
   return resolved;
+}
+
+std::shared_ptr<DeviceCapabilityBridge> MobileEngine::CopyDeviceBridge() const {
+  std::shared_lock<std::shared_mutex> lock(state_mutex_);
+  return device_bridge_;
 }
 
 std::string MobileEngine::BuildMemoryListToolResult(
@@ -1195,8 +1223,8 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
     SetAvatarState(AvatarState::kSpeak);
     Emit(kEventMobileTtsState,
          {{"state", "requested"}, {"text", response_text}});
-    if (device_bridge_) {
-      device_bridge_->RequestSpeechPlayback(response_text);
+    if (auto bridge = CopyDeviceBridge(); bridge) {
+      bridge->RequestSpeechPlayback(response_text);
     }
   }
 

@@ -30,6 +30,12 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
   std::string ResolveStateDirectory() const override { return state_dir_; }
   std::string ResolveModelsDirectory() const override { return models_dir_; }
   bool IsForeground() const override { return foreground_; }
+  bool SupportsWebSearch() const override {
+    return callbacks_.on_web_search != nullptr;
+  }
+  bool SupportsWebFetch() const override {
+    return callbacks_.on_web_fetch != nullptr;
+  }
 
   void SetAvatarState(AvatarState state) override {
     if (callbacks_.on_avatar_state == nullptr) {

@@ -16,6 +16,8 @@ class DeviceCapabilityBridge {
   virtual std::string ResolveStateDirectory() const = 0;
   virtual std::string ResolveModelsDirectory() const = 0;
   virtual bool IsForeground() const = 0;
+  virtual bool SupportsWebSearch() const = 0;
+  virtual bool SupportsWebFetch() const = 0;
 
   virtual void SetAvatarState(AvatarState state) = 0;
   virtual void RequestSpeechPlayback(const std::string& text) = 0;

@@ -23,6 +23,9 @@ data class HostSnapshot(
     val runtimeProvider: String = "unknown",
     val runtimeDetail: String = "No native runtime diagnostics emitted yet.",
     val runtimeModelsDir: String = "not set",
+    val runtimeDeviceBridgeStatus: String = "unknown",
+    val runtimeWebSearchStatus: String = "unknown",
+    val runtimeWebFetchStatus: String = "unknown",
     val runtimeTextStatus: String = "unknown",
     val runtimeVisionStatus: String = "unknown",
     val runtimeVulkanStatus: String = "unknown",
@@ -61,6 +64,9 @@ data class HostSnapshot(
         .put("runtimeProvider", runtimeProvider)
         .put("runtimeDetail", runtimeDetail)
         .put("runtimeModelsDir", runtimeModelsDir)
+        .put("runtimeDeviceBridgeStatus", runtimeDeviceBridgeStatus)
+        .put("runtimeWebSearchStatus", runtimeWebSearchStatus)
+        .put("runtimeWebFetchStatus", runtimeWebFetchStatus)
         .put("runtimeTextStatus", runtimeTextStatus)
         .put("runtimeVisionStatus", runtimeVisionStatus)
         .put("runtimeVulkanStatus", runtimeVulkanStatus)
@@ -126,6 +132,12 @@ data class HostSnapshot(
                     ),
                 runtimeModelsDir =
                     parsed.optString("runtimeModelsDir", "not set"),
+                runtimeDeviceBridgeStatus =
+                    parsed.optString("runtimeDeviceBridgeStatus", "unknown"),
+                runtimeWebSearchStatus =
+                    parsed.optString("runtimeWebSearchStatus", "unknown"),
+                runtimeWebFetchStatus =
+                    parsed.optString("runtimeWebFetchStatus", "unknown"),
                 runtimeTextStatus =
                     parsed.optString("runtimeTextStatus", "unknown"),
                 runtimeVisionStatus =
