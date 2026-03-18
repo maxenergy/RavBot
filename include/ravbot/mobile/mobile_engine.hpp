@@ -101,6 +101,8 @@ class MobileEngine {
   std::string BuildDeviceStatusToolResult() const;
   std::string BuildCameraSnapshotToolResult() const;
   std::string BuildTimeToolResult() const;
+  std::string BuildWebSearchToolResult(const nlohmann::json& arguments) const;
+  std::string BuildWebFetchToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryListToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemorySearchToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryGetToolResult(const nlohmann::json& arguments) const;

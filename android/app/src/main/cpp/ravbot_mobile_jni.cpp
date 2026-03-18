@@ -153,6 +153,148 @@ void OnDeviceSpeechInterrupt(void* user_data) {
   ForwardEventToJava(engine, "device.speech_interrupt", "{}");
 }
 
+const char* OnDeviceWebSearch(const char* query,
+                              int count,
+                              const char* freshness,
+                              void* user_data) {
+  auto* engine = static_cast<EngineHandle*>(user_data);
+  if (engine == nullptr || engine->vm == nullptr || engine->bridge_ref == nullptr) {
+    return nullptr;
+  }
+
+  JNIEnv* env = nullptr;
+  bool should_detach = false;
+  const jint get_env_result =
+      engine->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+  if (get_env_result == JNI_EDETACHED) {
+    if (engine->vm->AttachCurrentThread(&env, nullptr) != JNI_OK) {
+      return nullptr;
+    }
+    should_detach = true;
+  } else if (get_env_result != JNI_OK || env == nullptr) {
+    return nullptr;
+  }
+
+  thread_local std::string result_storage;
+  result_storage.clear();
+
+  jclass bridge_class = env->GetObjectClass(engine->bridge_ref);
+  if (bridge_class == nullptr) {
+    if (should_detach) {
+      engine->vm->DetachCurrentThread();
+    }
+    return nullptr;
+  }
+
+  jmethodID callback =
+      env->GetMethodID(bridge_class, "onNativeWebSearch",
+                       "(Ljava/lang/String;ILjava/lang/String;)Ljava/lang/String;");
+  if (callback == nullptr) {
+    env->DeleteLocalRef(bridge_class);
+    if (should_detach) {
+      engine->vm->DetachCurrentThread();
+    }
+    return nullptr;
+  }
+
+  jstring j_query = env->NewStringUTF(query != nullptr ? query : "");
+  jstring j_freshness = env->NewStringUTF(freshness != nullptr ? freshness : "");
+  auto* result = static_cast<jstring>(
+      env->CallObjectMethod(engine->bridge_ref, callback, j_query, count,
+                            j_freshness));
+  env->DeleteLocalRef(j_query);
+  env->DeleteLocalRef(j_freshness);
+
+  if (env->ExceptionCheck()) {
+    env->ExceptionDescribe();
+    env->ExceptionClear();
+    env->DeleteLocalRef(bridge_class);
+    if (should_detach) {
+      engine->vm->DetachCurrentThread();
+    }
+    return nullptr;
+  }
+
+  if (result != nullptr) {
+    result_storage = ToString(env, result);
+    env->DeleteLocalRef(result);
+  }
+  env->DeleteLocalRef(bridge_class);
+  if (should_detach) {
+    engine->vm->DetachCurrentThread();
+  }
+  return result_storage.empty() ? nullptr : result_storage.c_str();
+}
+
+const char* OnDeviceWebFetch(const char* url,
+                             int max_chars,
+                             void* user_data) {
+  auto* engine = static_cast<EngineHandle*>(user_data);
+  if (engine == nullptr || engine->vm == nullptr || engine->bridge_ref == nullptr) {
+    return nullptr;
+  }
+
+  JNIEnv* env = nullptr;
+  bool should_detach = false;
+  const jint get_env_result =
+      engine->vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+  if (get_env_result == JNI_EDETACHED) {
+    if (engine->vm->AttachCurrentThread(&env, nullptr) != JNI_OK) {
+      return nullptr;
+    }
+    should_detach = true;
+  } else if (get_env_result != JNI_OK || env == nullptr) {
+    return nullptr;
+  }
+
+  thread_local std::string result_storage;
+  result_storage.clear();
+
+  jclass bridge_class = env->GetObjectClass(engine->bridge_ref);
+  if (bridge_class == nullptr) {
+    if (should_detach) {
+      engine->vm->DetachCurrentThread();
+    }
+    return nullptr;
+  }
+
+  jmethodID callback =
+      env->GetMethodID(bridge_class, "onNativeWebFetch",
+                       "(Ljava/lang/String;I)Ljava/lang/String;");
+  if (callback == nullptr) {
+    env->DeleteLocalRef(bridge_class);
+    if (should_detach) {
+      engine->vm->DetachCurrentThread();
+    }
+    return nullptr;
+  }
+
+  jstring j_url = env->NewStringUTF(url != nullptr ? url : "");
+  auto* result = static_cast<jstring>(
+      env->CallObjectMethod(engine->bridge_ref, callback, j_url, max_chars));
+  env->DeleteLocalRef(j_url);
+
+  if (env->ExceptionCheck()) {
+    env->ExceptionDescribe();
+    env->ExceptionClear();
+    env->DeleteLocalRef(bridge_class);
+    if (should_detach) {
+      engine->vm->DetachCurrentThread();
+    }
+    return nullptr;
+  }
+
+  if (result != nullptr) {
+    result_storage = ToString(env, result);
+    env->DeleteLocalRef(result);
+  }
+  env->DeleteLocalRef(bridge_class);
+  if (should_detach) {
+    engine->vm->DetachCurrentThread();
+  }
+  return result_storage.empty() ? nullptr : result_storage.c_str();
+}
+
 void EnsureSubscribed(JNIEnv* env, jobject thiz, EngineHandle* engine) {
   if (engine == nullptr || engine->engine == nullptr) {
     return;
@@ -174,6 +316,8 @@ void EnsureSubscribed(JNIEnv* env, jobject thiz, EngineHandle* engine) {
   callbacks.on_avatar_state = OnDeviceAvatarState;
   callbacks.on_speech_request = OnDeviceSpeechRequest;
   callbacks.on_speech_interrupt = OnDeviceSpeechInterrupt;
+  callbacks.on_web_search = OnDeviceWebSearch;
+  callbacks.on_web_fetch = OnDeviceWebFetch;
   ravbot_mobile_set_device_callbacks(engine->engine, &callbacks, engine);
 }
 

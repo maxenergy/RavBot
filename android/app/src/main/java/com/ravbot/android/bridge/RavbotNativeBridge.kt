@@ -2,6 +2,8 @@ package com.ravbot.android.bridge
 
 import android.os.Handler
 import android.os.Looper
+import com.ravbot.android.network.HostWebToolClient
+import java.util.concurrent.Executors
 
 data class NativeLoadStatus(
     val isLoaded: Boolean,
@@ -18,6 +20,8 @@ class RavbotNativeBridge {
   private var engineHandle: Long = 0L
   private var eventListener: ((NativeEvent) -> Unit)? = null
   private val mainHandler = Handler(Looper.getMainLooper())
+  private val webToolClient = HostWebToolClient()
+  private val hostExecutor = Executors.newSingleThreadExecutor()
 
   val loadStatus: NativeLoadStatus
     get() = sharedLoadStatus
@@ -148,6 +152,28 @@ class RavbotNativeBridge {
       eventListener?.invoke(event)
     }
   }
+
+  @Suppress("unused")
+  fun onNativeWebSearch(
+      query: String,
+      count: Int,
+      freshness: String,
+  ): String =
+      hostExecutor
+          .submit<String> {
+            webToolClient.webSearch(
+                query = query,
+                count = count,
+                freshness = freshness.ifBlank { null },
+            )
+          }
+          .get()
+
+  @Suppress("unused")
+  fun onNativeWebFetch(
+      url: String,
+      maxChars: Int,
+  ): String = hostExecutor.submit<String> { webToolClient.webFetch(url, maxChars) }.get()
 
   private external fun nativeInitEngine(
       configJson: String,

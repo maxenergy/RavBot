@@ -24,11 +24,22 @@ typedef void (*ravbot_mobile_speech_request_callback)(
     const char* text,
     void* user_data);
 typedef void (*ravbot_mobile_speech_interrupt_callback)(void* user_data);
+typedef const char* (*ravbot_mobile_web_search_callback)(
+    const char* query,
+    int count,
+    const char* freshness,
+    void* user_data);
+typedef const char* (*ravbot_mobile_web_fetch_callback)(
+    const char* url,
+    int max_chars,
+    void* user_data);
 
 typedef struct ravbot_mobile_device_callbacks {
   ravbot_mobile_avatar_state_callback on_avatar_state;
   ravbot_mobile_speech_request_callback on_speech_request;
   ravbot_mobile_speech_interrupt_callback on_speech_interrupt;
+  ravbot_mobile_web_search_callback on_web_search;
+  ravbot_mobile_web_fetch_callback on_web_fetch;
 } ravbot_mobile_device_callbacks_t;
 
 ravbot_mobile_engine_t* ravbot_mobile_init_engine(

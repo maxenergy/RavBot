@@ -20,6 +20,10 @@ class DeviceCapabilityBridge {
   virtual void SetAvatarState(AvatarState state) = 0;
   virtual void RequestSpeechPlayback(const std::string& text) = 0;
   virtual void InterruptSpeechPlayback() = 0;
+  virtual std::string WebSearch(const std::string& query,
+                                int count,
+                                const std::string& freshness) = 0;
+  virtual std::string WebFetch(const std::string& url, int max_chars) = 0;
 };
 
 }  // namespace ravbot::mobile

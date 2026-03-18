@@ -397,6 +397,97 @@ class FakeTimeToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
+class FakeWebSearchToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("RavBot Android MVP") !=
+              std::string::npos) {
+        response.content = "I found the RavBot Android MVP search result.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_web_search";
+    tool_call.name = "web_search";
+    tool_call.arguments = {{"query", "ravbot android mvp"}, {"count", 3}};
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override { return "fake-web-search"; }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-web-search-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
+class FakeWebFetchToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("Android embodied assistant") !=
+              std::string::npos) {
+        response.content = "I fetched the Android embodied assistant page.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_web_fetch";
+    tool_call.name = "web_fetch";
+    tool_call.arguments = {
+        {"url", "https://example.com/ravbot-android"},
+        {"maxChars", 4096},
+    };
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override { return "fake-web-fetch"; }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-web-fetch-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
 std::vector<std::string> tool_names(
     const ravbot::ChatCompletionRequest& request) {
   std::vector<std::string> names;
@@ -465,6 +556,56 @@ class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
 
   bool interrupted = false;
   bool has_pending_audio = false;
+};
+
+class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
+ public:
+  std::string ResolveStateDirectory() const override { return "/tmp/state"; }
+  std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
+  bool IsForeground() const override { return true; }
+
+  void SetAvatarState(ravbot::mobile::AvatarState state) override {
+    avatar_states.push_back(ravbot::mobile::AvatarStateToString(state));
+  }
+
+  void RequestSpeechPlayback(const std::string& text) override {
+    speech_requests.push_back(text);
+  }
+
+  void InterruptSpeechPlayback() override { speech_interrupts += 1; }
+
+  std::string WebSearch(const std::string& query,
+                        int count,
+                        const std::string& freshness) override {
+    web_search_calls.push_back({query, count, freshness});
+    return nlohmann::json{
+        {"provider", "android_host"},
+        {"query", query},
+        {"freshness", freshness},
+        {"results",
+         nlohmann::json::array(
+             {{{"title", "RavBot Android MVP"},
+               {"url", "https://example.com/ravbot-android"},
+               {"description", "Android embodied assistant planning page."}}})}}
+        .dump(2);
+  }
+
+  std::string WebFetch(const std::string& url, int max_chars) override {
+    web_fetch_calls.push_back({url, max_chars});
+    return nlohmann::json{
+        {"url", url},
+        {"content", "Android embodied assistant page content."},
+        {"contentType", "text/html"},
+        {"maxChars", max_chars},
+    }
+        .dump(2);
+  }
+
+  std::vector<std::string> avatar_states;
+  std::vector<std::string> speech_requests;
+  int speech_interrupts = 0;
+  std::vector<std::tuple<std::string, int, std::string>> web_search_calls;
+  std::vector<std::pair<std::string, int>> web_fetch_calls;
 };
 
 class FakeVisionProvider : public ravbot::mobile::MobileVisionProvider {
@@ -1196,6 +1337,93 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesTimeToolRoundTrip) {
   ASSERT_EQ(history.size(), 4u);
   EXPECT_EQ(history[1].content[0].name, "time");
   EXPECT_EQ(history[3].content[0].text, "Device time snapshot received.");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnExecutesWebSearchToolThroughDeviceBridge) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider = std::make_shared<FakeWebSearchToolCallingTextProvider>();
+  auto bridge = std::make_shared<FakeDeviceBridge>();
+  engine.SetTextProvider(provider);
+  engine.SetDeviceBridge(bridge);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents(
+      [&events](const ravbot::mobile::MobileEvent& event) {
+        events.push_back(event);
+      });
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:web-search",
+                                  "Search the web for RavBot Android."));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  const auto names = tool_names(provider->requests.front());
+  EXPECT_NE(std::find(names.begin(), names.end(), "web_search"), names.end());
+  ASSERT_EQ(bridge->web_search_calls.size(), 1u);
+  EXPECT_EQ(std::get<0>(bridge->web_search_calls.front()), "ravbot android mvp");
+  EXPECT_EQ(std::get<1>(bridge->web_search_calls.front()), 3);
+
+  auto tool_result = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventToolResult &&
+               event.payload.value("name", "") == "web_search";
+      });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "RavBot Android MVP"),
+            std::string::npos);
+
+  auto history = engine.session_manager().GetHistory("agent:main:web-search");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "web_search");
+  EXPECT_EQ(history[3].content[0].text,
+            "I found the RavBot Android MVP search result.");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnExecutesWebFetchToolThroughDeviceBridge) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider = std::make_shared<FakeWebFetchToolCallingTextProvider>();
+  auto bridge = std::make_shared<FakeDeviceBridge>();
+  engine.SetTextProvider(provider);
+  engine.SetDeviceBridge(bridge);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents(
+      [&events](const ravbot::mobile::MobileEvent& event) {
+        events.push_back(event);
+      });
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:web-fetch",
+                                  "Fetch the RavBot Android page."));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  const auto names = tool_names(provider->requests.front());
+  EXPECT_NE(std::find(names.begin(), names.end(), "web_fetch"), names.end());
+  ASSERT_EQ(bridge->web_fetch_calls.size(), 1u);
+  EXPECT_EQ(bridge->web_fetch_calls.front().first,
+            "https://example.com/ravbot-android");
+  EXPECT_EQ(bridge->web_fetch_calls.front().second, 4096);
+
+  auto tool_result = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventToolResult &&
+               event.payload.value("name", "") == "web_fetch";
+      });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "Android embodied assistant page content."),
+            std::string::npos);
+
+  auto history = engine.session_manager().GetHistory("agent:main:web-fetch");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "web_fetch");
+  EXPECT_EQ(history[3].content[0].text,
+            "I fetched the Android embodied assistant page.");
 }
 
 }  // namespace

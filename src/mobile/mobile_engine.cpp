@@ -25,6 +25,8 @@ namespace {
 constexpr char kDeviceStatusToolName[] = "device_status";
 constexpr char kCameraSnapshotToolName[] = "camera_snapshot";
 constexpr char kTimeToolName[] = "time";
+constexpr char kWebSearchToolName[] = "web_search";
+constexpr char kWebFetchToolName[] = "web_fetch";
 constexpr char kMemoryListToolName[] = "memory_list";
 constexpr char kMemorySearchToolName[] = "memory_search";
 constexpr char kMemoryGetToolName[] = "memory_get";
@@ -517,7 +519,7 @@ bool MobileEngine::HandleAsrUpdate(const std::string& session_key,
 }
 
 std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
-  return {nlohmann::json{
+  std::vector<nlohmann::json> tools = {nlohmann::json{
       {"type", "function"},
       {"function",
        {{"name", kDeviceStatusToolName},
@@ -650,6 +652,53 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
                    "Required when deleting a non-empty directory."}}}}},
               {"required", {"path"}},
               {"additionalProperties", false}}}}}}};
+  if (device_bridge_ != nullptr) {
+    tools.push_back(nlohmann::json{
+        {"type", "function"},
+        {"function",
+         {{"name", kWebSearchToolName},
+          {"description",
+           "Search the web through the Android host networking stack and "
+           "return titles, URLs, and snippets."},
+          {"parameters",
+           {{"type", "object"},
+            {"properties",
+             {{"query",
+               {{"type", "string"},
+                {"description", "Search query."}}},
+              {"count",
+               {{"type", "integer"},
+                {"minimum", 1},
+                {"maximum", 10},
+                {"description", "Maximum number of search results."}}},
+              {"freshness",
+               {{"type", "string"},
+                {"enum", {"day", "week", "month", "year"}},
+                {"description", "Optional recency filter."}}}}},
+            {"required", {"query"}},
+            {"additionalProperties", false}}}}}});
+    tools.push_back(nlohmann::json{
+        {"type", "function"},
+        {"function",
+         {{"name", kWebFetchToolName},
+          {"description",
+           "Fetch a web page through the Android host networking stack and "
+           "return plain text content."},
+          {"parameters",
+           {{"type", "object"},
+            {"properties",
+             {{"url",
+               {{"type", "string"},
+                {"description", "Absolute http or https URL to fetch."}}},
+              {"maxChars",
+               {{"type", "integer"},
+                {"minimum", 256},
+                {"maximum", 100000},
+                {"description", "Maximum number of characters to return."}}}}},
+            {"required", {"url"}},
+            {"additionalProperties", false}}}}}});
+  }
+  return tools;
 }
 
 std::string MobileEngine::BuildDeviceStatusToolResult() const {
@@ -721,6 +770,33 @@ std::string MobileEngine::BuildTimeToolResult() const {
       {"utcOffset", offset_stream.str()},
       {"timezoneName", format_timezone_name(local)}}
       .dump(2);
+}
+
+std::string MobileEngine::BuildWebSearchToolResult(
+    const nlohmann::json& arguments) const {
+  if (device_bridge_ == nullptr) {
+    throw std::runtime_error("web_search requires a device bridge");
+  }
+  const std::string query = arguments.value("query", "");
+  const int count = arguments.value("count", 5);
+  const std::string freshness = arguments.value("freshness", "");
+  if (query.empty()) {
+    throw std::runtime_error("query is required");
+  }
+  return device_bridge_->WebSearch(query, count, freshness);
+}
+
+std::string MobileEngine::BuildWebFetchToolResult(
+    const nlohmann::json& arguments) const {
+  if (device_bridge_ == nullptr) {
+    throw std::runtime_error("web_fetch requires a device bridge");
+  }
+  const std::string url = arguments.value("url", "");
+  const int max_chars = arguments.value("maxChars", 50000);
+  if (url.empty()) {
+    throw std::runtime_error("url is required");
+  }
+  return device_bridge_->WebFetch(url, max_chars);
 }
 
 std::filesystem::path MobileEngine::WorkspaceRoot() const {
@@ -943,6 +1019,12 @@ std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
   }
   if (tool_call.name == kTimeToolName) {
     return BuildTimeToolResult();
+  }
+  if (tool_call.name == kWebSearchToolName) {
+    return BuildWebSearchToolResult(tool_call.arguments);
+  }
+  if (tool_call.name == kWebFetchToolName) {
+    return BuildWebFetchToolResult(tool_call.arguments);
   }
   if (tool_call.name == kMemoryListToolName) {
     return BuildMemoryListToolResult(tool_call.arguments);

@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
@@ -50,6 +51,33 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
       return;
     }
     callbacks_.on_speech_interrupt(user_data_);
+  }
+
+  std::string WebSearch(const std::string& query,
+                        int count,
+                        const std::string& freshness) override {
+    if (callbacks_.on_web_search == nullptr) {
+      throw std::runtime_error("web_search callback is not configured");
+    }
+    const char* result =
+        callbacks_.on_web_search(query.c_str(), count, freshness.c_str(),
+                                 user_data_);
+    if (result == nullptr) {
+      throw std::runtime_error("web_search callback returned null");
+    }
+    return result;
+  }
+
+  std::string WebFetch(const std::string& url, int max_chars) override {
+    if (callbacks_.on_web_fetch == nullptr) {
+      throw std::runtime_error("web_fetch callback is not configured");
+    }
+    const char* result =
+        callbacks_.on_web_fetch(url.c_str(), max_chars, user_data_);
+    if (result == nullptr) {
+      throw std::runtime_error("web_fetch callback returned null");
+    }
+    return result;
   }
 
   void SetForeground(bool foreground) { foreground_ = foreground; }
