@@ -262,6 +262,51 @@ class FakeMemorySearchToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
+class FakeTimeToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("\"utc\"") != std::string::npos &&
+          last.content.front().content.find("\"utcOffset\"") !=
+              std::string::npos) {
+        response.content = "Device time snapshot received.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_time";
+    tool_call.name = "time";
+    tool_call.arguments = nlohmann::json::object();
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override { return "fake-time-tool"; }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-time-tool-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
 std::vector<std::string> tool_names(
     const ravbot::ChatCompletionRequest& request) {
   std::vector<std::string> names;
@@ -751,6 +796,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
             names.end());
   EXPECT_NE(std::find(names.begin(), names.end(), "memory_search"),
             names.end());
+  EXPECT_NE(std::find(names.begin(), names.end(), "time"), names.end());
 
   auto history = engine.session_manager().GetHistory("agent:main:tooling");
   ASSERT_EQ(history.size(), 4u);
@@ -929,6 +975,45 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesMemorySearchToolRoundTrip) {
   EXPECT_EQ(history[1].content[0].name, "memory_search");
   EXPECT_EQ(history[3].content[0].text,
             "I found the dragonfruit project note in memory.");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnExecutesTimeToolRoundTrip) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider = std::make_shared<FakeTimeToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents(
+      [&events](const ravbot::mobile::MobileEvent& event) {
+        events.push_back(event);
+      });
+
+  ASSERT_TRUE(
+      engine.SendTextTurn("agent:main:time", "What time is it on device?"));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  const auto names = tool_names(provider->requests.front());
+  EXPECT_NE(std::find(names.begin(), names.end(), "time"), names.end());
+
+  auto tool_result = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventToolResult &&
+               event.payload.value("name", "") == "time";
+      });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  const auto result = tool_result->payload["result"].get<std::string>();
+  EXPECT_NE(result.find("\"epochMs\""), std::string::npos);
+  EXPECT_NE(result.find("\"utc\""), std::string::npos);
+  EXPECT_NE(result.find("\"local\""), std::string::npos);
+  EXPECT_NE(result.find("\"utcOffset\""), std::string::npos);
+
+  auto history = engine.session_manager().GetHistory("agent:main:time");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "time");
+  EXPECT_EQ(history[3].content[0].text, "Device time snapshot received.");
 }
 
 }  // namespace

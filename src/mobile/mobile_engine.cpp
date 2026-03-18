@@ -5,8 +5,10 @@
 
 #include <chrono>
 #include <cmath>
+#include <ctime>
 #include <cstdint>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <unordered_set>
 #include <sstream>
@@ -21,6 +23,7 @@ namespace {
 
 constexpr char kDeviceStatusToolName[] = "device_status";
 constexpr char kCameraSnapshotToolName[] = "camera_snapshot";
+constexpr char kTimeToolName[] = "time";
 constexpr char kMemorySearchToolName[] = "memory_search";
 constexpr char kMemoryGetToolName[] = "memory_get";
 constexpr char kMemoryWriteToolName[] = "memory_write";
@@ -33,6 +36,38 @@ nlohmann::json make_avatar_payload(AvatarState state) {
 std::string make_tool_call_id(int round, size_t index) {
   return "mobile_tool_" + std::to_string(round) + "_" +
          std::to_string(index + 1);
+}
+
+std::tm utc_tm(std::time_t timestamp) {
+  std::tm tm{};
+#if defined(_WIN32)
+  gmtime_s(&tm, &timestamp);
+#else
+  gmtime_r(&timestamp, &tm);
+#endif
+  return tm;
+}
+
+std::tm local_tm(std::time_t timestamp) {
+  std::tm tm{};
+#if defined(_WIN32)
+  localtime_s(&tm, &timestamp);
+#else
+  localtime_r(&timestamp, &tm);
+#endif
+  return tm;
+}
+
+std::string format_tm(const std::tm& tm) {
+  std::ostringstream stream;
+  stream << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
+  return stream.str();
+}
+
+std::string format_timezone_name(const std::tm& tm) {
+  std::ostringstream stream;
+  stream << std::put_time(&tm, "%Z");
+  return stream.str();
 }
 
 class PlaceholderMobileVisionProvider : public MobileVisionProvider {
@@ -485,6 +520,17 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
       nlohmann::json{
           {"type", "function"},
           {"function",
+           {{"name", kTimeToolName},
+            {"description",
+             "Get the current device time in local time and UTC, including "
+             "timezone offset and epoch milliseconds."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties", nlohmann::json::object()},
+              {"additionalProperties", false}}}}}},
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
            {{"name", kMemorySearchToolName},
             {"description",
              "Search the mobile workspace memory files stored on device."},
@@ -572,6 +618,40 @@ std::string MobileEngine::BuildCameraSnapshotToolResult() const {
         config_.mobile.vision.foreground_only;
   }
   return result.dump(2);
+}
+
+std::string MobileEngine::BuildTimeToolResult() const {
+  const auto now = std::chrono::system_clock::now();
+  const auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            now.time_since_epoch())
+                            .count();
+  const std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
+  const std::tm utc = utc_tm(timestamp);
+  const std::tm local = local_tm(timestamp);
+
+  std::tm local_copy = local;
+  std::tm utc_copy = utc;
+  std::time_t local_as_time = std::mktime(&local_copy);
+  std::time_t utc_as_time = std::mktime(&utc_copy);
+  const int offset_seconds =
+      static_cast<int>(std::difftime(local_as_time, utc_as_time));
+  const int offset_minutes = offset_seconds / 60;
+
+  std::ostringstream offset_stream;
+  const char sign = offset_minutes >= 0 ? '+' : '-';
+  const int absolute_minutes = std::abs(offset_minutes);
+  offset_stream << sign << std::setw(2) << std::setfill('0')
+                << (absolute_minutes / 60) << ":" << std::setw(2)
+                << (absolute_minutes % 60);
+
+  return nlohmann::json{
+      {"epochMs", epoch_ms},
+      {"utc", format_tm(utc) + "Z"},
+      {"local", format_tm(local)},
+      {"utcOffsetMinutes", offset_minutes},
+      {"utcOffset", offset_stream.str()},
+      {"timezoneName", format_timezone_name(local)}}
+      .dump(2);
 }
 
 std::filesystem::path MobileEngine::WorkspaceRoot() const {
@@ -698,6 +778,9 @@ std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
   }
   if (tool_call.name == kCameraSnapshotToolName) {
     return BuildCameraSnapshotToolResult();
+  }
+  if (tool_call.name == kTimeToolName) {
+    return BuildTimeToolResult();
   }
   if (tool_call.name == kMemorySearchToolName) {
     return BuildMemorySearchToolResult(tool_call.arguments);

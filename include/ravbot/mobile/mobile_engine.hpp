@@ -100,6 +100,7 @@ class MobileEngine {
   std::string ExecuteToolCall(const ToolCall& tool_call) const;
   std::string BuildDeviceStatusToolResult() const;
   std::string BuildCameraSnapshotToolResult() const;
+  std::string BuildTimeToolResult() const;
   std::string BuildMemorySearchToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryGetToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryWriteToolResult(const nlohmann::json& arguments) const;
