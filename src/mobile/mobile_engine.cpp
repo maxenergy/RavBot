@@ -3,8 +3,10 @@
 
 #include "ravbot/mobile/mobile_engine.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <fstream>
 #include <limits>
 #include <unordered_set>
 #include <sstream>
@@ -19,6 +21,9 @@ namespace {
 
 constexpr char kDeviceStatusToolName[] = "device_status";
 constexpr char kCameraSnapshotToolName[] = "camera_snapshot";
+constexpr char kMemorySearchToolName[] = "memory_search";
+constexpr char kMemoryGetToolName[] = "memory_get";
+constexpr char kMemoryWriteToolName[] = "memory_write";
 constexpr int kMaxMobileToolRounds = 4;
 
 nlohmann::json make_avatar_payload(AvatarState state) {
@@ -89,6 +94,7 @@ MobileEngine::MobileEngine(RavBotConfig config,
       logger_(std::move(logger)),
       session_manager_(state_dir / "sessions",
                        logger_ ? logger_ : spdlog::default_logger()),
+      state_dir_(state_dir),
       models_dir_(models_dir) {
   if (!logger_) {
     logger_ = spdlog::default_logger();
@@ -475,6 +481,59 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
             {"parameters",
              {{"type", "object"},
               {"properties", nlohmann::json::object()},
+              {"additionalProperties", false}}}}}},
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
+           {{"name", kMemorySearchToolName},
+            {"description",
+             "Search the mobile workspace memory files stored on device."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties",
+               {{"query",
+                 {{"type", "string"},
+                  {"description", "Search query for mobile memory."}}},
+                {"maxResults",
+                 {{"type", "integer"},
+                  {"description", "Maximum number of matches to return."}}}}},
+              {"required", {"query"}},
+              {"additionalProperties", false}}}}}},
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
+           {{"name", kMemoryGetToolName},
+            {"description",
+             "Read a specific file from the mobile workspace memory."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties",
+               {{"path",
+                 {{"type", "string"},
+                  {"description", "Relative path inside mobile workspace."}}}}},
+              {"required", {"path"}},
+              {"additionalProperties", false}}}}}},
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
+           {{"name", kMemoryWriteToolName},
+            {"description",
+             "Write or append content to a file in the mobile workspace "
+             "memory."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties",
+               {{"path",
+                 {{"type", "string"},
+                  {"description", "Relative path inside mobile workspace."}}},
+                {"content",
+                 {{"type", "string"},
+                  {"description", "Content to write."}}},
+                {"mode",
+                 {{"type", "string"},
+                  {"enum", {"overwrite", "append"}},
+                  {"description", "Write mode."}}}}},
+              {"required", {"path", "content"}},
               {"additionalProperties", false}}}}}}};
 }
 
@@ -515,12 +574,139 @@ std::string MobileEngine::BuildCameraSnapshotToolResult() const {
   return result.dump(2);
 }
 
+std::filesystem::path MobileEngine::WorkspaceRoot() const {
+  return state_dir_ / "workspace";
+}
+
+std::filesystem::path MobileEngine::ResolveWorkspacePath(
+    const std::string& relative_path) const {
+  if (relative_path.empty()) {
+    throw std::runtime_error("path is required");
+  }
+
+  const std::filesystem::path workspace = WorkspaceRoot().lexically_normal();
+  const std::filesystem::path resolved =
+      (workspace / std::filesystem::path(relative_path)).lexically_normal();
+
+  const std::string workspace_str = workspace.generic_string();
+  const std::string resolved_str = resolved.generic_string();
+  const bool inside_workspace =
+      resolved_str == workspace_str ||
+      resolved_str.rfind(workspace_str + "/", 0) == 0;
+  if (!inside_workspace) {
+    throw std::runtime_error("Access denied: path outside mobile workspace");
+  }
+  return resolved;
+}
+
+std::string MobileEngine::BuildMemorySearchToolResult(
+    const nlohmann::json& arguments) const {
+  const std::string query = arguments.value("query", "");
+  const int max_results = arguments.value("maxResults", 10);
+  if (query.empty()) {
+    throw std::runtime_error("query is required");
+  }
+
+  const std::filesystem::path workspace = WorkspaceRoot();
+  std::filesystem::create_directories(workspace);
+
+  MemorySearch search(logger_);
+  search.IndexDirectory(workspace);
+  const auto results = search.Search(query, max_results);
+
+  nlohmann::json arr = nlohmann::json::array();
+  for (const auto& result : results) {
+    std::filesystem::path source_path(result.source);
+    std::string source = source_path.lexically_normal().generic_string();
+    std::error_code ec;
+    const auto relative = std::filesystem::relative(source_path, workspace, ec);
+    if (!ec && !relative.empty()) {
+      source = relative.generic_string();
+    }
+    arr.push_back({{"source", source},
+                   {"content", result.content},
+                   {"score", result.score},
+                   {"lineNumber", result.line_number}});
+  }
+
+  return nlohmann::json{{"workspace", workspace.string()},
+                        {"query", query},
+                        {"count", arr.size()},
+                        {"results", arr}}
+      .dump(2);
+}
+
+std::string MobileEngine::BuildMemoryGetToolResult(
+    const nlohmann::json& arguments) const {
+  const std::string relative_path = arguments.value("path", "");
+  const std::filesystem::path full_path = ResolveWorkspacePath(relative_path);
+  if (!std::filesystem::exists(full_path)) {
+    throw std::runtime_error("File not found: " + relative_path);
+  }
+
+  std::ifstream file(full_path);
+  if (!file) {
+    throw std::runtime_error("Cannot read: " + relative_path);
+  }
+  return nlohmann::json{{"path", relative_path},
+                        {"content", std::string(std::istreambuf_iterator<char>(file), {})}}
+      .dump(2);
+}
+
+std::string MobileEngine::BuildMemoryWriteToolResult(
+    const nlohmann::json& arguments) const {
+  const std::string relative_path = arguments.value("path", "");
+  const std::string content = arguments.value("content", "");
+  const std::string mode = arguments.value("mode", "overwrite");
+  if (relative_path.empty()) {
+    throw std::runtime_error("path is required");
+  }
+  if (content.empty()) {
+    throw std::runtime_error("content is required");
+  }
+  if (mode != "overwrite" && mode != "append") {
+    throw std::runtime_error("mode must be 'overwrite' or 'append'");
+  }
+
+  const std::filesystem::path full_path = ResolveWorkspacePath(relative_path);
+  std::filesystem::create_directories(full_path.parent_path());
+
+  std::ios_base::openmode open_mode = std::ios::out;
+  if (mode == "append") {
+    open_mode |= std::ios::app;
+  }
+
+  std::ofstream output(full_path, open_mode);
+  if (!output) {
+    throw std::runtime_error("Failed to open file: " + relative_path);
+  }
+  output << content;
+  if (mode == "append" && !content.empty() && content.back() != '\n') {
+    output << '\n';
+  }
+
+  return nlohmann::json{{"ok", true},
+                        {"path", relative_path},
+                        {"mode", mode},
+                        {"bytesWritten", content.size()}}
+      .dump(2);
+}
+
 std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
   if (tool_call.name == kDeviceStatusToolName) {
     return BuildDeviceStatusToolResult();
   }
   if (tool_call.name == kCameraSnapshotToolName) {
     return BuildCameraSnapshotToolResult();
+  }
+  if (tool_call.name == kMemorySearchToolName) {
+    return BuildMemorySearchToolResult(tool_call.arguments);
+  }
+  if (tool_call.name == kMemoryGetToolName) {
+    return BuildMemoryGetToolResult(tool_call.arguments);
+  }
+  if (tool_call.name == kMemoryWriteToolName) {
+    return BuildMemoryWriteToolResult(tool_call.arguments);
   }
   throw std::runtime_error("Unsupported mobile tool: " + tool_call.name);
 }

@@ -17,6 +17,7 @@
 #include <spdlog/spdlog.h>
 
 #include "ravbot/config.hpp"
+#include "ravbot/core/memory_search.hpp"
 #include "ravbot/mobile/device_capability_bridge.hpp"
 #include "ravbot/mobile/mobile_events.hpp"
 #include "ravbot/providers/llm_provider.hpp"
@@ -99,6 +100,12 @@ class MobileEngine {
   std::string ExecuteToolCall(const ToolCall& tool_call) const;
   std::string BuildDeviceStatusToolResult() const;
   std::string BuildCameraSnapshotToolResult() const;
+  std::string BuildMemorySearchToolResult(const nlohmann::json& arguments) const;
+  std::string BuildMemoryGetToolResult(const nlohmann::json& arguments) const;
+  std::string BuildMemoryWriteToolResult(const nlohmann::json& arguments) const;
+  std::filesystem::path WorkspaceRoot() const;
+  std::filesystem::path ResolveWorkspacePath(
+      const std::string& relative_path) const;
   bool HandleUserTextTurn(const std::string& session_key,
                           const std::string& text,
                           bool emit_asr_final);
@@ -108,6 +115,7 @@ class MobileEngine {
   RavBotConfig config_;
   std::shared_ptr<spdlog::logger> logger_;
   SessionManager session_manager_;
+  std::filesystem::path state_dir_;
   std::filesystem::path models_dir_;
   std::shared_ptr<LLMProvider> text_provider_;
   std::shared_ptr<MobileAsrProvider> asr_provider_;

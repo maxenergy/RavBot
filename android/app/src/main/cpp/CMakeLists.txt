@@ -7,6 +7,7 @@ include(FetchContent)
 set(RAVBOT_ROOT ${CMAKE_CURRENT_LIST_DIR}/../../../../..)
 set(RAVBOT_FOUNDATION_SOURCES
     ${RAVBOT_ROOT}/src/core/config.cpp
+    ${RAVBOT_ROOT}/src/core/memory_search.cpp
     ${RAVBOT_ROOT}/src/providers/llama_cpp_mobile_provider.cpp
     ${RAVBOT_ROOT}/src/session/session_manager.cpp
 )
