@@ -67,6 +67,19 @@ void capture_speech_interrupt(void* user_data) {
   sink->speech_interrupt_count += 1;
 }
 
+const char* capture_web_search(const char* /*query*/,
+                               int /*count*/,
+                               const char* /*freshness*/,
+                               void* /*user_data*/) {
+  return R"({"results":[{"title":"RavBot","url":"https://example.com"}]})";
+}
+
+const char* capture_web_fetch(const char* /*url*/,
+                              int /*max_chars*/,
+                              void* /*user_data*/) {
+  return "RavBot Android page";
+}
+
 class MobileCApiTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -366,6 +379,74 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsMissingWebDeviceCallbacks) {
   }
 
   EXPECT_TRUE(saw_runtime);
+}
+
+TEST_F(MobileCApiTest, RuntimeStatusReflectsPartialWebDeviceCallbacks) {
+  std::string config_json = MakeConfigJson();
+
+  {
+    ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+        config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+    ASSERT_NE(engine, nullptr);
+
+    EventSink sink;
+    ravbot_mobile_device_callbacks_t callbacks{};
+    callbacks.on_web_search = capture_web_search;
+    ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, &callbacks, &sink));
+
+    uint64_t subscription_id =
+        ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+    ASSERT_NE(subscription_id, 0u);
+    EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:web-search-only",
+                                            "Web search only"));
+
+    ravbot_mobile_unsubscribe_events(engine, subscription_id);
+    ravbot_mobile_free_engine(engine);
+
+    bool saw_runtime = false;
+    for (const auto& event : sink.events) {
+      if (event.name != "mobile.runtime_status") {
+        continue;
+      }
+      saw_runtime = true;
+      EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
+      EXPECT_TRUE(event.payload["webSearchReady"].get<bool>());
+      EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
+    }
+    EXPECT_TRUE(saw_runtime);
+  }
+
+  {
+    ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+        config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+    ASSERT_NE(engine, nullptr);
+
+    EventSink sink;
+    ravbot_mobile_device_callbacks_t callbacks{};
+    callbacks.on_web_fetch = capture_web_fetch;
+    ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, &callbacks, &sink));
+
+    uint64_t subscription_id =
+        ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+    ASSERT_NE(subscription_id, 0u);
+    EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:web-fetch-only",
+                                            "Web fetch only"));
+
+    ravbot_mobile_unsubscribe_events(engine, subscription_id);
+    ravbot_mobile_free_engine(engine);
+
+    bool saw_runtime = false;
+    for (const auto& event : sink.events) {
+      if (event.name != "mobile.runtime_status") {
+        continue;
+      }
+      saw_runtime = true;
+      EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
+      EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
+      EXPECT_TRUE(event.payload["webFetchReady"].get<bool>());
+    }
+    EXPECT_TRUE(saw_runtime);
+  }
 }
 
 }  // namespace
