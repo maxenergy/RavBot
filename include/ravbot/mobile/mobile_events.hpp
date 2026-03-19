@@ -86,6 +86,8 @@ struct DeviceStatusSnapshot {
   bool service_running = false;
   bool capture_requested = false;
   bool permissions_granted = false;
+  bool host_web_search_enabled = true;
+  bool host_web_fetch_enabled = true;
   std::string microphone_status = "stopped";
   std::string camera_status = "stopped";
   std::string speaker_status = "idle";
@@ -96,6 +98,8 @@ struct DeviceStatusSnapshot {
             {"serviceRunning", service_running},
             {"captureRequested", capture_requested},
             {"permissionsGranted", permissions_granted},
+            {"hostWebSearchEnabled", host_web_search_enabled},
+            {"hostWebFetchEnabled", host_web_fetch_enabled},
             {"microphoneStatus", microphone_status},
             {"cameraStatus", camera_status},
             {"speakerStatus", speaker_status},

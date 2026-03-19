@@ -619,6 +619,8 @@ private fun RavbotHostScreen() {
       cameraStatus,
       speakerStatus,
       permissionsGranted,
+      hostWebSearchEnabled,
+      hostWebFetchEnabled,
   ) {
     if (!nativeReady) {
       return@LaunchedEffect
@@ -627,6 +629,8 @@ private fun RavbotHostScreen() {
         serviceRunning = serviceRunning,
         captureRequested = captureRequested,
         permissionsGranted = permissionsGranted,
+        hostWebSearchEnabled = hostWebSearchEnabled,
+        hostWebFetchEnabled = hostWebFetchEnabled,
         microphoneStatus = microphoneStatus,
         cameraStatus = cameraStatus,
         speakerStatus = speakerStatus,
@@ -1466,6 +1470,8 @@ private fun describeDeviceStatus(payload: String): String {
   val serviceRunning = parseJsonBoolean(payload, "serviceRunning")
   val captureRequested = parseJsonBoolean(payload, "captureRequested")
   val permissionsGranted = parseJsonBoolean(payload, "permissionsGranted")
+  val hostWebSearchEnabled = parseJsonBoolean(payload, "hostWebSearchEnabled")
+  val hostWebFetchEnabled = parseJsonBoolean(payload, "hostWebFetchEnabled")
   val microphoneStatus = parseJsonString(payload, "microphoneStatus")
   val cameraStatus = parseJsonString(payload, "cameraStatus")
   val speakerStatus = parseJsonString(payload, "speakerStatus")
@@ -1475,6 +1481,8 @@ private fun describeDeviceStatus(payload: String): String {
   serviceRunning?.let { parts += if (it) "service on" else "service off" }
   captureRequested?.let { parts += if (it) "capture on" else "capture off" }
   permissionsGranted?.let { parts += if (it) "permissions ok" else "permissions missing" }
+  hostWebSearchEnabled?.let { parts += "web search ${if (it) "on" else "off"}" }
+  hostWebFetchEnabled?.let { parts += "web fetch ${if (it) "on" else "off"}" }
   microphoneStatus?.let { parts += "mic $it" }
   cameraStatus?.let { parts += "cam $it" }
   speakerStatus?.let { parts += "speaker $it" }

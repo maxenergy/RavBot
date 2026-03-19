@@ -784,6 +784,8 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
   status.service_running = true;
   status.capture_requested = true;
   status.permissions_granted = true;
+  status.host_web_search_enabled = false;
+  status.host_web_fetch_enabled = true;
   status.microphone_status = "running";
   status.camera_status = "running";
   status.speaker_status = "speaking";
@@ -798,6 +800,8 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
   ASSERT_NE(first_status, events.end());
   EXPECT_TRUE(first_status->payload["foreground"]);
   EXPECT_TRUE(first_status->payload["serviceRunning"]);
+  EXPECT_FALSE(first_status->payload["hostWebSearchEnabled"]);
+  EXPECT_TRUE(first_status->payload["hostWebFetchEnabled"]);
   EXPECT_EQ(first_status->payload["microphoneStatus"], "running");
   EXPECT_EQ(first_status->payload["speakerStatus"], "speaking");
 
@@ -810,6 +814,8 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
   ASSERT_NE(latest_status, events.rend());
   EXPECT_FALSE(latest_status->payload["foreground"]);
   EXPECT_TRUE(latest_status->payload["serviceRunning"]);
+  EXPECT_FALSE(latest_status->payload["hostWebSearchEnabled"]);
+  EXPECT_TRUE(latest_status->payload["hostWebFetchEnabled"]);
 }
 
 TEST_F(MobileEngineTest, PushPcm16UsesAsrProviderForFinalTurn) {
@@ -1159,6 +1165,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   status.service_running = true;
   status.capture_requested = true;
   status.permissions_granted = true;
+  status.host_web_search_enabled = false;
+  status.host_web_fetch_enabled = true;
   status.microphone_status = "running";
   status.camera_status = "running";
   status.speaker_status = "speaking";
@@ -1198,6 +1206,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   EXPECT_EQ(history[2].content[0].type, "tool_result");
   EXPECT_NE(history[2].content[0].content.find("\"serviceRunning\": true"),
             std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find(
+                "\"hostWebSearchEnabled\": false"),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find(
+                "\"hostWebFetchEnabled\": true"),
+            std::string::npos);
   EXPECT_EQ(history[3].role, "assistant");
   EXPECT_EQ(history[3].content[0].text,
             "Device status received. Service is running and speaker is "
@@ -1218,6 +1232,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
       });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"hostWebSearchEnabled\": false"),
+            std::string::npos);
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"speakerStatus\": \"speaking\""),
             std::string::npos);

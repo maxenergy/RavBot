@@ -522,6 +522,7 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeReportDeviceStatus(
     JNIEnv* env, jobject /* thiz */, jlong handle, jboolean service_running,
     jboolean capture_requested, jboolean permissions_granted,
+    jboolean host_web_search_enabled, jboolean host_web_fetch_enabled,
     jstring microphone_status, jstring camera_status, jstring speaker_status) {
   auto* engine = FromHandle(handle);
   if (engine == nullptr || engine->engine == nullptr) {
@@ -535,6 +536,7 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeReportDeviceStatus(
   ravbot_mobile_report_device_status(
       engine->engine, service_running == JNI_TRUE,
       capture_requested == JNI_TRUE, permissions_granted == JNI_TRUE,
+      host_web_search_enabled == JNI_TRUE, host_web_fetch_enabled == JNI_TRUE,
       microphone.empty() ? "stopped" : microphone.c_str(),
       camera.empty() ? "stopped" : camera.c_str(),
       speaker.empty() ? "idle" : speaker.c_str());
