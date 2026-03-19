@@ -41,6 +41,8 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - `camera_snapshot` now stays scoped to the active mobile session and reports
   freshness metadata such as `ageMs`, `stale`, and
   `capturedWhileForeground`
+- Android CameraX frames now carry a capture-time-derived epoch timestamp into
+  native `camera_snapshot` results instead of using only JNI receive time
 - Avatar mouth motion driven by microphone level while listening and by a
   synthetic speaking envelope while Android `TextToSpeech` is active
 - Native `SpeechPipeline` facade for STT/TTS asset readiness and placeholder ASR

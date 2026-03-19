@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -132,6 +133,12 @@ class CameraFrameController(
               height = image.height,
               stride = image.width,
               format = "YUV420_LUMA",
+              timestampMs =
+                  resolveFrameTimestampMs(
+                      sensorTimestampNs = image.imageInfo.timestamp,
+                      nowEpochMs = now,
+                      nowElapsedRealtimeNs = SystemClock.elapsedRealtimeNanos(),
+                  ),
               pixels = pixels,
           )
       if (pushed) {
@@ -236,5 +243,25 @@ class CameraFrameController(
     mainHandler.post {
       onStateChanged(value)
     }
+  }
+}
+
+internal fun resolveFrameTimestampMs(
+    sensorTimestampNs: Long,
+    nowEpochMs: Long = System.currentTimeMillis(),
+    nowElapsedRealtimeNs: Long = SystemClock.elapsedRealtimeNanos(),
+): Long {
+  if (sensorTimestampNs <= 0L || nowElapsedRealtimeNs <= 0L) {
+    return nowEpochMs
+  }
+  val deltaNs = nowElapsedRealtimeNs - sensorTimestampNs
+  if (deltaNs < 0L) {
+    return nowEpochMs
+  }
+  val resolvedEpochMs = nowEpochMs - (deltaNs / 1_000_000L)
+  return if (resolvedEpochMs > 0L) {
+    resolvedEpochMs
+  } else {
+    nowEpochMs
   }
 }

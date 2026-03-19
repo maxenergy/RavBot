@@ -92,10 +92,19 @@ class RavbotNativeBridge {
       height: Int,
       stride: Int,
       format: String,
+      timestampMs: Long,
       pixels: ByteArray,
   ): Boolean {
     val handle = engineHandle.takeIf { it != 0L } ?: return false
-    return nativePushCameraFrame(handle, width, height, stride, format, pixels)
+    return nativePushCameraFrame(
+        handle,
+        width,
+        height,
+        stride,
+        format,
+        timestampMs,
+        pixels,
+    )
   }
 
   fun interruptGeneration() {
@@ -250,6 +259,7 @@ class RavbotNativeBridge {
       height: Int,
       stride: Int,
       format: String,
+      timestampMs: Long,
       pixels: ByteArray,
   ): Boolean
 

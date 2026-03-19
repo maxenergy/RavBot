@@ -478,7 +478,7 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeFlushAudioTurn(
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_ravbot_android_bridge_RavbotNativeBridge_nativePushCameraFrame(
     JNIEnv* env, jobject /* thiz */, jlong handle, jint width, jint height,
-    jint /* stride */, jstring format, jbyteArray pixels) {
+    jint /* stride */, jstring format, jlong timestamp_ms, jbyteArray pixels) {
   auto* engine = FromHandle(handle);
   if (engine == nullptr || engine->engine == nullptr) {
     return JNI_FALSE;
@@ -490,11 +490,13 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativePushCameraFrame(
   }
 
   const std::string frame_format = ToString(env, format);
+  const int64_t frame_timestamp_ms =
+      timestamp_ms > 0 ? static_cast<int64_t>(timestamp_ms) : NowMillis();
   return ravbot_mobile_push_camera_frame(
              engine->engine, ActiveSessionId(engine), frame.data(),
              frame.size(), width, height,
              frame_format.empty() ? "rgba8888" : frame_format.c_str(),
-             NowMillis())
+             frame_timestamp_ms)
              ? JNI_TRUE
              : JNI_FALSE;
 }
