@@ -56,6 +56,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   Android host keeps those diagnostics visible across relaunches
   A placeholder provider reports `visionProviderReady=false` until a real VLM
   backend is linked.
+- The Android host now treats `visionProviderReady` as the canonical vision
+  readiness flag and still accepts legacy `visionReady` payloads for
+  compatibility.
 - `camera_snapshot` also carries the latest published `deviceStatus`, so the
   local model can tell whether the camera is currently running or whether it
   is looking at an older observation

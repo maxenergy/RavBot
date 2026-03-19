@@ -476,7 +476,7 @@ private fun RavbotHostScreen() {
         runtimeTextStatus =
             describeRuntimeFlag(parseJsonBoolean(event.payload, "textReady"))
         runtimeVisionStatus =
-            describeRuntimeFlag(parseJsonBoolean(event.payload, "visionReady"))
+            describeRuntimeFlag(parseVisionRuntimeReady(event.payload))
         runtimeVulkanStatus =
             describeVulkanStatus(
                 parseJsonBoolean(event.payload, "vulkanRequested"),
@@ -1519,6 +1519,11 @@ private fun parseJsonBoolean(payload: String, field: String): Boolean? {
         }
       }
       .getOrNull()
+}
+
+internal fun parseVisionRuntimeReady(payload: String): Boolean? {
+  return parseJsonBoolean(payload, "visionProviderReady")
+      ?: parseJsonBoolean(payload, "visionReady")
 }
 
 private fun parseJsonInt(payload: String, field: String): Int? {
