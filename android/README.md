@@ -20,7 +20,8 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   so UI and future device-safe tools share one source of truth
 - `device_status` tool results now include both the last published host
   snapshot and the current `mobile.runtime_status` readiness payload, so the
-  local model can inspect provider/backend/web capability state directly
+  local model can inspect provider/backend/web/haptics capability state
+  directly
 - A dedicated `runtime_status` tool now exposes that readiness payload on its
   own for local-model tool calls
 - Android host haptics are now bridged into native readiness, exposed as a

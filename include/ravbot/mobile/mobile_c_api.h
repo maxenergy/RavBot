@@ -84,6 +84,7 @@ bool ravbot_mobile_report_device_status(ravbot_mobile_engine_t* engine,
                                         bool permissions_granted,
                                         bool host_web_search_enabled,
                                         bool host_web_fetch_enabled,
+                                        bool host_haptics_enabled,
                                         const char* microphone_status,
                                         const char* camera_status,
                                         const char* speaker_status);

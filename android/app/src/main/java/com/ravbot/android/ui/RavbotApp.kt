@@ -655,6 +655,7 @@ private fun RavbotHostScreen() {
         permissionsGranted = permissionsGranted,
         hostWebSearchEnabled = hostWebSearchEnabled,
         hostWebFetchEnabled = hostWebFetchEnabled,
+        hostHapticsEnabled = hostHapticsEnabled,
         microphoneStatus = microphoneStatus,
         cameraStatus = cameraStatus,
         speakerStatus = speakerStatus,
@@ -1528,6 +1529,7 @@ private fun describeDeviceStatus(payload: String): String {
   val permissionsGranted = parseJsonBoolean(payload, "permissionsGranted")
   val hostWebSearchEnabled = parseJsonBoolean(payload, "hostWebSearchEnabled")
   val hostWebFetchEnabled = parseJsonBoolean(payload, "hostWebFetchEnabled")
+  val hostHapticsEnabled = parseJsonBoolean(payload, "hostHapticsEnabled")
   val microphoneStatus = parseJsonString(payload, "microphoneStatus")
   val cameraStatus = parseJsonString(payload, "cameraStatus")
   val speakerStatus = parseJsonString(payload, "speakerStatus")
@@ -1539,6 +1541,7 @@ private fun describeDeviceStatus(payload: String): String {
   permissionsGranted?.let { parts += if (it) "permissions ok" else "permissions missing" }
   hostWebSearchEnabled?.let { parts += "web search ${if (it) "on" else "off"}" }
   hostWebFetchEnabled?.let { parts += "web fetch ${if (it) "on" else "off"}" }
+  hostHapticsEnabled?.let { parts += "haptics ${if (it) "on" else "off"}" }
   microphoneStatus?.let { parts += "mic $it" }
   cameraStatus?.let { parts += "cam $it" }
   speakerStatus?.let { parts += "speaker $it" }

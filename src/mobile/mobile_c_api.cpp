@@ -255,6 +255,7 @@ bool ravbot_mobile_report_device_status(ravbot_mobile_engine_t* engine,
                                         bool permissions_granted,
                                         bool host_web_search_enabled,
                                         bool host_web_fetch_enabled,
+                                        bool host_haptics_enabled,
                                         const char* microphone_status,
                                         const char* camera_status,
                                         const char* speaker_status) {
@@ -268,6 +269,7 @@ bool ravbot_mobile_report_device_status(ravbot_mobile_engine_t* engine,
   status.permissions_granted = permissions_granted;
   status.host_web_search_enabled = host_web_search_enabled;
   status.host_web_fetch_enabled = host_web_fetch_enabled;
+  status.host_haptics_enabled = host_haptics_enabled;
   status.microphone_status =
       microphone_status != nullptr ? microphone_status : "stopped";
   status.camera_status = camera_status != nullptr ? camera_status : "stopped";

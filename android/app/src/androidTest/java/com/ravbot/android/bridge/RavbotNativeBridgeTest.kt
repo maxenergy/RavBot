@@ -12,7 +12,7 @@ import org.junit.Test
 
 class RavbotNativeBridgeTest {
   @Test
-  fun reportDeviceStatusPublishesHostWebFlags() {
+  fun reportDeviceStatusPublishesHostCapabilityFlags() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val stateDir = testDir(context, "bridge-state")
     val modelsDir = testDir(context, "bridge-models")
@@ -42,6 +42,7 @@ class RavbotNativeBridgeTest {
           permissionsGranted = true,
           hostWebSearchEnabled = false,
           hostWebFetchEnabled = true,
+          hostHapticsEnabled = false,
           microphoneStatus = "running",
           cameraStatus = "running",
           speakerStatus = "speaking",
@@ -53,6 +54,7 @@ class RavbotNativeBridgeTest {
       val payload = requireNotNull(event).payload
       assertTrue(payload.contains("\"hostWebSearchEnabled\":false"))
       assertTrue(payload.contains("\"hostWebFetchEnabled\":true"))
+      assertTrue(payload.contains("\"hostHapticsEnabled\":false"))
       assertTrue(payload.contains("\"speakerStatus\":\"speaking\""))
     } finally {
       bridge.dispose()

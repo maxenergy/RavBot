@@ -262,7 +262,7 @@ TEST_F(MobileCApiTest, ReportDeviceStatusEmitsNativeSnapshot) {
   ASSERT_NE(subscription_id, 0u);
 
   EXPECT_TRUE(ravbot_mobile_report_device_status(
-      engine, true, true, true, false, true, "running", "running",
+      engine, true, true, true, false, true, false, "running", "running",
       "speaking"));
 
   ravbot_mobile_unsubscribe_events(engine, subscription_id);
@@ -278,6 +278,7 @@ TEST_F(MobileCApiTest, ReportDeviceStatusEmitsNativeSnapshot) {
       EXPECT_TRUE(event.payload["permissionsGranted"]);
       EXPECT_FALSE(event.payload["hostWebSearchEnabled"]);
       EXPECT_TRUE(event.payload["hostWebFetchEnabled"]);
+      EXPECT_FALSE(event.payload["hostHapticsEnabled"]);
       EXPECT_EQ(event.payload["microphoneStatus"], "running");
       EXPECT_EQ(event.payload["cameraStatus"], "running");
       EXPECT_EQ(event.payload["speakerStatus"], "speaking");
