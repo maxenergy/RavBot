@@ -178,6 +178,12 @@ private fun RavbotHostScreen() {
   var runtimeVisionDetail by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeVisionDetail)
   }
+  var runtimeAvailableTools by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeAvailableTools)
+  }
+  var runtimeToolAvailability by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeToolAvailability)
+  }
   var hostWebSearchEnabled by rememberSaveable {
     mutableStateOf(restoredSnapshot.hostWebSearchEnabled)
   }
@@ -479,6 +485,8 @@ private fun RavbotHostScreen() {
             parseJsonString(event.payload, "visionProvider") ?: runtimeVisionProvider
         runtimeVisionDetail =
             parseJsonString(event.payload, "visionDetail") ?: runtimeVisionDetail
+        runtimeAvailableTools = describeAvailableTools(event.payload)
+        runtimeToolAvailability = describeToolAvailability(event.payload)
         runtimeDeviceBridgeStatus =
             describeRuntimeFlag(parseJsonBoolean(event.payload, "deviceBridgeAttached"))
         runtimeWebSearchStatus =
@@ -702,6 +710,8 @@ private fun RavbotHostScreen() {
           runtimeModelsDir = runtimeModelsDir,
           runtimeVisionProvider = runtimeVisionProvider,
           runtimeVisionDetail = runtimeVisionDetail,
+          runtimeAvailableTools = runtimeAvailableTools,
+          runtimeToolAvailability = runtimeToolAvailability,
           hostWebSearchEnabled = hostWebSearchEnabled,
           hostWebFetchEnabled = hostWebFetchEnabled,
           hostHapticsEnabled = hostHapticsEnabled,
@@ -902,6 +912,8 @@ private fun RavbotHostScreen() {
                 "Speech backend: $speechBackendStatus",
                 "ASR runtime: $speechAsrStatus",
                 "TTS runtime: $speechTtsStatus",
+                "Available tools: $runtimeAvailableTools",
+                "Tool availability: $runtimeToolAvailability",
                 "Models dir: $runtimeModelsDir",
                 "LLM: $runtimeLlmModel",
                 "Vision model: $runtimeVisionModel",
@@ -1589,6 +1601,61 @@ private fun parseJsonBoolean(payload: String, field: String): Boolean? {
 internal fun parseVisionRuntimeReady(payload: String): Boolean? {
   return parseJsonBoolean(payload, "visionProviderReady")
       ?: parseJsonBoolean(payload, "visionReady")
+}
+
+internal fun describeAvailableTools(payload: String): String {
+  return runCatching {
+        val json = JSONObject(payload)
+        val tools =
+            json.optJSONArray("availableTools")?.let { array ->
+              buildList {
+                for (index in 0 until array.length()) {
+                  array.optString(index).takeIf { value -> value.isNotBlank() }?.let(::add)
+                }
+              }
+            } ?: emptyList()
+        if (tools.isEmpty()) {
+          "No mobile-safe tools advertised yet."
+        } else {
+          tools.joinToString(", ")
+        }
+      }
+      .getOrDefault("No mobile-safe tools advertised yet.")
+}
+
+internal fun describeToolAvailability(payload: String): String {
+  return runCatching {
+        val json = JSONObject(payload)
+        val availability = json.optJSONObject("toolAvailability")
+        if (availability == null) {
+          "No per-tool availability diagnostics emitted yet."
+        } else {
+          val blocked =
+              availability.keys().asSequence().toList().sorted().mapNotNull { toolName ->
+                val entry = availability.optJSONObject(toolName) ?: return@mapNotNull null
+                val available =
+                    if (entry.has("available")) {
+                      entry.optBoolean("available")
+                    } else {
+                      null
+                    }
+                if (available == true) {
+                  null
+                } else {
+                  val reason =
+                      entry.optString("reason").takeIf { value -> value.isNotBlank() }
+                          ?: "not_ready"
+                  "$toolName ($reason)"
+                }
+              }
+          if (blocked.isEmpty()) {
+            "All runtime-advertised mobile tools are ready."
+          } else {
+            blocked.joinToString(", ")
+          }
+        }
+      }
+      .getOrDefault("No per-tool availability diagnostics emitted yet.")
 }
 
 private fun parseJsonInt(payload: String, field: String): Int? {

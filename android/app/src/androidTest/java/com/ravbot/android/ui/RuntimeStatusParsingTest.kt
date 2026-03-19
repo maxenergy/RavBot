@@ -35,4 +35,72 @@ class RuntimeStatusParsingTest {
 
     assertEquals(true, parseVisionRuntimeReady(payload))
   }
+
+  @Test
+  fun describeAvailableToolsJoinsAdvertisedToolNames() {
+    val payload =
+        """
+          {
+            "availableTools": [
+              "device_status",
+              "runtime_status",
+              "camera_snapshot"
+            ]
+          }
+        """.trimIndent()
+
+    assertEquals(
+        "device_status, runtime_status, camera_snapshot",
+        describeAvailableTools(payload),
+    )
+  }
+
+  @Test
+  fun describeToolAvailabilityListsBlockedToolsWithReasons() {
+    val payload =
+        """
+          {
+            "toolAvailability": {
+              "device_status": {
+                "available": true
+              },
+              "vibrate": {
+                "available": false,
+                "reason": "vibration_unsupported"
+              },
+              "web_search": {
+                "available": false,
+                "reason": "device_bridge_missing"
+              }
+            }
+          }
+        """.trimIndent()
+
+    assertEquals(
+        "vibrate (vibration_unsupported), web_search (device_bridge_missing)",
+        describeToolAvailability(payload),
+    )
+  }
+
+  @Test
+  fun describeToolAvailabilityReportsWhenAllToolsAreReady() {
+    val payload =
+        """
+          {
+            "toolAvailability": {
+              "device_status": {
+                "available": true
+              },
+              "runtime_status": {
+                "available": true
+              }
+            }
+          }
+        """.trimIndent()
+
+    assertEquals(
+        "All runtime-advertised mobile tools are ready.",
+        describeToolAvailability(payload),
+    )
+  }
 }

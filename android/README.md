@@ -70,6 +70,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - `mobile.runtime_status` now also reports the exact currently exposed
   mobile tool list plus per-tool availability reasons for bridge-gated tools
   such as `web_search`, `web_fetch`, and `vibrate`
+- The Android host now persists and shows those tool diagnostics across
+  relaunches as human-readable `available tools` and `tool availability`
+  summaries in the runtime status card
 - The Android host now treats `visionProviderReady` as the canonical vision
   readiness flag and still accepts legacy `visionReady` payloads for
   compatibility.

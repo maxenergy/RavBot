@@ -36,6 +36,9 @@ class HostSnapshotStoreTest {
             runtimeModelsDir = "/data/user/0/com.ravbot.android/files/ravbot-models",
             runtimeVisionProvider = "placeholder_mobile_vision",
             runtimeVisionDetail = "placeholder backend active",
+            runtimeAvailableTools = "device_status, runtime_status, camera_snapshot",
+            runtimeToolAvailability =
+                "web_fetch (device_bridge_missing), vibrate (vibration_unsupported)",
             hostWebSearchEnabled = false,
             hostWebFetchEnabled = true,
             hostHapticsEnabled = false,
@@ -70,6 +73,11 @@ class HostSnapshotStoreTest {
     assertEquals("What can you see and hear right now?", cleared.promptText)
     assertEquals("unknown", cleared.runtimeVisionProvider)
     assertEquals("No native vision diagnostics emitted yet.", cleared.runtimeVisionDetail)
+    assertEquals("No mobile-safe tools advertised yet.", cleared.runtimeAvailableTools)
+    assertEquals(
+        "No per-tool availability diagnostics emitted yet.",
+        cleared.runtimeToolAvailability,
+    )
     assertTrue(cleared.hostWebSearchEnabled)
     assertTrue(cleared.hostWebFetchEnabled)
     assertTrue(cleared.hostHapticsEnabled)
