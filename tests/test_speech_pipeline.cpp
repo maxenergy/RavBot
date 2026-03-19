@@ -5,10 +5,11 @@
 #include <fstream>
 #include <memory>
 
-#include <gtest/gtest.h>
 #include <spdlog/sinks/null_sink.h>
 
 #include "ravbot/mobile/speech_pipeline.hpp"
+
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -20,13 +21,15 @@ std::shared_ptr<spdlog::logger> MakeLogger() {
 class SpeechPipelineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    test_dir_ = std::filesystem::temp_directory_path() /
-                "ravbot_speech_pipeline_test";
+    test_dir_ =
+        std::filesystem::temp_directory_path() / "ravbot_speech_pipeline_test";
     std::filesystem::remove_all(test_dir_);
     std::filesystem::create_directories(test_dir_);
   }
 
-  void TearDown() override { std::filesystem::remove_all(test_dir_); }
+  void TearDown() override {
+    std::filesystem::remove_all(test_dir_);
+  }
 
   std::filesystem::path test_dir_;
 };
@@ -104,8 +107,8 @@ TEST_F(SpeechPipelineTest, InterruptDropsBufferedSpeechTurn) {
   ravbot::mobile::SpeechPipeline pipeline(config, test_dir_, MakeLogger());
   int16_t samples[4] = {1, 2, 3, 4};
 
-  EXPECT_FALSE(
-      pipeline.PushPcm16("session-alpha", samples, 4, 16000, false).text.empty());
+  EXPECT_FALSE(pipeline.PushPcm16("session-alpha", samples, 4, 16000, false)
+                   .text.empty());
   pipeline.Interrupt("session-alpha");
   EXPECT_TRUE(pipeline.Flush("session-alpha").text.empty());
 
@@ -148,6 +151,44 @@ TEST_F(SpeechPipelineTest, KeepsBufferedSpeechScopedPerSession) {
   EXPECT_EQ(beta_restart.segment_index, 1u);
 }
 
+TEST_F(SpeechPipelineTest, SessionStatusReportsPendingAndCompletedSpeech) {
+  ravbot::MobileModelsConfig config;
+  config.stt_model = "SenseVoiceSmall";
+
+  ravbot::mobile::SpeechPipeline pipeline(config, test_dir_, MakeLogger());
+  int16_t samples[4] = {1, 2, 3, 4};
+
+  const auto empty_status = pipeline.GetSessionStatus("session-alpha");
+  EXPECT_FALSE(empty_status.available);
+  EXPECT_EQ(empty_status.state, "idle");
+
+  EXPECT_FALSE(pipeline.PushPcm16("session-alpha", samples, 4, 16000, false)
+                   .text.empty());
+  const auto pending_status = pipeline.GetSessionStatus("session-alpha");
+  EXPECT_TRUE(pending_status.available);
+  EXPECT_EQ(pending_status.state, "capturing");
+  EXPECT_TRUE(pending_status.pending_audio);
+  EXPECT_EQ(pending_status.current_segment_index, 1u);
+  EXPECT_EQ(pending_status.buffered_samples, 4u);
+  EXPECT_GT(pending_status.duration_ms, 0);
+  EXPECT_GT(pending_status.last_update_ms, 0);
+
+  auto final = pipeline.Flush("session-alpha");
+  EXPECT_TRUE(final.is_final);
+  const auto idle_status = pipeline.GetSessionStatus("session-alpha");
+  EXPECT_TRUE(idle_status.available);
+  EXPECT_EQ(idle_status.state, "idle");
+  EXPECT_FALSE(idle_status.pending_audio);
+  EXPECT_EQ(idle_status.completed_segments, 1u);
+  EXPECT_EQ(idle_status.current_segment_index, 1u);
+
+  pipeline.Interrupt("session-alpha");
+  const auto interrupted_status = pipeline.GetSessionStatus("session-alpha");
+  EXPECT_TRUE(interrupted_status.available);
+  EXPECT_EQ(interrupted_status.state, "interrupted");
+  EXPECT_TRUE(interrupted_status.interrupted);
+}
+
 TEST_F(SpeechPipelineTest, ResetSessionClearsBufferedSpeechForThatSessionOnly) {
   ravbot::MobileModelsConfig config;
   config.stt_model = "SenseVoiceSmall";
@@ -155,10 +196,10 @@ TEST_F(SpeechPipelineTest, ResetSessionClearsBufferedSpeechForThatSessionOnly) {
   ravbot::mobile::SpeechPipeline pipeline(config, test_dir_, MakeLogger());
   int16_t samples[4] = {1, 2, 3, 4};
 
-  EXPECT_FALSE(
-      pipeline.PushPcm16("session-alpha", samples, 4, 16000, false).text.empty());
-  EXPECT_FALSE(
-      pipeline.PushPcm16("session-beta", samples, 4, 16000, false).text.empty());
+  EXPECT_FALSE(pipeline.PushPcm16("session-alpha", samples, 4, 16000, false)
+                   .text.empty());
+  EXPECT_FALSE(pipeline.PushPcm16("session-beta", samples, 4, 16000, false)
+                   .text.empty());
 
   pipeline.ResetSession("session-alpha");
 

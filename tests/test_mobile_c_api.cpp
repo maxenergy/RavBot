@@ -345,6 +345,9 @@ TEST_F(MobileCApiTest, ReportDeviceStatusEmitsNativeSnapshot) {
                 "device_bridge_missing");
       EXPECT_EQ(event.payload["hostCapabilities"]["haptics"]["reason"],
                 "device_bridge_missing");
+      EXPECT_TRUE(event.payload.contains("speechState"));
+      EXPECT_FALSE(event.payload["speechState"]["available"]);
+      EXPECT_EQ(event.payload["speechState"]["state"], "idle");
     }
   }
 

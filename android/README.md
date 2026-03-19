@@ -32,6 +32,10 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   `hostCapabilities` diagnostics with per-capability `ready/enabled/active`
   flags plus concrete reasons such as `permissions_missing`,
   `background_gated`, `device_bridge_missing`, and `host_toggle_off`
+- Session-scoped `speechState` diagnostics are now attached to
+  `mobile.device_status`, `device_status`, and `camera_snapshot`, so the host
+  and local model can tell whether speech is idle, actively buffering, or was
+  interrupted, along with segment index and buffered duration
 - `mobile.device_status` event payloads now carry the same `hostCapabilities`
   block, and the Android host surfaces blocked capability reasons in its
   native device status summary

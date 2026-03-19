@@ -161,4 +161,48 @@ class RuntimeStatusParsingTest {
         describeDeviceStatus(payload),
     )
   }
+
+  @Test
+  fun describeSpeechStateSummarizesActiveCapture() {
+    val payload =
+        """
+          {
+            "speechState": {
+              "available": true,
+              "state": "capturing",
+              "currentSegmentIndex": 2,
+              "durationMs": 375
+            }
+          }
+        """.trimIndent()
+
+    assertEquals("speech capturing seg 2 375ms", describeSpeechState(payload))
+  }
+
+  @Test
+  fun describeDeviceStatusIncludesSpeechStateSummaryWhenAvailable() {
+    val payload =
+        """
+          {
+            "foreground": true,
+            "serviceRunning": true,
+            "captureRequested": true,
+            "permissionsGranted": true,
+            "microphoneStatus": "running",
+            "cameraStatus": "running",
+            "speakerStatus": "idle",
+            "speechState": {
+              "available": true,
+              "state": "capturing",
+              "currentSegmentIndex": 1,
+              "durationMs": 250
+            }
+          }
+        """.trimIndent()
+
+    assertEquals(
+        "foreground | service on | capture on | permissions ok | mic running | cam running | speaker idle | speech capturing seg 1 250ms",
+        describeDeviceStatus(payload),
+    )
+  }
 }

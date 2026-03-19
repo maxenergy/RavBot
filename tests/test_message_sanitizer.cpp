@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "ravbot/gateway/message_sanitizer.hpp"
+
 #include <gtest/gtest.h>
 
 using namespace ravbot;
@@ -13,7 +14,8 @@ class MessageSanitizerTest : public ::testing::Test {
 
 // 测试移除 <system.run> 标签
 TEST_F(MessageSanitizerTest, RemoveSystemRunTags) {
-  std::string input = "执行命令: <system.run><command>df -h</command></system.run> 完成";
+  std::string input =
+      "执行命令: <system.run><command>df -h</command></system.run> 完成";
   std::string expected = "执行命令:  完成";
   std::string result = sanitizer_.SanitizeOutput(input);
   EXPECT_EQ(result, expected);
@@ -77,7 +79,9 @@ TEST_F(MessageSanitizerTest, RemoveToolResultTags) {
 
 // 测试移除多个标签
 TEST_F(MessageSanitizerTest, RemoveMultipleTags) {
-  std::string input = "开始 <system.run><command>ls</command></system.run> 和 <thinking>思考</thinking> 结束";
+  std::string input =
+      "开始 <system.run><command>ls</command></system.run> 和 "
+      "<thinking>思考</thinking> 结束";
   std::string expected = "开始  和  结束";
   std::string result = sanitizer_.SanitizeOutput(input);
   EXPECT_EQ(result, expected);
@@ -85,7 +89,8 @@ TEST_F(MessageSanitizerTest, RemoveMultipleTags) {
 
 // 测试嵌套标签
 TEST_F(MessageSanitizerTest, RemoveNestedTags) {
-  std::string input = "外层 <system>内层 <command>嵌套命令</command> 继续</system> 结束";
+  std::string input =
+      "外层 <system>内层 <command>嵌套命令</command> 继续</system> 结束";
   std::string expected = "外层  结束";
   std::string result = sanitizer_.SanitizeOutput(input);
   EXPECT_EQ(result, expected);
@@ -102,7 +107,8 @@ TEST_F(MessageSanitizerTest, RemoveIncompleteOpenTags) {
 
 // 测试大小写不敏感
 TEST_F(MessageSanitizerTest, CaseInsensitive) {
-  std::string input = "测试 <SYSTEM.RUN>大写</SYSTEM.RUN> 和 <System>混合</System> 结束";
+  std::string input =
+      "测试 <SYSTEM.RUN>大写</SYSTEM.RUN> 和 <System>混合</System> 结束";
   std::string expected = "测试  和  结束";
   std::string result = sanitizer_.SanitizeOutput(input);
   EXPECT_EQ(result, expected);
@@ -125,7 +131,9 @@ TEST_F(MessageSanitizerTest, RemoveBoundaryMarkers) {
 
 // 测试同时移除系统标签和边界标记
 TEST_F(MessageSanitizerTest, RemoveBothSystemTagsAndBoundaryMarkers) {
-  std::string input = "开始 <system.run>命令</system.run> 和 ⟨⟨UNTRUSTED⟩⟩内容⟨⟨/UNTRUSTED⟩⟩ 结束";
+  std::string input =
+      "开始 <system.run>命令</system.run> 和 ⟨⟨UNTRUSTED⟩⟩内容⟨⟨/UNTRUSTED⟩⟩ "
+      "结束";
   std::string expected = "开始  和 内容 结束";
   std::string result = sanitizer_.SanitizeOutput(input);
   EXPECT_EQ(result, expected);
@@ -194,7 +202,8 @@ TEST_F(MessageSanitizerTest, RemoveParameterTags) {
 
 // 测试移除 <system-reminder> 标签
 TEST_F(MessageSanitizerTest, RemoveSystemReminderTags) {
-  std::string input = "消息 <system-reminder>系统提醒内容</system-reminder> 继续";
+  std::string input =
+      "消息 <system-reminder>系统提醒内容</system-reminder> 继续";
   std::string expected = "消息  继续";
   std::string result = sanitizer_.SanitizeOutput(input);
   EXPECT_EQ(result, expected);
@@ -230,6 +239,40 @@ TEST_F(MessageSanitizerTest, RemoveToolExecutionMarkers) {
   std::string expected = "\n\n结果显示";
   std::string result = sanitizer_.SanitizeOutput(input);
   EXPECT_EQ(result, expected);
+}
+
+TEST_F(MessageSanitizerTest, RemovePseudoToolCallMarkup) {
+  std::string input = R"(开始
+<tool_call>
+<function=exec>
+<parameter=command>
+ls -la /tmp
+</parameter>
+</function>
+结束)";
+  std::string expected = "开始\n\n结束";
+  std::string result = sanitizer_.SanitizeOutput(input);
+  EXPECT_EQ(result, expected);
+}
+
+TEST_F(MessageSanitizerTest, RemovePlainExecMarkup) {
+  std::string input = R"(让我先查看一下工作区的完成报告，了解当前的进度状态：
+
+<exec>
+<parameter=command>
+cat /tmp/report.md
+</parameter>
+</exec>)";
+  std::string expected =
+      "让我先查看一下工作区的完成报告，了解当前的进度状态：\n\n";
+  std::string result = sanitizer_.SanitizeOutput(input);
+  EXPECT_EQ(result, expected);
+}
+
+TEST_F(MessageSanitizerTest, PreserveInlineLiteralToolTags) {
+  std::string input = u8"请解释 `<exec>` 和 `<tool_call>` 的区别。";
+  std::string result = sanitizer_.SanitizeOutput(input);
+  EXPECT_EQ(result, input);
 }
 
 // 测试综合场景：移除所有系统标签

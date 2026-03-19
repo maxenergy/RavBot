@@ -1120,6 +1120,251 @@ TEST_F(AgentLoopTest, ShortContextualDecisionReplyKeepsRecentAssistantContext) {
   EXPECT_EQ(sent[3].text(), u8"先研究有没有更好的方案再操作。");
 }
 
+TEST_F(
+    AgentLoopTest,
+    BriefContinuationAfterChoicePromptSuppressesToolsAndRequestsClarification) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"user", u8"你建议我下一步怎么做？"},
+      ravbot::Message{"assistant",
+                      u8"我建议先选一个方向。\n\n"
+                      u8"选项 1：先补案例库。\n"
+                      u8"选项 2：先做模板参数化。\n\n"
+                      u8"你倾向于哪个方向？"},
+  };
+
+  agent_loop_->ProcessMessage(u8"继续", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("Do not assume which option or action to execute") !=
+            std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+  EXPECT_TRUE(has_clarification_notice);
+  EXPECT_TRUE(mock_provider_->last_request.tools.empty());
+}
+
+TEST_F(
+    AgentLoopTest,
+    BriefContinuationAfterExecutionCommitSuppressesToolsAndRequestsClarification) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"user", u8"这两个方案里你更推荐哪个？"},
+      ravbot::Message{
+          "assistant",
+          u8"好的！我现在开始执行方案 A：先创建模板库，再补案例库。"},
+  };
+
+  agent_loop_->ProcessMessage(u8"继续", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("Do not assume which option or action to execute") !=
+            std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+  EXPECT_TRUE(has_clarification_notice);
+  EXPECT_TRUE(mock_provider_->last_request.tools.empty());
+}
+
+TEST_F(AgentLoopTest,
+       BriefContinuationAfterClarificationPromptSuppressesTools) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"user", u8"继续"},
+      ravbot::Message{"assistant",
+                      u8"我需要先确认您想继续什么任务。请问您想要继续：\n\n"
+                      u8"1. 之前的某项工作\n"
+                      u8"2. 新任务\n\n"
+                      u8"请明确告诉我您要继续哪一项。"},
+  };
+
+  agent_loop_->ProcessMessage(u8"继续", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("Do not assume which option or action to execute") !=
+            std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+  EXPECT_TRUE(has_clarification_notice);
+  EXPECT_TRUE(mock_provider_->last_request.tools.empty());
+}
+
+TEST_F(AgentLoopTest,
+       BriefContinuationAfterExplanatoryAssistantKeepsToolsAvailable) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"user", u8"HTTP/2 和 HTTP/3 有什么区别？"},
+      ravbot::Message{"assistant",
+                      u8"我可以继续解释连接复用、队头阻塞和 QUIC 的差异。"},
+  };
+
+  agent_loop_->ProcessMessage(u8"继续", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("Do not assume which option or action to execute") !=
+            std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+  EXPECT_FALSE(has_clarification_notice);
+  EXPECT_FALSE(mock_provider_->last_request.tools.empty());
+}
+
+TEST_F(AgentLoopTest,
+       StreamingBriefContinuationAfterExecutionCommitSuppressesTools) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"user", u8"这两个方案里你更推荐哪个？"},
+      ravbot::Message{
+          "assistant",
+          u8"好的！我现在开始执行方案 A：先创建模板库，再补案例库。"},
+  };
+
+  std::vector<ravbot::AgentEvent> events;
+  agent_loop_->ProcessMessageStream(
+      u8"继续", history, "System.",
+      [&events](const ravbot::AgentEvent& event) { events.push_back(event); });
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("Do not assume which option or action to execute") !=
+            std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+  EXPECT_TRUE(has_clarification_notice);
+  EXPECT_TRUE(mock_provider_->last_request.tools.empty());
+  EXPECT_FALSE(events.empty());
+}
+
+TEST_F(AgentLoopTest, PseudoToolMarkupHistoryIsRemovedBeforeProviderCall) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"user", u8"继续"},
+      ravbot::Message{"assistant",
+                      "<tool_call>\n<function=exec>\n<parameter=command>\n"
+                      "ls -la /tmp\n</parameter>\n</function>"},
+  };
+
+  agent_loop_->ProcessMessage(u8"继续", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  for (const auto& msg : sent) {
+    EXPECT_EQ(msg.text().find("<tool_call>"), std::string::npos);
+    EXPECT_EQ(msg.text().find("<function="), std::string::npos);
+    EXPECT_EQ(msg.text().find("<parameter="), std::string::npos);
+    EXPECT_EQ(msg.text().find("ls -la /tmp"), std::string::npos);
+  }
+}
+
+TEST_F(AgentLoopTest, PlainExecMarkupHistoryIsRemovedBeforeProviderCall) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"user", u8"继续"},
+      ravbot::Message{"assistant",
+                      "让我先查看当前状态：\n\n<exec>\n<parameter=command>\n"
+                      "ls -la /tmp\n</parameter>\n</exec>"},
+  };
+
+  agent_loop_->ProcessMessage(u8"继续", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  for (const auto& msg : sent) {
+    EXPECT_EQ(msg.text().find("<exec>"), std::string::npos);
+    EXPECT_EQ(msg.text().find("</exec>"), std::string::npos);
+    EXPECT_EQ(msg.text().find("<parameter="), std::string::npos);
+    EXPECT_EQ(msg.text().find(u8"让我先查看当前状态"), std::string::npos);
+  }
+}
+
+TEST_F(AgentLoopTest, PseudoToolMarkupResponseDoesNotLeakToUser) {
+  mock_provider_->response_text =
+      "<tool_call>\n<function=exec>\n<parameter=command>\nls -la /tmp\n"
+      "</parameter>\n</function>";
+
+  auto new_msgs = agent_loop_->ProcessMessage(u8"继续", {}, "System.");
+
+  ASSERT_FALSE(new_msgs.empty());
+  EXPECT_EQ(new_msgs.back().role, "assistant");
+  EXPECT_EQ(new_msgs.back().text().find("<tool_call>"), std::string::npos);
+  EXPECT_EQ(new_msgs.back().text().find("<function="), std::string::npos);
+  EXPECT_NE(new_msgs.back().text().find(u8"没有成功形成可执行请求"),
+            std::string::npos);
+}
+
+TEST_F(AgentLoopTest, PlainExecMarkupResponseFallsBackToClarification) {
+  mock_provider_->response_text =
+      "让我先查看一下工作区的完成报告，了解当前的进度状态：\n\n"
+      "<exec>\n<parameter=command>\ncat /tmp/report.md\n</parameter>\n"
+      "</exec>";
+
+  auto new_msgs = agent_loop_->ProcessMessage(u8"继续", {}, "System.");
+
+  ASSERT_FALSE(new_msgs.empty());
+  EXPECT_EQ(new_msgs.back().role, "assistant");
+  EXPECT_EQ(new_msgs.back().text().find("<exec>"), std::string::npos);
+  EXPECT_EQ(new_msgs.back().text().find("<parameter="), std::string::npos);
+  EXPECT_NE(new_msgs.back().text().find(u8"没有成功形成可执行请求"),
+            std::string::npos);
+}
+
+TEST_F(AgentLoopTest, StreamingPseudoToolMarkupDeltaDoesNotLeak) {
+  mock_provider_->response_text =
+      "让我先查看一下工作区的完成报告，了解当前的进度状态：\n\n"
+      "<exec>\n<parameter=command>\ncat /tmp/report.md\n</parameter>\n"
+      "</exec>";
+
+  std::vector<ravbot::AgentEvent> events;
+  auto new_msgs = agent_loop_->ProcessMessageStream(
+      u8"继续", {}, "System.",
+      [&events](const ravbot::AgentEvent& event) { events.push_back(event); });
+
+  for (const auto& event : events) {
+    if (event.type == "agent.text_delta") {
+      const auto text = event.data.value("text", "");
+      EXPECT_EQ(text.find("<exec>"), std::string::npos);
+      EXPECT_EQ(text.find("<parameter="), std::string::npos);
+    }
+  }
+
+  ASSERT_FALSE(new_msgs.empty());
+  EXPECT_NE(new_msgs.back().text().find(u8"没有成功形成可执行请求"),
+            std::string::npos);
+}
+
+TEST_F(AgentLoopTest, InlineLiteralToolTagsArePreservedInNormalAnswers) {
+  mock_provider_->response_text = u8"请解释 `<exec>` 和 `<tool_call>` 的区别。";
+
+  auto new_msgs = agent_loop_->ProcessMessage(u8"继续", {}, "System.");
+
+  ASSERT_FALSE(new_msgs.empty());
+  EXPECT_EQ(new_msgs.back().text(), mock_provider_->response_text);
+}
+
 TEST_F(AgentLoopTest, RepeatedQuestionsStillAddDuplicateNotice) {
   auto embedding_manager = CreateEmbeddingManager();
   agent_loop_->SetEmbeddingManager(embedding_manager);

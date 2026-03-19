@@ -10,6 +10,7 @@
 #include <codecvt>
 #include <locale>
 #include <optional>
+#include <regex>
 #include <sstream>
 #include <thread>
 #include <unordered_map>
@@ -77,6 +78,142 @@ build_request_tools(const std::shared_ptr<ToolRegistry>& tool_registry) {
   auto result = tools_json.get<std::vector<nlohmann::json>>();
   spdlog::info("build_request_tools: Returning {} tools", result.size());
   return result;
+}
+
+static std::string trim_ascii_whitespace(std::string text) {
+  const auto is_ascii_space = [](unsigned char ch) {
+    return std::isspace(ch) != 0;
+  };
+
+  while (!text.empty() &&
+         is_ascii_space(static_cast<unsigned char>(text.front()))) {
+    text.erase(text.begin());
+  }
+  while (!text.empty() &&
+         is_ascii_space(static_cast<unsigned char>(text.back()))) {
+    text.pop_back();
+  }
+  return text;
+}
+
+static const std::string& pseudo_tool_plain_tag_names() {
+  static const std::string kPlainToolTagNames =
+      "(exec|read|write|edit|bash|apply_patch|process|message|web_search|"
+      "web_fetch|memory_search|memory_get|memory_write|memory_list|"
+      "memory_delete|device_status|camera_snapshot|runtime_status|time|"
+      "vibrate|chain|spawn_subagent|cron|sessions_list|sessions_history|"
+      "sessions_send)";
+  return kPlainToolTagNames;
+}
+
+static const std::vector<std::regex>& pseudo_tool_markup_patterns() {
+  static const std::vector<std::regex> kPseudoToolPatterns = {
+      std::regex(R"(<function[^>]*>[\s\S]*?</function>)", std::regex::icase),
+      std::regex(R"(<parameter[^>]*>[\s\S]*?</parameter>)", std::regex::icase),
+      std::regex(R"(<tool_call>[\s\S]*?</tool_call>)", std::regex::icase),
+      std::regex("<" + pseudo_tool_plain_tag_names() + R"([^>]*>[\s\S]*?</\1>)",
+                 std::regex::icase),
+      std::regex(R"(^\s*<tool_call>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*</tool_call>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*<function[^>]*>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*</function>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*<parameter[^>]*>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*</parameter>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex("^\\s*</?" + pseudo_tool_plain_tag_names() + R"([^>]*>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+  };
+  return kPseudoToolPatterns;
+}
+
+static bool looks_like_pseudo_tool_markup_text(const std::string& text) {
+  if (text.empty()) {
+    return false;
+  }
+  for (const auto& pattern : pseudo_tool_markup_patterns()) {
+    if (std::regex_search(text, pattern)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::string strip_pseudo_tool_markup_text(const std::string& text) {
+  if (text.empty()) {
+    return text;
+  }
+
+  std::string result = text;
+  for (const auto& pattern : pseudo_tool_markup_patterns()) {
+    result = std::regex_replace(result, pattern, "");
+  }
+
+  result = std::regex_replace(result, std::regex(R"(\n{3,})"), "\n\n");
+  return trim_ascii_whitespace(result);
+}
+
+static std::vector<Message> sanitize_assistant_pseudo_tool_markup_messages(
+    const std::vector<Message>& messages) {
+  std::vector<Message> sanitized;
+  sanitized.reserve(messages.size());
+
+  for (const auto& msg : messages) {
+    if (msg.role != "assistant") {
+      sanitized.push_back(msg);
+      continue;
+    }
+
+    Message cleaned = msg;
+    cleaned.content.clear();
+
+    for (const auto& block : msg.content) {
+      if (block.type != "text" && block.type != "thinking") {
+        cleaned.content.push_back(block);
+        continue;
+      }
+
+      if (looks_like_pseudo_tool_markup_text(block.text)) {
+        continue;
+      }
+
+      ContentBlock sanitized_block = block;
+      sanitized_block.text = strip_pseudo_tool_markup_text(block.text);
+      if (!sanitized_block.text.empty()) {
+        cleaned.content.push_back(std::move(sanitized_block));
+      }
+    }
+
+    if (!cleaned.content.empty()) {
+      sanitized.push_back(std::move(cleaned));
+    }
+  }
+
+  return sanitized;
+}
+
+static std::string
+sanitize_assistant_response_text(const std::string& text,
+                                 const std::shared_ptr<spdlog::logger>& logger,
+                                 bool provide_fallback) {
+  const bool had_pseudo_tool_markup = looks_like_pseudo_tool_markup_text(text);
+  std::string cleaned = strip_pseudo_tool_markup_text(text);
+
+  if (had_pseudo_tool_markup && provide_fallback) {
+    if (logger) {
+      logger->warn(
+          "Provider returned raw pseudo-tool markup without structured tool "
+          "calls; replacing with clarification fallback");
+    }
+    return u8"我刚才那一步没有成功形成可执行请求。请明确告诉我你希望我继续哪一"
+           u8"步，我先确认再操作。";
+  }
+
+  return cleaned;
 }
 
 static std::vector<Message> compress_history_for_context_budget(
@@ -410,6 +547,112 @@ looks_like_short_contextual_decision_reply(const std::string& text) {
   return has_context_marker && decision_hits >= 1;
 }
 
+static bool looks_like_explicit_choice_prompt_text(const std::string& text) {
+  if (text.empty()) {
+    return false;
+  }
+
+  std::string lower = text;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  const bool has_question = lower.find('?') != std::string::npos ||
+                            text.find(u8"？") != std::string::npos;
+  const bool has_choice_language =
+      lower.find("which option") != std::string::npos ||
+      lower.find("which direction") != std::string::npos ||
+      lower.find("which one") != std::string::npos ||
+      lower.find("which path") != std::string::npos ||
+      lower.find("choose") != std::string::npos ||
+      lower.find("pick one") != std::string::npos ||
+      text.find(u8"选项") != std::string::npos ||
+      text.find(u8"请选择") != std::string::npos ||
+      text.find(u8"你希望我") != std::string::npos ||
+      text.find(u8"请问您想要继续") != std::string::npos ||
+      text.find(u8"你想要继续") != std::string::npos ||
+      text.find(u8"想继续什么任务") != std::string::npos ||
+      text.find(u8"请告诉我您想继续") != std::string::npos ||
+      text.find(u8"你倾向于") != std::string::npos ||
+      text.find(u8"哪个方向") != std::string::npos;
+  const bool has_numbered_options =
+      lower.find("option 1") != std::string::npos ||
+      lower.find("option 2") != std::string::npos ||
+      text.find("\n1.") != std::string::npos ||
+      text.find("\n2.") != std::string::npos ||
+      text.find(u8"选项 1") != std::string::npos ||
+      text.find(u8"选项 2") != std::string::npos ||
+      text.find(u8"方案 A") != std::string::npos ||
+      text.find(u8"方案 B") != std::string::npos;
+
+  return (has_choice_language && has_question) ||
+         (has_choice_language && has_numbered_options) ||
+         (has_numbered_options && has_question);
+}
+
+static bool looks_like_execution_commit_text(const std::string& text) {
+  if (text.empty()) {
+    return false;
+  }
+
+  std::string lower = text;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  const bool has_commit_phrase =
+      lower.find("i will") != std::string::npos ||
+      lower.find("i'll") != std::string::npos ||
+      lower.find("let me") != std::string::npos ||
+      lower.find("i am going to") != std::string::npos ||
+      lower.find("i'm going to") != std::string::npos ||
+      lower.find("i'll start") != std::string::npos ||
+      lower.find("i will start") != std::string::npos ||
+      lower.find("i'll begin") != std::string::npos ||
+      lower.find("i will begin") != std::string::npos ||
+      text.find(u8"我现在") != std::string::npos ||
+      text.find(u8"我先") != std::string::npos ||
+      text.find(u8"我来") != std::string::npos ||
+      text.find(u8"让我") != std::string::npos ||
+      text.find(u8"接下来我会") != std::string::npos ||
+      text.find(u8"现在开始") != std::string::npos ||
+      text.find(u8"立即开始") != std::string::npos;
+
+  if (!has_commit_phrase) {
+    return false;
+  }
+
+  const bool has_action_verb = lower.find("start") != std::string::npos ||
+                               lower.find("begin") != std::string::npos ||
+                               lower.find("implement") != std::string::npos ||
+                               lower.find("execute") != std::string::npos ||
+                               lower.find("search") != std::string::npos ||
+                               lower.find("research") != std::string::npos ||
+                               lower.find("look up") != std::string::npos ||
+                               lower.find("check") != std::string::npos ||
+                               lower.find("inspect") != std::string::npos ||
+                               lower.find("create") != std::string::npos ||
+                               lower.find("write") != std::string::npos ||
+                               lower.find("edit") != std::string::npos ||
+                               lower.find("update") != std::string::npos ||
+                               lower.find("modify") != std::string::npos ||
+                               text.find(u8"开始") != std::string::npos ||
+                               text.find(u8"执行") != std::string::npos ||
+                               text.find(u8"实现") != std::string::npos ||
+                               text.find(u8"搜索") != std::string::npos ||
+                               text.find(u8"研究") != std::string::npos ||
+                               text.find(u8"查找") != std::string::npos ||
+                               text.find(u8"查看") != std::string::npos ||
+                               text.find(u8"检查") != std::string::npos ||
+                               text.find(u8"创建") != std::string::npos ||
+                               text.find(u8"新建") != std::string::npos ||
+                               text.find(u8"写入") != std::string::npos ||
+                               text.find(u8"修改") != std::string::npos ||
+                               text.find(u8"更新") != std::string::npos;
+
+  return has_action_verb;
+}
+
 static bool has_lookup_intent(const std::string& text) {
   std::string lower = text;
   std::transform(
@@ -571,6 +814,54 @@ static std::string collect_turn_text(const std::vector<Message>& history,
     combined += text;
   }
   return combined;
+}
+
+static bool brief_continuation_after_choice_prompt_requires_clarification(
+    const std::string& latest_user_text, const std::vector<Message>& history,
+    const std::shared_ptr<spdlog::logger>& logger) {
+  if (!is_brief_continuation_prompt(latest_user_text) || history.empty()) {
+    return false;
+  }
+
+  for (size_t i = history.size(); i-- > 0;) {
+    if (history[i].role != "assistant") {
+      continue;
+    }
+    const auto assistant_text = collect_message_text(history[i]);
+    const bool needs_clarification =
+        looks_like_explicit_choice_prompt_text(assistant_text);
+    if (needs_clarification && logger) {
+      logger->info(
+          "Context clarification: brief continuation follows assistant "
+          "choice prompt");
+    }
+    return needs_clarification;
+  }
+  return false;
+}
+
+static bool brief_continuation_after_execution_commit_requires_clarification(
+    const std::string& latest_user_text, const std::vector<Message>& history,
+    const std::shared_ptr<spdlog::logger>& logger) {
+  if (!is_brief_continuation_prompt(latest_user_text) || history.empty()) {
+    return false;
+  }
+
+  for (size_t i = history.size(); i-- > 0;) {
+    if (history[i].role != "assistant") {
+      continue;
+    }
+    const auto assistant_text = collect_message_text(history[i]);
+    const bool needs_clarification =
+        looks_like_execution_commit_text(assistant_text);
+    if (needs_clarification && logger) {
+      logger->info(
+          "Context clarification: brief continuation follows assistant "
+          "execution commitment");
+    }
+    return needs_clarification;
+  }
+  return false;
 }
 
 static bool
@@ -1078,6 +1369,8 @@ static void sanitize_request_messages_for_provider(
     const std::shared_ptr<spdlog::logger>& logger) {
   size_t before_count = request.messages.size();
 
+  request.messages =
+      sanitize_assistant_pseudo_tool_markup_messages(request.messages);
   request.messages = repair_tool_message_pairing(request.messages);
 
   // Anthropic-specific sanitization
@@ -1605,7 +1898,7 @@ std::vector<Message> AgentLoop::ProcessMessage(
   const int ctx_window = agent_config_.context_window > 0
                              ? agent_config_.context_window
                              : get_context_window(resolved_request_model());
-  const auto request_tools = build_request_tools(tool_registry_);
+  const auto built_request_tools = build_request_tools(tool_registry_);
 
   std::vector<Message> new_messages;
 
@@ -1635,10 +1928,34 @@ std::vector<Message> AgentLoop::ProcessMessage(
   ContextPruner::Options prune_opts;
   effective_history = ContextPruner::Prune(effective_history, prune_opts);
   effective_history =
+      sanitize_assistant_pseudo_tool_markup_messages(effective_history);
+  effective_history =
       focus_history_on_latest_turn(effective_history, message, logger_);
   effective_history = compress_history_for_context_budget(
-      effective_history, system_prompt, message, request_tools, ctx_window,
-      context_pruner_, logger_);
+      effective_history, system_prompt, message, built_request_tools,
+      ctx_window, context_pruner_, logger_);
+  const bool require_choice_clarification =
+      brief_continuation_after_choice_prompt_requires_clarification(
+          message, effective_history, logger_);
+  const bool require_execution_clarification =
+      !require_choice_clarification &&
+      brief_continuation_after_execution_commit_requires_clarification(
+          message, effective_history, logger_);
+  const bool require_brief_continuation_clarification =
+      require_choice_clarification || require_execution_clarification;
+  const std::string clarification_notice =
+      require_brief_continuation_clarification
+          ? "[SYSTEM NOTICE: The assistant's previous turn either asked the "
+            "user to choose among options or volunteered to start executing "
+            "a plan, but the user's latest message is only a brief "
+            "continuation prompt. Do not assume which option or action to "
+            "execute and do not call tools yet. Ask one short clarification "
+            "question first.]"
+          : "";
+  std::vector<nlohmann::json> request_tools = built_request_tools;
+  if (require_brief_continuation_clarification) {
+    request_tools.clear();
+  }
 
   // Build context: system + history + new user message
   std::vector<Message> context;
@@ -1651,6 +1968,9 @@ std::vector<Message> AgentLoop::ProcessMessage(
   // Add duplicate notice if detected
   if (!duplicate_notice.empty()) {
     context.push_back(Message{"system", duplicate_notice});
+  }
+  if (!clarification_notice.empty()) {
+    context.push_back(Message{"system", clarification_notice});
   }
 
   // History
@@ -1710,14 +2030,19 @@ std::vector<Message> AgentLoop::ProcessMessage(
   request.tool_choice_auto = true;
 
   logger_->info("Request has {} tools", request.tools.size());
-  if (request.tools.empty()) {
+  if (request.tools.empty() && !require_brief_continuation_clarification) {
     logger_->error(
         "CRITICAL: request_tools is empty! Tool registry may have failed.");
+  } else if (require_brief_continuation_clarification) {
+    logger_->info(
+        "Request tool access suppressed pending clarification for brief "
+        "continuation after ambiguous assistant handoff");
   }
 
   // CRITICAL: Force tool usage for search/lookup queries (ONLY for first
   // request)
-  bool force_first_tool_call = has_lookup_intent(message);
+  bool force_first_tool_call =
+      has_lookup_intent(message) && !require_brief_continuation_clarification;
   if (force_first_tool_call) {
     request.tool_choice_type = "any";  // Force LLM to call a tool
     logger_->info(
@@ -1776,9 +2101,11 @@ std::vector<Message> AgentLoop::ProcessMessage(
         // Assistant message: text + tool_use blocks
         Message assistant_msg;
         assistant_msg.role = "assistant";
-        if (!response.content.empty())
+        const std::string assistant_text =
+            sanitize_assistant_response_text(response.content, logger_, false);
+        if (!assistant_text.empty())
           assistant_msg.content.push_back(
-              ContentBlock::MakeText(response.content));
+              ContentBlock::MakeText(assistant_text));
         for (const auto& tc : response.tool_calls)
           assistant_msg.content.push_back(
               ContentBlock::MakeToolUse(tc.id, tc.name, tc.arguments));
@@ -1806,14 +2133,16 @@ std::vector<Message> AgentLoop::ProcessMessage(
         continue;
       }
 
-      if (!response.content.empty()) {
+      const std::string final_response_text =
+          sanitize_assistant_response_text(response.content, logger_, true);
+      if (!final_response_text.empty()) {
         const auto replay_tool_names =
             collect_trailing_replay_tool_names(request.messages);
 
         if (!forced_lookup_retry && has_lookup_intent(message) &&
             (response_looks_like_unfulfilled_lookup_preamble(
-                 response.content) ||
-             response_contains_negative_conclusion(response.content))) {
+                 final_response_text) ||
+             response_contains_negative_conclusion(final_response_text))) {
           logger_->warn(
               "Lookup guard: provider returned a deferred search preamble "
               "or negative conclusion without tool calls; forcing one retry "
@@ -1822,7 +2151,7 @@ std::vector<Message> AgentLoop::ProcessMessage(
           Message assistant_msg;
           assistant_msg.role = "assistant";
           assistant_msg.content.push_back(
-              ContentBlock::MakeText(response.content));
+              ContentBlock::MakeText(final_response_text));
           request.messages.push_back(std::move(assistant_msg));
 
           Message correction_msg;
@@ -1846,7 +2175,7 @@ std::vector<Message> AgentLoop::ProcessMessage(
 
         if (!forced_web_search_synthesis_retry &&
             replay_tool_names.count("web_search") > 0 &&
-            response_looks_like_raw_search_results_dump(response.content)) {
+            response_looks_like_raw_search_results_dump(final_response_text)) {
           logger_->warn(
               "Web search replay guard: provider echoed raw search results "
               "after tool replay; forcing one synthesis retry");
@@ -1854,7 +2183,7 @@ std::vector<Message> AgentLoop::ProcessMessage(
           Message assistant_msg;
           assistant_msg.role = "assistant";
           assistant_msg.content.push_back(
-              ContentBlock::MakeText(response.content));
+              ContentBlock::MakeText(final_response_text));
           request.messages.push_back(std::move(assistant_msg));
 
           Message correction_msg;
@@ -1875,7 +2204,8 @@ std::vector<Message> AgentLoop::ProcessMessage(
         logger_->info("LLM provided final response");
         Message final_msg;
         final_msg.role = "assistant";
-        final_msg.content.push_back(ContentBlock::MakeText(response.content));
+        final_msg.content.push_back(
+            ContentBlock::MakeText(final_response_text));
         new_messages.push_back(final_msg);
 
         // Index messages to vector database if embedding manager is available
@@ -1957,7 +2287,7 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
   const int ctx_window = agent_config_.context_window > 0
                              ? agent_config_.context_window
                              : get_context_window(resolved_request_model());
-  const auto request_tools = build_request_tools(tool_registry_);
+  const auto built_request_tools = build_request_tools(tool_registry_);
 
   std::vector<Message> new_messages;
 
@@ -1986,15 +2316,42 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
   ContextPruner::Options prune_opts;
   effective_history = ContextPruner::Prune(effective_history, prune_opts);
   effective_history =
+      sanitize_assistant_pseudo_tool_markup_messages(effective_history);
+  effective_history =
       focus_history_on_latest_turn(effective_history, message, logger_);
   effective_history = compress_history_for_context_budget(
-      effective_history, system_prompt, message, request_tools, ctx_window,
-      context_pruner_, logger_);
+      effective_history, system_prompt, message, built_request_tools,
+      ctx_window, context_pruner_, logger_);
+  const bool require_choice_clarification =
+      brief_continuation_after_choice_prompt_requires_clarification(
+          message, effective_history, logger_);
+  const bool require_execution_clarification =
+      !require_choice_clarification &&
+      brief_continuation_after_execution_commit_requires_clarification(
+          message, effective_history, logger_);
+  const bool require_brief_continuation_clarification =
+      require_choice_clarification || require_execution_clarification;
+  const std::string clarification_notice =
+      require_brief_continuation_clarification
+          ? "[SYSTEM NOTICE: The assistant's previous turn either asked the "
+            "user to choose among options or volunteered to start executing "
+            "a plan, but the user's latest message is only a brief "
+            "continuation prompt. Do not assume which option or action to "
+            "execute and do not call tools yet. Ask one short clarification "
+            "question first.]"
+          : "";
+  std::vector<nlohmann::json> request_tools = built_request_tools;
+  if (require_brief_continuation_clarification) {
+    request_tools.clear();
+  }
 
   // Build context (system prompt always re-injected first)
   std::vector<Message> context;
   if (!system_prompt.empty()) {
     context.push_back(Message{"system", system_prompt});
+  }
+  if (!clarification_notice.empty()) {
+    context.push_back(Message{"system", clarification_notice});
   }
   for (const auto& msg : effective_history) {
     context.push_back(msg);
@@ -2044,6 +2401,11 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
 
   request.tools = request_tools;
   request.tool_choice_auto = true;
+  if (require_brief_continuation_clarification) {
+    logger_->info(
+        "Streaming request tool access suppressed pending clarification for "
+        "brief continuation after ambiguous assistant handoff");
+  }
 
   std::string original_model_stream = agent_config_.model;
   int iterations = 0;
@@ -2055,108 +2417,119 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
                                              logger_);
       std::string full_response;
       TokenUsage stream_usage;
+      bool suppress_text_deltas = false;
 
-      provider->ChatCompletionStream(
-          request, [&](const ChatCompletionResponse& chunk) {
-            if (!chunk.content.empty()) {
-              full_response += chunk.content;
-              if (callback) {
-                callback({events::kTextDelta, {{"text", chunk.content}}});
-              }
+      provider->ChatCompletionStream(request, [&](const ChatCompletionResponse&
+                                                      chunk) {
+        if (!chunk.content.empty()) {
+          full_response += chunk.content;
+          if (!suppress_text_deltas &&
+              looks_like_pseudo_tool_markup_text(full_response)) {
+            suppress_text_deltas = true;
+            if (logger_) {
+              logger_->warn(
+                  "Suppressing streaming text deltas after detecting raw "
+                  "pseudo-tool markup in provider output");
+            }
+          }
+          if (!suppress_text_deltas && callback) {
+            callback({events::kTextDelta, {{"text", chunk.content}}});
+          }
+        }
+
+        // Accumulate usage from stream chunks
+        stream_usage.prompt_tokens += chunk.usage.prompt_tokens;
+        stream_usage.completion_tokens += chunk.usage.completion_tokens;
+
+        if (!chunk.tool_calls.empty()) {
+          for (const auto& tc : chunk.tool_calls) {
+            if (callback) {
+              callback({events::kToolUse,
+                        {{"id", tc.id},
+                         {"name", tc.name},
+                         {"input", tc.arguments}}});
             }
 
-            // Accumulate usage from stream chunks
-            stream_usage.prompt_tokens += chunk.usage.prompt_tokens;
-            stream_usage.completion_tokens += chunk.usage.completion_tokens;
+            // Construct assistant message with text + tool_use blocks
+            Message assistant_msg;
+            assistant_msg.role = "assistant";
+            const std::string assistant_text =
+                sanitize_assistant_response_text(full_response, logger_, false);
+            if (!assistant_text.empty())
+              assistant_msg.content.push_back(
+                  ContentBlock::MakeText(assistant_text));
+            assistant_msg.content.push_back(
+                ContentBlock::MakeToolUse(tc.id, tc.name, tc.arguments));
+            request.messages.push_back(assistant_msg);
+            new_messages.push_back(assistant_msg);
+            full_response.clear();
 
-            if (!chunk.tool_calls.empty()) {
-              for (const auto& tc : chunk.tool_calls) {
+            // Execute tool
+            if (stop_requested_) {
+              logger_->info("Abort detected: skipping tool execution for {}",
+                            tc.name);
+              std::string abort_content = "[Tool execution aborted by user]";
+              if (callback) {
+                callback({events::kToolResult,
+                          {{"tool_use_id", tc.id},
+                           {"content", abort_content},
+                           {"is_error", true}}});
+              }
+
+              Message results_msg;
+              results_msg.role = "user";
+              results_msg.content.push_back(
+                  ContentBlock::MakeToolResult(tc.id, abort_content));
+              request.messages.push_back(results_msg);
+              new_messages.push_back(results_msg);
+            } else {
+              try {
+                auto result =
+                    tool_registry_->ExecuteTool(tc.name, tc.arguments);
+                // --- Tool result truncation ---
+                result = truncate_tool_result(result, kToolResultMaxChars,
+                                              kToolResultKeepLines);
                 if (callback) {
-                  callback({events::kToolUse,
-                            {{"id", tc.id},
-                             {"name", tc.name},
-                             {"input", tc.arguments}}});
+                  callback({events::kToolResult,
+                            {{"tool_use_id", tc.id}, {"content", result}}});
                 }
 
-                // Construct assistant message with text + tool_use blocks
-                Message assistant_msg;
-                assistant_msg.role = "assistant";
-                if (!full_response.empty())
-                  assistant_msg.content.push_back(
-                      ContentBlock::MakeText(full_response));
-                assistant_msg.content.push_back(
-                    ContentBlock::MakeToolUse(tc.id, tc.name, tc.arguments));
-                request.messages.push_back(assistant_msg);
-                new_messages.push_back(assistant_msg);
-                full_response.clear();
+                Message results_msg;
+                results_msg.role = "user";
+                results_msg.content.push_back(
+                    ContentBlock::MakeToolResult(tc.id, result));
+                request.messages.push_back(results_msg);
+                new_messages.push_back(results_msg);
+              } catch (const std::exception& e) {
+                std::string error_content = "Error: " + std::string(e.what());
+                if (callback) {
+                  callback({events::kToolResult,
+                            {{"tool_use_id", tc.id},
+                             {"content", error_content},
+                             {"is_error", true}}});
+                }
 
-                // Execute tool
-                if (stop_requested_) {
-                  logger_->info(
-                      "Abort detected: skipping tool execution for {}",
-                      tc.name);
-                  std::string abort_content =
-                      "[Tool execution aborted by user]";
-                  if (callback) {
-                    callback({events::kToolResult,
-                              {{"tool_use_id", tc.id},
-                               {"content", abort_content},
-                               {"is_error", true}}});
-                  }
-
-                  Message results_msg;
-                  results_msg.role = "user";
-                  results_msg.content.push_back(
-                      ContentBlock::MakeToolResult(tc.id, abort_content));
-                  request.messages.push_back(results_msg);
-                  new_messages.push_back(results_msg);
-                } else {
-                  try {
-                    auto result =
-                        tool_registry_->ExecuteTool(tc.name, tc.arguments);
-                    // --- Tool result truncation ---
-                    result = truncate_tool_result(result, kToolResultMaxChars,
-                                                  kToolResultKeepLines);
-                    if (callback) {
-                      callback({events::kToolResult,
-                                {{"tool_use_id", tc.id}, {"content", result}}});
-                    }
-
-                    Message results_msg;
-                    results_msg.role = "user";
-                    results_msg.content.push_back(
-                        ContentBlock::MakeToolResult(tc.id, result));
-                    request.messages.push_back(results_msg);
-                    new_messages.push_back(results_msg);
-                  } catch (const std::exception& e) {
-                    std::string error_content =
-                        "Error: " + std::string(e.what());
-                    if (callback) {
-                      callback({events::kToolResult,
-                                {{"tool_use_id", tc.id},
-                                 {"content", error_content},
-                                 {"is_error", true}}});
-                    }
-
-                    Message results_msg;
-                    results_msg.role = "user";
-                    results_msg.content.push_back(
-                        ContentBlock::MakeToolResult(tc.id, error_content));
-                    request.messages.push_back(results_msg);
-                    new_messages.push_back(results_msg);
-                  }
-                }  // end abort check else
+                Message results_msg;
+                results_msg.role = "user";
+                results_msg.content.push_back(
+                    ContentBlock::MakeToolResult(tc.id, error_content));
+                request.messages.push_back(results_msg);
+                new_messages.push_back(results_msg);
               }
-              iterations++;
-              return;  // Continue loop for tool results
-            }
+            }  // end abort check else
+          }
+          iterations++;
+          return;  // Continue loop for tool results
+        }
 
-            if (chunk.is_stream_end) {
-              if (callback) {
-                callback({events::kMessageEnd, {{"content", full_response}}});
-              }
-            }
-          });
+        if (chunk.is_stream_end) {
+          if (callback) {
+            callback({events::kMessageEnd,
+                      {{"content", sanitize_assistant_response_text(
+                                       full_response, logger_, true)}}});
+          }
+        }
+      });
 
       // --- Usage tracking ---
       if (usage_accumulator_ && !effective_session_key.empty()) {
@@ -2173,10 +2546,13 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
       }
 
       // If we got a final response without tool calls, we're done
-      if (!full_response.empty()) {
+      const std::string final_response_text =
+          sanitize_assistant_response_text(full_response, logger_, true);
+      if (!final_response_text.empty()) {
         Message final_msg;
         final_msg.role = "assistant";
-        final_msg.content.push_back(ContentBlock::MakeText(full_response));
+        final_msg.content.push_back(
+            ContentBlock::MakeText(final_response_text));
         new_messages.push_back(final_msg);
 
         // Index messages to vector database if embedding manager is available
@@ -2201,7 +2577,7 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
             }
 
             // Index assistant response
-            if (!full_response.empty()) {
+            if (!final_response_text.empty()) {
               std::string assistant_msg_id =
                   effective_session_key + ":assistant:" +
                   std::to_string(std::chrono::system_clock::now()
@@ -2213,8 +2589,8 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
                   {"timestamp", std::chrono::system_clock::now()
                                     .time_since_epoch()
                                     .count()}};
-              embedding_manager_->IndexText(assistant_msg_id, full_response,
-                                            assistant_metadata);
+              embedding_manager_->IndexText(
+                  assistant_msg_id, final_response_text, assistant_metadata);
               logger_->debug("Indexed assistant message (stream): {}",
                              assistant_msg_id);
             }

@@ -1150,6 +1150,9 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
             "device_bridge_missing");
   EXPECT_EQ(first_status->payload["hostCapabilities"]["haptics"]["reason"],
             "device_bridge_missing");
+  EXPECT_TRUE(first_status->payload.contains("speechState"));
+  EXPECT_FALSE(first_status->payload["speechState"]["available"]);
+  EXPECT_EQ(first_status->payload["speechState"]["state"], "idle");
 
   engine.SetForegroundState(false);
   auto latest_status = std::find_if(
@@ -1168,6 +1171,7 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
             "background_gated");
   EXPECT_EQ(latest_status->payload["hostCapabilities"]["camera"]["reason"],
             "background_gated");
+  EXPECT_TRUE(latest_status->payload.contains("speechState"));
 }
 
 TEST_F(MobileEngineTest, PushPcm16UsesAsrProviderForFinalTurn) {
@@ -1726,6 +1730,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   status.camera_status = "running";
   status.speaker_status = "speaking";
   ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:tooling", status));
+  int16_t samples[] = {1, 2, 3, 4};
+  ASSERT_TRUE(engine.PushPcm16("agent:main:tooling", samples, 4, 16000, false));
 
   std::vector<ravbot::mobile::MobileEvent> events;
   engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
@@ -1788,6 +1794,11 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
             "device_bridge_missing");
   EXPECT_EQ(device_tool_result["hostCapabilities"]["haptics"]["reason"],
             "device_bridge_missing");
+  EXPECT_TRUE(device_tool_result.contains("speechState"));
+  EXPECT_EQ(device_tool_result["speechState"]["state"], "capturing");
+  EXPECT_TRUE(device_tool_result["speechState"]["pendingAudio"]);
+  EXPECT_EQ(device_tool_result["speechState"]["currentSegmentIndex"], 1);
+  EXPECT_TRUE(device_tool_result["speechState"]["asrReady"].is_boolean());
   EXPECT_EQ(history[3].role, "assistant");
   EXPECT_EQ(history[3].content[0].text,
             "Device status received. Service is running and speaker is "
@@ -1832,6 +1843,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
             "device_bridge_missing");
   EXPECT_EQ(device_event_result["hostCapabilities"]["haptics"]["reason"],
             "device_bridge_missing");
+  EXPECT_EQ(device_event_result["speechState"]["state"], "capturing");
+  EXPECT_TRUE(device_event_result["speechState"]["pendingAudio"]);
 
   auto assistant_final =
       std::find_if(events.begin(), events.end(),
@@ -1991,6 +2004,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   EXPECT_TRUE(camera_tool_result["hostCapabilities"]["camera"]["ready"]);
   EXPECT_EQ(camera_tool_result["hostCapabilities"]["webSearch"]["reason"],
             "device_bridge_missing");
+  EXPECT_TRUE(camera_tool_result.contains("speechState"));
+  EXPECT_EQ(camera_tool_result["speechState"]["state"], "idle");
   EXPECT_EQ(history[3].role, "assistant");
   EXPECT_EQ(history[3].content[0].text,
             "Latest camera observation shows a desk with phone.");
@@ -2098,6 +2113,7 @@ TEST_F(MobileEngineTest, CameraSnapshotReportsBackgroundGatedReason) {
             "background_gated");
   EXPECT_EQ(camera_tool_result["hostCapabilities"]["camera"]["reason"],
             "background_gated");
+  EXPECT_TRUE(camera_tool_result.contains("speechState"));
   EXPECT_EQ(history[3].content[0].text,
             "Camera snapshot unavailable because background_gated.");
 }

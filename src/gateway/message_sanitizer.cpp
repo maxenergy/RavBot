@@ -12,14 +12,9 @@ MessageSanitizer::MessageSanitizer() {
   // 定义已知的边界标记模式
   // 使用特殊 Unicode 字符组合，难以伪造
   boundary_markers_ = {
-      "⟨⟨EXTERNAL_CONTENT⟩⟩",
-      "⟨⟨/EXTERNAL_CONTENT⟩⟩",
-      "⟨⟨UNTRUSTED⟩⟩",
-      "⟨⟨/UNTRUSTED⟩⟩",
-      "⟨⟨WEB_SEARCH⟩⟩",
-      "⟨⟨/WEB_SEARCH⟩⟩",
-      "⟨⟨WEB_FETCH⟩⟩",
-      "⟨⟨/WEB_FETCH⟩⟩",
+      "⟨⟨EXTERNAL_CONTENT⟩⟩", "⟨⟨/EXTERNAL_CONTENT⟩⟩", "⟨⟨UNTRUSTED⟩⟩",
+      "⟨⟨/UNTRUSTED⟩⟩",       "⟨⟨WEB_SEARCH⟩⟩",        "⟨⟨/WEB_SEARCH⟩⟩",
+      "⟨⟨WEB_FETCH⟩⟩",        "⟨⟨/WEB_FETCH⟩⟩",
   };
 }
 
@@ -35,19 +30,20 @@ std::string MessageSanitizer::SanitizeInput(const std::string& input) {
   }
 
   // 3. 移除控制字符（保留换行和制表符）
-  sanitized.erase(
-      std::remove_if(sanitized.begin(), sanitized.end(),
-                     [](unsigned char c) {
-                       return (c < 32 && c != '\n' && c != '\t' && c != '\r');
-                     }),
-      sanitized.end());
+  sanitized.erase(std::remove_if(sanitized.begin(), sanitized.end(),
+                                 [](unsigned char c) {
+                                   return (c < 32 && c != '\n' && c != '\t' &&
+                                           c != '\r');
+                                 }),
+                  sanitized.end());
 
   return sanitized;
 }
 
 // 规范化附件格式
 // Requirements: 7.2
-nlohmann::json MessageSanitizer::NormalizeAttachment(const nlohmann::json& attachment) {
+nlohmann::json
+MessageSanitizer::NormalizeAttachment(const nlohmann::json& attachment) {
   nlohmann::json normalized = attachment;
 
   // 验证附件必需字段
@@ -63,7 +59,8 @@ nlohmann::json MessageSanitizer::NormalizeAttachment(const nlohmann::json& attac
 
   // 规范化 MIME 类型为小写
   std::string mime_type = attachment["mime_type"].get<std::string>();
-  std::transform(mime_type.begin(), mime_type.end(), mime_type.begin(), ::tolower);
+  std::transform(mime_type.begin(), mime_type.end(), mime_type.begin(),
+                 ::tolower);
   normalized["mime_type"] = mime_type;
 
   return normalized;
@@ -140,6 +137,12 @@ std::string MessageSanitizer::SanitizeOutput(const std::string& output) {
 // Requirements: 13.1
 std::string MessageSanitizer::RemoveSystemTags(const std::string& text) {
   std::string result = text;
+  const std::string plain_tool_tag_names =
+      "(exec|read|write|edit|bash|apply_patch|process|message|web_search|"
+      "web_fetch|memory_search|memory_get|memory_write|memory_list|"
+      "memory_delete|device_status|camera_snapshot|runtime_status|time|"
+      "vibrate|chain|spawn_subagent|cron|sessions_list|sessions_history|"
+      "sessions_send)";
 
   // 定义需要移除的系统标签模式
   // 这些标签是系统内部使用的，不应该暴露给用户
@@ -161,21 +164,46 @@ std::string MessageSanitizer::RemoveSystemTags(const std::string& text) {
       std::regex(R"(<tool_use>[\s\S]*?</tool_use>)", std::regex::icase),
       // <tool_result>...</tool_result>
       std::regex(R"(<tool_result>[\s\S]*?</tool_result>)", std::regex::icase),
+      // <tool_call>...</tool_call>
+      std::regex(R"(<tool_call>[\s\S]*?</tool_call>)", std::regex::icase),
       // <function_calls>...</function_calls>
-      std::regex(R"(<function_calls>[\s\S]*?</function_calls>)", std::regex::icase),
+      std::regex(R"(<function_calls>[\s\S]*?</function_calls>)",
+                 std::regex::icase),
+      // <function=exec>...</function> or <function ...>...</function>
+      std::regex(R"(<function[^>]*>[\s\S]*?</function>)", std::regex::icase),
       // <invoke>...</invoke>
       std::regex(R"(<invoke[^>]*>[\s\S]*?</invoke>)", std::regex::icase),
       // <parameter>...</parameter>
       std::regex(R"(<parameter[^>]*>[\s\S]*?</parameter>)", std::regex::icase),
+      // <exec>...</exec> / <read>...</read> / other plain tool tags
+      std::regex("<" + plain_tool_tag_names + R"([^>]*>[\s\S]*?</\1>)",
+                 std::regex::icase),
       // <system-reminder>...</system-reminder>
-      std::regex(R"(<system-reminder>[\s\S]*?</system-reminder>)", std::regex::icase),
+      std::regex(R"(<system-reminder>[\s\S]*?</system-reminder>)",
+                 std::regex::icase),
+      // Standalone pseudo-tool tag lines
+      std::regex(R"(^\s*<tool_call>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*</tool_call>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*<function[^>]*>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*</function>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*<parameter[^>]*>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex(R"(^\s*</parameter>\s*$)",
+                 std::regex::icase | std::regex::multiline),
+      std::regex("^\\s*</?" + plain_tool_tag_names + R"([^>]*>\s*$)",
+                 std::regex::icase | std::regex::multiline),
       // Bash command outputs ($ command or # command)
       std::regex(R"(^\s*[$#]\s+.*$)", std::regex::multiline),
       // File paths with line numbers (file.cpp:123)
       std::regex(R"(\S+\.(cpp|hpp|h|c|py|js|ts):\d+)", std::regex::icase),
       // Tool execution markers
       std::regex(R"(Tool:\s*\w+)", std::regex::icase),
-      std::regex(R"(Executing:\s*.*$)", std::regex::icase | std::regex::multiline),
+      std::regex(R"(Executing:\s*.*$)",
+                 std::regex::icase | std::regex::multiline),
   };
 
   // 应用所有过滤模式
@@ -183,12 +211,15 @@ std::string MessageSanitizer::RemoveSystemTags(const std::string& text) {
     result = std::regex_replace(result, pattern, "");
   }
 
+  result = std::regex_replace(result, std::regex(R"(\n{3,})"), "\n\n");
+
   return result;
 }
 
 // 清理外部内容元数据
 // Requirements: 13.2
-nlohmann::json MessageSanitizer::SanitizeMetadata(const nlohmann::json& metadata) {
+nlohmann::json
+MessageSanitizer::SanitizeMetadata(const nlohmann::json& metadata) {
   if (!metadata.is_object()) {
     return nlohmann::json::object();
   }
@@ -197,13 +228,13 @@ nlohmann::json MessageSanitizer::SanitizeMetadata(const nlohmann::json& metadata
 
   // 允许的元数据字段白名单
   const std::vector<std::string> allowed_fields = {
-      "source",      // 来源标识
-      "timestamp",   // 时间戳
-      "type",        // 内容类型
-      "url",         // URL（如果是 web 内容）
-      "title",       // 标题
-      "author",      // 作者
-      "language",    // 语言
+      "source",     // 来源标识
+      "timestamp",  // 时间戳
+      "type",       // 内容类型
+      "url",        // URL（如果是 web 内容）
+      "title",      // 标题
+      "author",     // 作者
+      "language",   // 语言
   };
 
   // 只保留白名单中的字段

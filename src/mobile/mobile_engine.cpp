@@ -571,10 +571,27 @@ void MobileEngine::EmitRuntimeStatus() const {
   Emit(kEventMobileRuntimeStatus, BuildRuntimeStatusPayload());
 }
 
+nlohmann::json
+MobileEngine::BuildSpeechStatePayload(const std::string& session_key) const {
+  if (!speech_pipeline_) {
+    return {{"available", false},
+            {"state", "unavailable"},
+            {"detail", "No local mobile speech pipeline is configured."}};
+  }
+
+  nlohmann::json payload =
+      speech_pipeline_->GetSessionStatus(session_key).ToJson();
+  payload["provider"] = "sherpa_onnx_mobile";
+  payload["asrReady"] = speech_pipeline_->runtime_status().asr_ready;
+  payload["ttsReady"] = speech_pipeline_->runtime_status().tts_ready;
+  return payload;
+}
+
 nlohmann::json MobileEngine::BuildDeviceStatusEventPayload(
     const std::string& session_key, const DeviceStatusSnapshot& status) const {
   nlohmann::json payload = with_session_key(session_key, status.ToJson());
   payload["hostCapabilities"] = BuildHostCapabilitiesPayload(session_key);
+  payload["speechState"] = BuildSpeechStatePayload(session_key);
   return payload;
 }
 
@@ -1231,6 +1248,7 @@ std::string MobileEngine::BuildDeviceStatusToolResult(
     }
   }
   result["hostCapabilities"] = BuildHostCapabilitiesPayload(session_key);
+  result["speechState"] = BuildSpeechStatePayload(session_key);
   result["runtimeStatus"] = BuildRuntimeStatusPayload();
   return result.dump(2);
 }
@@ -1335,6 +1353,7 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
     }
   }
   result["hostCapabilities"] = BuildHostCapabilitiesPayload(session_key);
+  result["speechState"] = BuildSpeechStatePayload(session_key);
   return result.dump(2);
 }
 

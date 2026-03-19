@@ -117,6 +117,7 @@ class MobileEngine {
                               const ToolCall& tool_call) const;
   std::string BuildDeviceStatusToolResult(const std::string& session_key) const;
   std::string BuildRuntimeStatusToolResult() const;
+  nlohmann::json BuildSpeechStatePayload(const std::string& session_key) const;
   nlohmann::json
   BuildHostCapabilitiesPayload(const std::string& session_key) const;
   std::string BuildVibrateToolResult(const std::string& session_key,

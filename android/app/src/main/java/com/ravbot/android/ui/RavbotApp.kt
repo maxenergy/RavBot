@@ -1685,6 +1685,55 @@ internal fun describeHostCapabilities(payload: String): String? {
       .getOrNull()
 }
 
+internal fun describeSpeechState(payload: String): String? {
+  return runCatching {
+        val json = JSONObject(payload)
+        val speechState = json.optJSONObject("speechState") ?: return null
+        if (!speechState.optBoolean("available", false)) {
+          return null
+        }
+
+        val state = speechState.optString("state").takeIf { it.isNotBlank() } ?: return null
+        val segmentIndex =
+            if (speechState.has("currentSegmentIndex")) {
+              speechState.optInt("currentSegmentIndex")
+            } else {
+              null
+            }
+        val durationMs =
+            if (speechState.has("durationMs")) {
+              speechState.optInt("durationMs")
+            } else {
+              null
+            }
+        val completedSegments =
+            if (speechState.has("completedSegments")) {
+              speechState.optInt("completedSegments")
+            } else {
+              null
+            }
+
+        when (state) {
+          "capturing" -> {
+            buildString {
+              append("speech capturing")
+              segmentIndex?.let { append(" seg $it") }
+              durationMs?.let { append(" ${it}ms") }
+            }
+          }
+          "interrupted" -> "speech interrupted"
+          "idle" ->
+              if ((completedSegments ?: 0) > 0) {
+                "speech idle last seg ${completedSegments}"
+              } else {
+                null
+              }
+          else -> "speech $state"
+        }
+      }
+      .getOrNull()
+}
+
 private fun parseJsonInt(payload: String, field: String): Int? {
   return runCatching {
         val json = JSONObject(payload)
@@ -1759,6 +1808,7 @@ internal fun describeDeviceStatus(payload: String): String {
   microphoneStatus?.let { parts += "mic $it" }
   cameraStatus?.let { parts += "cam $it" }
   speakerStatus?.let { parts += "speaker $it" }
+  describeSpeechState(payload)?.let { parts += it }
   describeHostCapabilities(payload)?.let { parts += "blocked $it" }
 
   return if (parts.isEmpty()) {
