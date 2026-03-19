@@ -48,6 +48,11 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   ignores stale event traffic from older sessions when a new session is active
 - Host bridge events such as `device.avatar_state`, `device.speech_request`,
   `device.speech_interrupt`, and `device.vibrate` now also carry `sessionKey`
+- `mobile.runtime_status` now exposes `visionProviderReady`,
+  `visionProvider`, `visionProviderPlaceholder`, and `visionDetail`, and the
+  Android host keeps those diagnostics visible across relaunches
+  A placeholder provider reports `visionProviderReady=false` until a real VLM
+  backend is linked.
 - `camera_snapshot` also carries the latest published `deviceStatus`, so the
   local model can tell whether the camera is currently running or whether it
   is looking at an older observation

@@ -1256,6 +1256,12 @@ TEST_F(MobileEngineTest, StartSessionEmitsRuntimeStatusWithResolvedModelPaths) {
             (test_dir_ / "SenseVoiceSmall").string());
   EXPECT_FALSE(it->payload["llmModelExists"].get<bool>());
   EXPECT_FALSE(it->payload["sttModelExists"].get<bool>());
+  EXPECT_FALSE(it->payload["visionProviderReady"].get<bool>());
+  EXPECT_EQ(it->payload["visionProvider"], "placeholder_mobile_vision");
+  EXPECT_TRUE(it->payload["visionProviderPlaceholder"].get<bool>());
+  EXPECT_EQ(it->payload["visionDetail"],
+            "Using placeholder mobile vision provider until a real VLM "
+            "backend is linked.");
   EXPECT_FALSE(it->payload["deviceBridgeAttached"].get<bool>());
   EXPECT_FALSE(it->payload["webSearchReady"].get<bool>());
   EXPECT_FALSE(it->payload["webFetchReady"].get<bool>());
@@ -1283,6 +1289,11 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
         return event.name == ravbot::mobile::kEventMobileRuntimeStatus;
       });
   ASSERT_NE(speech_only_status, speech_only_events.end());
+  EXPECT_FALSE(speech_only_status->payload["visionProviderReady"].get<bool>());
+  EXPECT_EQ(speech_only_status->payload["visionProvider"],
+            "placeholder_mobile_vision");
+  EXPECT_TRUE(
+      speech_only_status->payload["visionProviderPlaceholder"].get<bool>());
   EXPECT_TRUE(speech_only_status->payload["deviceBridgeAttached"].get<bool>());
   EXPECT_FALSE(speech_only_status->payload["webSearchReady"].get<bool>());
   EXPECT_FALSE(speech_only_status->payload["webFetchReady"].get<bool>());
@@ -1307,6 +1318,11 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
         return event.name == ravbot::mobile::kEventMobileRuntimeStatus;
       });
   ASSERT_NE(full_bridge_status, full_bridge_events.end());
+  EXPECT_FALSE(full_bridge_status->payload["visionProviderReady"].get<bool>());
+  EXPECT_EQ(full_bridge_status->payload["visionProvider"],
+            "placeholder_mobile_vision");
+  EXPECT_TRUE(
+      full_bridge_status->payload["visionProviderPlaceholder"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["deviceBridgeAttached"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["webSearchReady"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["webFetchReady"].get<bool>());

@@ -23,6 +23,8 @@ data class HostSnapshot(
     val runtimeProvider: String = "unknown",
     val runtimeDetail: String = "No native runtime diagnostics emitted yet.",
     val runtimeModelsDir: String = "not set",
+    val runtimeVisionProvider: String = "unknown",
+    val runtimeVisionDetail: String = "No native vision diagnostics emitted yet.",
     val hostWebSearchEnabled: Boolean = true,
     val hostWebFetchEnabled: Boolean = true,
     val hostHapticsEnabled: Boolean = true,
@@ -68,6 +70,8 @@ data class HostSnapshot(
         .put("runtimeProvider", runtimeProvider)
         .put("runtimeDetail", runtimeDetail)
         .put("runtimeModelsDir", runtimeModelsDir)
+        .put("runtimeVisionProvider", runtimeVisionProvider)
+        .put("runtimeVisionDetail", runtimeVisionDetail)
         .put("hostWebSearchEnabled", hostWebSearchEnabled)
         .put("hostWebFetchEnabled", hostWebFetchEnabled)
         .put("hostHapticsEnabled", hostHapticsEnabled)
@@ -140,6 +144,13 @@ data class HostSnapshot(
                     ),
                 runtimeModelsDir =
                     parsed.optString("runtimeModelsDir", "not set"),
+                runtimeVisionProvider =
+                    parsed.optString("runtimeVisionProvider", "unknown"),
+                runtimeVisionDetail =
+                    parsed.optString(
+                        "runtimeVisionDetail",
+                        "No native vision diagnostics emitted yet.",
+                    ),
                 hostWebSearchEnabled =
                     parsed.optBoolean("hostWebSearchEnabled", true),
                 hostWebFetchEnabled =

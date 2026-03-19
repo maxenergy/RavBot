@@ -57,6 +57,11 @@ class MainActivityTest {
   }
 
   @Test
+  fun hostScreenShowsVisionProviderRuntimeLine() {
+    composeRule.onNodeWithText("Vision provider: unknown").assertIsDisplayed()
+  }
+
+  @Test
   fun foregroundServiceStatusIntentCarriesRuntimeSnapshot() {
     val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 

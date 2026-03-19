@@ -34,6 +34,8 @@ class HostSnapshotStoreTest {
             runtimeProvider = "llama.cpp",
             runtimeDetail = "backend linked",
             runtimeModelsDir = "/data/user/0/com.ravbot.android/files/ravbot-models",
+            runtimeVisionProvider = "placeholder_mobile_vision",
+            runtimeVisionDetail = "placeholder backend active",
             hostWebSearchEnabled = false,
             hostWebFetchEnabled = true,
             hostHapticsEnabled = false,
@@ -66,6 +68,8 @@ class HostSnapshotStoreTest {
 
     assertEquals("android-mvp", cleared.sessionId)
     assertEquals("What can you see and hear right now?", cleared.promptText)
+    assertEquals("unknown", cleared.runtimeVisionProvider)
+    assertEquals("No native vision diagnostics emitted yet.", cleared.runtimeVisionDetail)
     assertTrue(cleared.hostWebSearchEnabled)
     assertTrue(cleared.hostWebFetchEnabled)
     assertTrue(cleared.hostHapticsEnabled)

@@ -160,6 +160,12 @@ TEST_F(MobileCApiTest, SendTextTurnEmitsAssistantFinalEvent) {
       saw_runtime = true;
       EXPECT_EQ(event.payload["modelsDir"], test_dir_.string());
       EXPECT_EQ(event.payload["speechProvider"], "sherpa_onnx_mobile");
+      EXPECT_EQ(event.payload["visionProvider"], "placeholder_mobile_vision");
+      EXPECT_TRUE(event.payload["visionProviderPlaceholder"].get<bool>());
+      EXPECT_EQ(
+          event.payload["visionDetail"],
+          "Using placeholder mobile vision provider until a real VLM backend "
+          "is linked.");
       EXPECT_FALSE(event.payload["deviceBridgeAttached"].get<bool>());
       EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
       EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());

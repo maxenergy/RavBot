@@ -162,6 +162,12 @@ private fun RavbotHostScreen() {
   var runtimeModelsDir by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeModelsDir)
   }
+  var runtimeVisionProvider by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeVisionProvider)
+  }
+  var runtimeVisionDetail by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeVisionDetail)
+  }
   var hostWebSearchEnabled by rememberSaveable {
     mutableStateOf(restoredSnapshot.hostWebSearchEnabled)
   }
@@ -434,6 +440,10 @@ private fun RavbotHostScreen() {
         runtimeProvider = parseJsonString(event.payload, "provider") ?: runtimeProvider
         runtimeDetail = parseJsonString(event.payload, "detail") ?: runtimeDetail
         runtimeModelsDir = parseJsonString(event.payload, "modelsDir") ?: runtimeModelsDir
+        runtimeVisionProvider =
+            parseJsonString(event.payload, "visionProvider") ?: runtimeVisionProvider
+        runtimeVisionDetail =
+            parseJsonString(event.payload, "visionDetail") ?: runtimeVisionDetail
         runtimeDeviceBridgeStatus =
             describeRuntimeFlag(parseJsonBoolean(event.payload, "deviceBridgeAttached"))
         runtimeWebSearchStatus =
@@ -613,6 +623,8 @@ private fun RavbotHostScreen() {
           runtimeProvider = runtimeProvider,
           runtimeDetail = runtimeDetail,
           runtimeModelsDir = runtimeModelsDir,
+          runtimeVisionProvider = runtimeVisionProvider,
+          runtimeVisionDetail = runtimeVisionDetail,
           hostWebSearchEnabled = hostWebSearchEnabled,
           hostWebFetchEnabled = hostWebFetchEnabled,
           hostHapticsEnabled = hostHapticsEnabled,
@@ -815,6 +827,7 @@ private fun RavbotHostScreen() {
                 "Haptics: $runtimeHapticsStatus",
                 "Text runtime: $runtimeTextStatus",
                 "Vision runtime: $runtimeVisionStatus",
+                "Vision provider: $runtimeVisionProvider",
                 "Vulkan: $runtimeVulkanStatus",
                 "Speech backend: $speechBackendStatus",
                 "ASR runtime: $speechAsrStatus",
@@ -826,6 +839,7 @@ private fun RavbotHostScreen() {
                 "STT asset: $speechSttModel",
                 "TTS asset: $speechTtsVoice",
                 "Detail: $runtimeDetail",
+                "Vision detail: $runtimeVisionDetail",
                 "Speech detail: $speechDetail",
             ),
     )

@@ -435,16 +435,38 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
   const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
   const bool vibration_ready =
       bridge != nullptr && bridge->SupportsVibration();
+  const bool vision_provider_placeholder =
+      vision_provider_ != nullptr && vision_provider_->IsPlaceholder();
+  const bool vision_provider_ready =
+      config_.mobile.vision.enabled && vision_provider_ != nullptr &&
+      !vision_provider_placeholder;
+  const std::string vision_provider =
+      vision_provider_ ? vision_provider_->ProviderName() : "not_configured";
   nlohmann::json payload = {{"modelsDir", models_dir_.string()},
                             {"sttModel", config_.mobile.models.stt_model},
                             {"ttsVoice", config_.mobile.models.tts_voice},
                             {"visionEnabled", config_.mobile.vision.enabled},
+                            {"visionProviderReady", vision_provider_ready},
+                            {"visionProvider", vision_provider},
+                            {"visionProviderPlaceholder",
+                             vision_provider_placeholder},
                             {"continuousVision",
                              config_.mobile.runtime.continuous_vision},
                             {"deviceBridgeAttached", device_bridge_attached},
                             {"webSearchReady", web_search_ready},
                             {"webFetchReady", web_fetch_ready},
                             {"vibrationReady", vibration_ready}};
+  if (!config_.mobile.vision.enabled) {
+    payload["visionDetail"] =
+        "Continuous vision is disabled in the mobile runtime configuration.";
+  } else if (!vision_provider_) {
+    payload["visionDetail"] = "No mobile vision provider is configured.";
+  } else if (vision_provider_placeholder) {
+    payload["visionDetail"] =
+        "Using placeholder mobile vision provider until a real VLM backend is linked.";
+  } else {
+    payload["visionDetail"] = "Mobile vision provider is configured.";
+  }
 
   if (auto* llama_provider =
           dynamic_cast<ravbot::LlamaCppMobileProvider*>(text_provider_.get())) {
