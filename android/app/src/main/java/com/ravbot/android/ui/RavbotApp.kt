@@ -121,6 +121,7 @@ private fun RavbotHostScreen() {
     mutableStateOf(restoredSnapshot.promptText)
   }
   var sessionId by rememberSaveable { mutableStateOf(restoredSnapshot.sessionId) }
+  var activeSessionId by rememberSaveable { mutableStateOf("") }
   var nativeReady by rememberSaveable { mutableStateOf(false) }
   var sessionReady by rememberSaveable { mutableStateOf(false) }
   var isForeground by rememberSaveable { mutableStateOf(true) }
@@ -240,8 +241,12 @@ private fun RavbotHostScreen() {
   var restoreFlowCompleted by rememberSaveable {
     mutableStateOf(!restoredSnapshot.shouldRestoreRuntime())
   }
+  val sessionBound =
+      sessionReady && activeSessionId.isNotBlank() && activeSessionId == sessionId
+  val currentSessionRoute = activeSessionId.ifBlank { sessionId }
   val permissionsGranted = hasAllRuntimePermissions(context)
   val currentSpeakerStatus = rememberUpdatedState(speakerStatus)
+  val currentSessionRouteState = rememberUpdatedState(currentSessionRoute)
   val audioController =
       remember(bridge) {
         AudioCaptureController(
@@ -305,7 +310,7 @@ private fun RavbotHostScreen() {
       }
 
   fun startSensors() {
-    if (!nativeReady || !sessionReady) {
+    if (!nativeReady || !sessionReady || !sessionBound) {
       appendLog(logEntries, "host", "Start a session before enabling sensors.")
       return
     }
@@ -354,12 +359,28 @@ private fun RavbotHostScreen() {
     )
   }
 
+  fun publishDeviceStatus() {
+    bridge.reportDeviceStatus(
+        serviceRunning = serviceRunning,
+        captureRequested = captureRequested,
+        permissionsGranted = permissionsGranted,
+        hostWebSearchEnabled = hostWebSearchEnabled,
+        hostWebFetchEnabled = hostWebFetchEnabled,
+        hostHapticsEnabled = hostHapticsEnabled,
+        microphoneStatus = microphoneStatus,
+        cameraStatus = cameraStatus,
+        speakerStatus = speakerStatus,
+    )
+  }
+
   DisposableEffect(bridge) {
     bridge.subscribeEvents { event ->
       appendLog(logEntries, event)
       val eventSessionKey = parseJsonString(event.payload, "sessionKey")
       val isCurrentSessionEvent =
-          eventSessionKey == null || eventSessionKey.isEmpty() || eventSessionKey == sessionId
+          eventSessionKey == null ||
+              eventSessionKey.isEmpty() ||
+              eventSessionKey == currentSessionRouteState.value
       if (!isCurrentSessionEvent) {
         return@subscribeEvents
       }
@@ -538,16 +559,21 @@ private fun RavbotHostScreen() {
     }
 
     if (nativeReady && restoredSnapshot.restoreSession) {
-      sessionReady = bridge.startSession(sessionId)
+      val started = bridge.startSession(sessionId)
+      sessionReady = started
+      activeSessionId = if (started) sessionId else ""
       appendLog(
           logEntries,
           "host",
-          if (sessionReady) {
+          if (started) {
             "Session restored: $sessionId"
           } else {
             "Session restore failed: $sessionId"
           },
       )
+      if (started) {
+        publishDeviceStatus()
+      }
     }
 
     if (restoredSnapshot.restoreService) {
@@ -604,7 +630,7 @@ private fun RavbotHostScreen() {
 
   val hostSnapshot =
       HostSnapshot(
-          sessionId = sessionId,
+          sessionId = activeSessionId.ifBlank { sessionId },
           promptText = promptText,
           avatarState = avatarState.label,
           restoreEngine = nativeReady,
@@ -668,17 +694,7 @@ private fun RavbotHostScreen() {
     if (!nativeReady) {
       return@LaunchedEffect
     }
-    bridge.reportDeviceStatus(
-        serviceRunning = serviceRunning,
-        captureRequested = captureRequested,
-        permissionsGranted = permissionsGranted,
-        hostWebSearchEnabled = hostWebSearchEnabled,
-        hostWebFetchEnabled = hostWebFetchEnabled,
-        hostHapticsEnabled = hostHapticsEnabled,
-        microphoneStatus = microphoneStatus,
-        cameraStatus = cameraStatus,
-        speakerStatus = speakerStatus,
-    )
+    publishDeviceStatus()
   }
 
   LaunchedEffect(nativeReady, hostWebSearchEnabled, hostWebFetchEnabled) {
@@ -808,7 +824,9 @@ private fun RavbotHostScreen() {
             listOf(
                 "Library: ${bridge.loadStatus.detail}",
                 "Engine handle: ${if (bridge.isInitialized()) "ready" else "not initialized"}",
-                "Session: ${if (sessionReady) sessionId else "not started"}",
+                "Active session: ${if (sessionReady) activeSessionId else "not started"}",
+                "Session input: $sessionId",
+                "Session binding: ${if (sessionBound) "current" else if (sessionReady) "pending rebind" else "not started"}",
                 "Foreground: ${if (isForeground) "true" else "false"}",
             ),
     )
@@ -1011,6 +1029,7 @@ private fun RavbotHostScreen() {
               onClick = {
                 stopSensors("Live capture stopped before engine re-init.")
                 sessionReady = false
+                activeSessionId = ""
                 restoreCapturePending = false
                 nativeReady = initEngineFromHostStorage()
                 appendLog(
@@ -1029,13 +1048,23 @@ private fun RavbotHostScreen() {
 
           OutlinedButton(
               onClick = {
+                val previousActiveSessionId = activeSessionId
                 val started = bridge.startSession(sessionId)
-                sessionReady = started
+                sessionReady = started || previousActiveSessionId.isNotBlank()
+                activeSessionId =
+                    if (started) {
+                      sessionId
+                    } else {
+                      previousActiveSessionId
+                    }
                 appendLog(
                     logEntries,
                     "host",
                     if (started) "Session started: $sessionId" else "Session start failed.",
                 )
+                if (started) {
+                  publishDeviceStatus()
+                }
               },
               enabled = nativeReady,
           ) {
@@ -1058,7 +1087,7 @@ private fun RavbotHostScreen() {
                     if (sent) "Text turn queued." else "Text turn rejected.",
                 )
               },
-              enabled = nativeReady,
+              enabled = nativeReady && sessionBound,
           ) {
             Text("Send text")
           }
@@ -1069,7 +1098,7 @@ private fun RavbotHostScreen() {
                 speechController.stop()
                 appendLog(logEntries, "host", "Interrupt requested.")
               },
-              enabled = nativeReady,
+              enabled = nativeReady && sessionBound,
           ) {
             Text("Interrupt")
           }
@@ -1083,7 +1112,7 @@ private fun RavbotHostScreen() {
               onClick = {
                 startSensors()
               },
-              enabled = nativeReady && sessionReady && permissionsGranted,
+              enabled = nativeReady && sessionBound && permissionsGranted,
           ) {
             Text("Start sensors")
           }

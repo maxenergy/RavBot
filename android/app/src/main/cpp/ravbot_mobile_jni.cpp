@@ -565,7 +565,7 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeReportDeviceStatus(
   const std::string speaker = ToString(env, speaker_status);
 
   ravbot_mobile_report_device_status(
-      engine->engine, service_running == JNI_TRUE,
+      engine->engine, ActiveSessionId(engine), service_running == JNI_TRUE,
       capture_requested == JNI_TRUE, permissions_granted == JNI_TRUE,
       host_web_search_enabled == JNI_TRUE, host_web_fetch_enabled == JNI_TRUE,
       host_haptics_enabled == JNI_TRUE,

@@ -81,7 +81,8 @@ class MobileEngine {
   void InterruptGeneration(const std::string& session_key);
   bool ReportTtsPlaybackState(const std::string& session_key,
                               const std::string& state);
-  bool ReportDeviceStatus(DeviceStatusSnapshot status);
+  bool ReportDeviceStatus(const std::string& session_key,
+                          DeviceStatusSnapshot status);
   void SetForegroundState(bool foreground);
   bool IsForeground() const;
 
@@ -108,7 +109,8 @@ class MobileEngine {
   std::vector<nlohmann::json> BuildToolSchemas() const;
   std::string ExecuteToolCall(const std::string& session_key,
                               const ToolCall& tool_call) const;
-  std::string BuildDeviceStatusToolResult() const;
+  std::string BuildDeviceStatusToolResult(
+      const std::string& session_key) const;
   std::string BuildRuntimeStatusToolResult() const;
   std::string BuildVibrateToolResult(const std::string& session_key,
                                      const nlohmann::json& arguments) const;
@@ -147,8 +149,7 @@ class MobileEngine {
   mutable std::shared_mutex state_mutex_;
   bool foreground_ = true;
   AvatarState avatar_state_ = AvatarState::kIdle;
-  DeviceStatusSnapshot device_status_;
-  bool has_device_status_ = false;
+  std::unordered_map<std::string, DeviceStatusSnapshot> device_statuses_;
   std::unordered_map<std::string, nlohmann::json> last_vision_observations_;
   std::unordered_map<std::string, VisionSamplingState> vision_sampling_states_;
 

@@ -62,6 +62,11 @@ class MainActivityTest {
   }
 
   @Test
+  fun hostScreenShowsSessionBindingLine() {
+    composeRule.onNodeWithText("Session binding: not started").assertIsDisplayed()
+  }
+
+  @Test
   fun foregroundServiceStatusIntentCarriesRuntimeSnapshot() {
     val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 

@@ -230,15 +230,18 @@ std::string MobileEngine::SubscribeEvents(EventCallback callback) {
   subscribers_[id] = std::move(callback);
   lock.unlock();
   EmitRuntimeStatus();
-  std::optional<nlohmann::json> device_status_payload;
+  std::vector<std::pair<std::string, nlohmann::json>> device_status_payloads;
   {
     std::shared_lock<std::shared_mutex> state_lock(state_mutex_);
-    if (has_device_status_) {
-      device_status_payload = device_status_.ToJson();
+    device_status_payloads.reserve(device_statuses_.size());
+    for (const auto& [session_key, status] : device_statuses_) {
+      device_status_payloads.push_back(
+          {session_key, with_session_key(session_key, status.ToJson())});
     }
   }
-  if (device_status_payload.has_value()) {
-    Emit(kEventMobileDeviceStatus, *device_status_payload);
+  for (const auto& [session_key, payload] : device_status_payloads) {
+    (void)session_key;
+    Emit(kEventMobileDeviceStatus, payload);
   }
   return id;
 }
@@ -383,14 +386,18 @@ bool MobileEngine::ReportTtsPlaybackState(const std::string& session_key,
   return true;
 }
 
-bool MobileEngine::ReportDeviceStatus(DeviceStatusSnapshot status) {
+bool MobileEngine::ReportDeviceStatus(const std::string& session_key,
+                                      DeviceStatusSnapshot status) {
+  if (session_key.empty()) {
+    return false;
+  }
   nlohmann::json payload;
   {
     std::unique_lock<std::shared_mutex> lock(state_mutex_);
     status.foreground = foreground_;
-    device_status_ = std::move(status);
-    has_device_status_ = true;
-    payload = device_status_.ToJson();
+    auto& session_status = device_statuses_[session_key];
+    session_status = std::move(status);
+    payload = with_session_key(session_key, session_status.ToJson());
   }
 
   Emit(kEventMobileDeviceStatus, payload);
@@ -398,16 +405,19 @@ bool MobileEngine::ReportDeviceStatus(DeviceStatusSnapshot status) {
 }
 
 void MobileEngine::SetForegroundState(bool foreground) {
-  std::optional<nlohmann::json> device_status_payload;
+  std::vector<std::pair<std::string, nlohmann::json>> device_status_payloads;
   std::unique_lock<std::shared_mutex> lock(state_mutex_);
   foreground_ = foreground;
-  if (has_device_status_) {
-    device_status_.foreground = foreground_;
-    device_status_payload = device_status_.ToJson();
+  device_status_payloads.reserve(device_statuses_.size());
+  for (auto& [session_key, status] : device_statuses_) {
+    status.foreground = foreground_;
+    device_status_payloads.push_back(
+        {session_key, with_session_key(session_key, status.ToJson())});
   }
   lock.unlock();
-  if (device_status_payload.has_value()) {
-    Emit(kEventMobileDeviceStatus, *device_status_payload);
+  for (const auto& [session_key, payload] : device_status_payloads) {
+    (void)session_key;
+    Emit(kEventMobileDeviceStatus, payload);
   }
 }
 
@@ -827,19 +837,23 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
   return tools;
 }
 
-std::string MobileEngine::BuildDeviceStatusToolResult() const {
+std::string MobileEngine::BuildDeviceStatusToolResult(
+    const std::string& session_key) const {
   nlohmann::json result;
   {
     std::shared_lock<std::shared_mutex> lock(state_mutex_);
-    result["available"] = has_device_status_;
-    if (has_device_status_) {
-      result["deviceStatus"] = device_status_.ToJson();
+    const auto it = device_statuses_.find(session_key);
+    const bool has_device_status = it != device_statuses_.end();
+    result["available"] = has_device_status;
+    if (has_device_status) {
+      result["deviceStatus"] = it->second.ToJson();
     } else {
       DeviceStatusSnapshot fallback_status;
       fallback_status.foreground = foreground_;
       result["deviceStatus"] = fallback_status.ToJson();
       result["detail"] =
-          "Host has not published a live device status snapshot yet.";
+          "Host has not published a live device status snapshot for this "
+          "session yet.";
     }
   }
   result["runtimeStatus"] = BuildRuntimeStatusPayload();
@@ -885,6 +899,8 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
   {
     std::shared_lock<std::shared_mutex> lock(state_mutex_);
     const auto it = last_vision_observations_.find(session_key);
+    const auto status_it = device_statuses_.find(session_key);
+    const bool has_device_status = status_it != device_statuses_.end();
     const bool has_snapshot = it != last_vision_observations_.end();
     const bool foreground_only =
         config_.mobile.runtime.foreground_only ||
@@ -914,13 +930,13 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
         reason = "background_gated";
         detail =
             "Camera snapshots are gated while the mobile host is backgrounded.";
-      } else if (has_device_status_ && !device_status_.capture_requested) {
+      } else if (has_device_status && !status_it->second.capture_requested) {
         reason = "capture_not_requested";
         detail =
             "The host has not requested camera capture for this mobile "
             "session.";
-      } else if (has_device_status_ &&
-                 device_status_.camera_status != "running") {
+      } else if (has_device_status &&
+                 status_it->second.camera_status != "running") {
         reason = "camera_not_running";
         detail = "The host camera pipeline is not currently running.";
       } else if (!vision_provider_) {
@@ -938,9 +954,9 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
     result["backgroundGated"] = background_gated;
     result["sampleFps"] = config_.mobile.vision.sample_fps;
     result["staleAfterMs"] = stale_after_ms;
-    result["deviceStatusAvailable"] = has_device_status_;
-    if (has_device_status_) {
-      result["deviceStatus"] = device_status_.ToJson();
+    result["deviceStatusAvailable"] = has_device_status;
+    if (has_device_status) {
+      result["deviceStatus"] = status_it->second.ToJson();
     }
   }
   return result.dump(2);
@@ -1234,7 +1250,7 @@ std::string MobileEngine::BuildMemoryDeleteToolResult(
 std::string MobileEngine::ExecuteToolCall(const std::string& session_key,
                                           const ToolCall& tool_call) const {
   if (tool_call.name == kDeviceStatusToolName) {
-    return BuildDeviceStatusToolResult();
+    return BuildDeviceStatusToolResult(session_key);
   }
   if (tool_call.name == kRuntimeStatusToolName) {
     return BuildRuntimeStatusToolResult();

@@ -1011,13 +1011,14 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
   status.speaker_status = "speaking";
   status.timestamp_ms = 42;
 
-  ASSERT_TRUE(engine.ReportDeviceStatus(status));
+  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:device-status", status));
   auto first_status = std::find_if(
       events.begin(), events.end(),
       [](const ravbot::mobile::MobileEvent& event) {
         return event.name == ravbot::mobile::kEventMobileDeviceStatus;
       });
   ASSERT_NE(first_status, events.end());
+  EXPECT_EQ(first_status->payload["sessionKey"], "agent:main:device-status");
   EXPECT_TRUE(first_status->payload["foreground"]);
   EXPECT_TRUE(first_status->payload["serviceRunning"]);
   EXPECT_FALSE(first_status->payload["hostWebSearchEnabled"]);
@@ -1033,6 +1034,7 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
         return event.name == ravbot::mobile::kEventMobileDeviceStatus;
       });
   ASSERT_NE(latest_status, events.rend());
+  EXPECT_EQ(latest_status->payload["sessionKey"], "agent:main:device-status");
   EXPECT_FALSE(latest_status->payload["foreground"]);
   EXPECT_TRUE(latest_status->payload["serviceRunning"]);
   EXPECT_FALSE(latest_status->payload["hostWebSearchEnabled"]);
@@ -1448,7 +1450,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   status.microphone_status = "running";
   status.camera_status = "running";
   status.speaker_status = "speaking";
-  ASSERT_TRUE(engine.ReportDeviceStatus(status));
+  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:tooling", status));
 
   std::vector<ravbot::mobile::MobileEvent> events;
   engine.SubscribeEvents(
@@ -1551,6 +1553,44 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   EXPECT_EQ(assistant_final->payload["finishReason"], "stop");
 }
 
+TEST_F(MobileEngineTest, DeviceStatusToolRoundTripUsesCurrentSessionSnapshot) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider = std::make_shared<FakeToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+
+  ravbot::mobile::DeviceStatusSnapshot session_a_status;
+  session_a_status.service_running = true;
+  session_a_status.capture_requested = true;
+  session_a_status.permissions_granted = true;
+  session_a_status.microphone_status = "running";
+  session_a_status.camera_status = "running";
+  session_a_status.speaker_status = "idle";
+  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:device-a",
+                                        session_a_status));
+
+  ravbot::mobile::DeviceStatusSnapshot session_b_status;
+  session_b_status.service_running = true;
+  session_b_status.capture_requested = true;
+  session_b_status.permissions_granted = true;
+  session_b_status.microphone_status = "running";
+  session_b_status.camera_status = "running";
+  session_b_status.speaker_status = "speaking";
+  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:device-b",
+                                        session_b_status));
+
+  ASSERT_TRUE(
+      engine.SendTextTurn("agent:main:device-a", "How is the device right now?"));
+
+  auto history = engine.session_manager().GetHistory("agent:main:device-a");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "device_status");
+  EXPECT_NE(history[2].content[0].content.find("\"speakerStatus\": \"idle\""),
+            std::string::npos);
+  EXPECT_EQ(history[2].content[0].content.find("\"speakerStatus\": \"speaking\""),
+            std::string::npos);
+}
+
 TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
                                       logger_);
@@ -1565,7 +1605,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   status.camera_status = "running";
   status.microphone_status = "running";
   status.speaker_status = "idle";
-  ASSERT_TRUE(engine.ReportDeviceStatus(status));
+  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:camera-tool", status));
 
   ravbot::mobile::CameraFrame frame;
   frame.width = 320;
@@ -1696,7 +1736,7 @@ TEST_F(MobileEngineTest, CameraSnapshotReportsBackgroundGatedReason) {
   status.capture_requested = true;
   status.permissions_granted = true;
   status.camera_status = "running";
-  ASSERT_TRUE(engine.ReportDeviceStatus(status));
+  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:camera-bg", status));
 
   engine.SetForegroundState(false);
   ASSERT_TRUE(

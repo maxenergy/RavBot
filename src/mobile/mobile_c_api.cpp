@@ -254,6 +254,7 @@ bool ravbot_mobile_report_tts_state(ravbot_mobile_engine_t* engine,
 }
 
 bool ravbot_mobile_report_device_status(ravbot_mobile_engine_t* engine,
+                                        const char* session_key,
                                         bool service_running,
                                         bool capture_requested,
                                         bool permissions_granted,
@@ -263,7 +264,7 @@ bool ravbot_mobile_report_device_status(ravbot_mobile_engine_t* engine,
                                         const char* microphone_status,
                                         const char* camera_status,
                                         const char* speaker_status) {
-  if (!engine || !engine->impl) {
+  if (!engine || !engine->impl || !session_key) {
     return false;
   }
 
@@ -279,7 +280,7 @@ bool ravbot_mobile_report_device_status(ravbot_mobile_engine_t* engine,
   status.camera_status = camera_status != nullptr ? camera_status : "stopped";
   status.speaker_status = speaker_status != nullptr ? speaker_status : "idle";
   status.timestamp_ms = now_millis();
-  return engine->impl->ReportDeviceStatus(std::move(status));
+  return engine->impl->ReportDeviceStatus(session_key, std::move(status));
 }
 
 void ravbot_mobile_set_foreground_state(ravbot_mobile_engine_t* engine,

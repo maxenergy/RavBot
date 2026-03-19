@@ -86,6 +86,7 @@ bool ravbot_mobile_report_tts_state(ravbot_mobile_engine_t* engine,
                                     const char* session_key,
                                     const char* state);
 bool ravbot_mobile_report_device_status(ravbot_mobile_engine_t* engine,
+                                        const char* session_key,
                                         bool service_running,
                                         bool capture_requested,
                                         bool permissions_granted,

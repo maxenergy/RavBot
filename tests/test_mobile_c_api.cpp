@@ -284,8 +284,8 @@ TEST_F(MobileCApiTest, ReportDeviceStatusEmitsNativeSnapshot) {
   ASSERT_NE(subscription_id, 0u);
 
   EXPECT_TRUE(ravbot_mobile_report_device_status(
-      engine, true, true, true, false, true, false, "running", "running",
-      "speaking"));
+      engine, "agent:main:device-status", true, true, true, false, true,
+      false, "running", "running", "speaking"));
 
   ravbot_mobile_unsubscribe_events(engine, subscription_id);
   ravbot_mobile_free_engine(engine);
@@ -294,6 +294,7 @@ TEST_F(MobileCApiTest, ReportDeviceStatusEmitsNativeSnapshot) {
   for (const auto& event : sink.events) {
     if (event.name == "mobile.device_status") {
       saw_device_status = true;
+      EXPECT_EQ(event.payload["sessionKey"], "agent:main:device-status");
       EXPECT_TRUE(event.payload["foreground"]);
       EXPECT_TRUE(event.payload["serviceRunning"]);
       EXPECT_TRUE(event.payload["captureRequested"]);

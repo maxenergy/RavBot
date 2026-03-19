@@ -52,6 +52,7 @@ class RavbotNativeBridgeTest {
       val event = eventRef.get()
       assertNotNull(event)
       val payload = requireNotNull(event).payload
+      assertTrue(payload.contains("\"sessionKey\":\"android-mvp\""))
       assertTrue(payload.contains("\"hostWebSearchEnabled\":false"))
       assertTrue(payload.contains("\"hostWebFetchEnabled\":true"))
       assertTrue(payload.contains("\"hostHapticsEnabled\":false"))
