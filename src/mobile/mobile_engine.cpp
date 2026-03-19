@@ -390,7 +390,7 @@ void MobileEngine::Emit(const std::string& event_name,
   }
 }
 
-void MobileEngine::EmitRuntimeStatus() const {
+nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
   const auto bridge = CopyDeviceBridge();
   const bool device_bridge_attached = bridge != nullptr;
   const bool web_search_ready =
@@ -427,7 +427,11 @@ void MobileEngine::EmitRuntimeStatus() const {
     payload["speechDetail"] = "No local speech pipeline is configured.";
   }
 
-  Emit(kEventMobileRuntimeStatus, payload);
+  return payload;
+}
+
+void MobileEngine::EmitRuntimeStatus() const {
+  Emit(kEventMobileRuntimeStatus, BuildRuntimeStatusPayload());
 }
 
 void MobileEngine::SetAvatarState(AvatarState state) {
@@ -734,6 +738,7 @@ std::string MobileEngine::BuildDeviceStatusToolResult() const {
           "Host has not published a live device status snapshot yet.";
     }
   }
+  result["runtimeStatus"] = BuildRuntimeStatusPayload();
   return result.dump(2);
 }
 

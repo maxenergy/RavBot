@@ -1206,6 +1206,14 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   EXPECT_EQ(history[2].content[0].type, "tool_result");
   EXPECT_NE(history[2].content[0].content.find("\"serviceRunning\": true"),
             std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"runtimeStatus\""),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"provider\": \"fake-tool\""),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"webSearchReady\": false"),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"webFetchReady\": false"),
+            std::string::npos);
   EXPECT_NE(history[2].content[0].content.find(
                 "\"hostWebSearchEnabled\": false"),
             std::string::npos);
@@ -1232,6 +1240,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
       });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"runtimeStatus\""),
+            std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"provider\": \"fake-tool\""),
+            std::string::npos);
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"hostWebSearchEnabled\": false"),
             std::string::npos);

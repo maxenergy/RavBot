@@ -88,6 +88,7 @@ class MobileEngine {
 
  private:
   void Emit(const std::string& event_name, const nlohmann::json& payload) const;
+  nlohmann::json BuildRuntimeStatusPayload() const;
   void EmitRuntimeStatus() const;
   void SetAvatarState(AvatarState state);
   bool ShouldProcessVisionFrame(const CameraFrame& frame);

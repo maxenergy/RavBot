@@ -18,6 +18,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   `engine/session/service/capture` runtime shape after app relaunch
 - Host runtime status mirrored back into native as `mobile.device_status`
   so UI and future device-safe tools share one source of truth
+- `device_status` tool results now include both the last published host
+  snapshot and the current `mobile.runtime_status` readiness payload, so the
+  local model can inspect provider/backend/web capability state directly
 - Native `modelsDir` resolution for relative mobile model paths
 - `mobile.runtime_status` diagnostics for provider/backend/model readiness
 - Compose status cards for live `assistant_delta`/`assistant_final` streaming
