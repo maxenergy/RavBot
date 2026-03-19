@@ -1,8 +1,10 @@
 package com.ravbot.android.ui
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -108,7 +110,12 @@ private fun RavbotHostScreen() {
   val lifecycleOwner = LocalLifecycleOwner.current
   val bridge = remember { RavbotNativeBridge() }
   val snapshotStore = remember(appContext) { HostSnapshotStore(appContext) }
-  val restoredSnapshot = remember(snapshotStore) { snapshotStore.load() }
+  val restoredServiceRunning = remember(appContext) {
+    RavbotForegroundService.loadPersistedRunningState(appContext)
+  }
+  val restoredSnapshot = remember(snapshotStore, restoredServiceRunning) {
+    snapshotStore.load().copy(restoreService = restoredServiceRunning)
+  }
   val logEntries = remember { mutableStateListOf<String>() }
   var avatarState by rememberSaveable {
     mutableStateOf(
@@ -125,7 +132,9 @@ private fun RavbotHostScreen() {
   var nativeReady by rememberSaveable { mutableStateOf(false) }
   var sessionReady by rememberSaveable { mutableStateOf(false) }
   var isForeground by rememberSaveable { mutableStateOf(true) }
-  var serviceRunning by rememberSaveable { mutableStateOf(false) }
+  var serviceRunning by rememberSaveable {
+    mutableStateOf(restoredServiceRunning)
+  }
   var captureRequested by rememberSaveable { mutableStateOf(false) }
   var sensorsRunning by rememberSaveable { mutableStateOf(false) }
   var microphoneStatus by rememberSaveable {
@@ -531,6 +540,43 @@ private fun RavbotHostScreen() {
       speechController.dispose()
       hapticsController.stop()
       bridge.dispose()
+    }
+  }
+
+  DisposableEffect(appContext) {
+    val receiver =
+        object : BroadcastReceiver() {
+          override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != RavbotForegroundService.ACTION_SERVICE_STATE_CHANGED) {
+              return
+            }
+            val running =
+                intent.getBooleanExtra(
+                    RavbotForegroundService.EXTRA_SERVICE_RUNNING,
+                    false,
+                )
+            serviceRunning = running
+            appendLog(
+                logEntries,
+                "host",
+                if (running) {
+                  "Foreground service confirmed running."
+                } else {
+                  "Foreground service confirmed stopped."
+                },
+            )
+          }
+        }
+
+    ContextCompat.registerReceiver(
+        appContext,
+        receiver,
+        IntentFilter(RavbotForegroundService.ACTION_SERVICE_STATE_CHANGED),
+        ContextCompat.RECEIVER_NOT_EXPORTED,
+    )
+
+    onDispose {
+      appContext.unregisterReceiver(receiver)
     }
   }
 

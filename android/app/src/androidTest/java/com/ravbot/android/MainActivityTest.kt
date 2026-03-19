@@ -2,6 +2,7 @@ package com.ravbot.android
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -120,5 +121,47 @@ class MainActivityTest {
         "ready",
         intent.getStringExtra(RavbotForegroundService.EXTRA_RUNTIME_HAPTICS_STATUS),
     )
+  }
+
+  @Test
+  fun foregroundServiceStateBroadcastUpdatesHostStatusLine() {
+    val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+
+    context.sendBroadcast(
+        RavbotForegroundService.createServiceStateChangedIntent(
+            context = context,
+            running = true,
+        ),
+    )
+
+    composeRule.waitUntil(timeoutMillis = 5_000) {
+      composeRule.onAllNodesWithText("Foreground service: running")
+          .fetchSemanticsNodes().isNotEmpty()
+    }
+    composeRule.onNodeWithText("Foreground service: running").assertIsDisplayed()
+
+    context.sendBroadcast(
+        RavbotForegroundService.createServiceStateChangedIntent(
+            context = context,
+            running = false,
+        ),
+    )
+
+    composeRule.waitUntil(timeoutMillis = 5_000) {
+      composeRule.onAllNodesWithText("Foreground service: stopped")
+          .fetchSemanticsNodes().isNotEmpty()
+    }
+    composeRule.onNodeWithText("Foreground service: stopped").assertIsDisplayed()
+  }
+
+  @Test
+  fun foregroundServicePersistsRunningState() {
+    val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+
+    RavbotForegroundService.persistRunningState(context, true)
+    assertTrue(RavbotForegroundService.loadPersistedRunningState(context))
+
+    RavbotForegroundService.persistRunningState(context, false)
+    assertEquals(false, RavbotForegroundService.loadPersistedRunningState(context))
   }
 }

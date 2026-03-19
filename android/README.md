@@ -16,6 +16,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - Android `TextToSpeech` playback wired to `mobile.tts_state` events
 - Host snapshot persistence plus best-effort restore of the last
   `engine/session/service/capture` runtime shape after app relaunch
+- Foreground service state is now broadcast back into the host UI and
+  persisted separately, so notification-bar stop actions do not leave
+  `serviceRunning` or restore state stale on the next launch
 - Host runtime status mirrored back into native as `mobile.device_status`
   so UI and future device-safe tools share one source of truth
 - `device_status` tool results now include both the last published host

@@ -23,17 +23,28 @@ class RavbotForegroundService : Service() {
   private var hostWebFetchEnabled = true
   private var hostHapticsEnabled = true
   private var runtimeHapticsStatus = "unknown"
+  private var runtimeForegroundStarted = false
 
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    when (intent?.action) {
+    if (intent == null) {
+      return START_NOT_STICKY
+    }
+
+    when (intent.action) {
       ACTION_STOP -> {
+        publishServiceRunningState(false)
+        runtimeForegroundStarted = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
         return START_NOT_STICKY
       }
       ACTION_UPDATE_STATUS -> {
+        if (!runtimeForegroundStarted) {
+          stopSelfResult(startId)
+          return START_NOT_STICKY
+        }
         updateSnapshot(intent)
         refreshRuntimeNotification()
       }
@@ -42,12 +53,20 @@ class RavbotForegroundService : Service() {
         startRuntimeForeground()
       }
     }
-    return START_STICKY
+    return START_NOT_STICKY
+  }
+
+  override fun onDestroy() {
+    publishServiceRunningState(false)
+    runtimeForegroundStarted = false
+    super.onDestroy()
   }
 
   private fun startRuntimeForeground() {
     ensureNotificationChannel()
     startForeground(NOTIFICATION_ID, buildNotification())
+    runtimeForegroundStarted = true
+    publishServiceRunningState(true)
   }
 
   private fun refreshRuntimeNotification() {
@@ -172,10 +191,17 @@ class RavbotForegroundService : Service() {
     manager.createNotificationChannel(channel)
   }
 
+  private fun publishServiceRunningState(running: Boolean) {
+    persistRunningState(applicationContext, running)
+    sendBroadcast(createServiceStateChangedIntent(applicationContext, running))
+  }
+
   companion object {
     const val ACTION_START = "com.ravbot.android.action.START_RUNTIME"
     const val ACTION_STOP = "com.ravbot.android.action.STOP_RUNTIME"
     const val ACTION_UPDATE_STATUS = "com.ravbot.android.action.UPDATE_RUNTIME_STATUS"
+    const val ACTION_SERVICE_STATE_CHANGED =
+        "com.ravbot.android.action.RUNTIME_SERVICE_STATE_CHANGED"
 
     const val EXTRA_SESSION_READY = "session_ready"
     const val EXTRA_CAPTURE_REQUESTED = "capture_requested"
@@ -187,11 +213,14 @@ class RavbotForegroundService : Service() {
     const val EXTRA_HOST_WEB_FETCH_ENABLED = "host_web_fetch_enabled"
     const val EXTRA_HOST_HAPTICS_ENABLED = "host_haptics_enabled"
     const val EXTRA_RUNTIME_HAPTICS_STATUS = "runtime_haptics_status"
+    const val EXTRA_SERVICE_RUNNING = "service_running"
 
     private const val CHANNEL_ID = "ravbot.runtime"
     private const val NOTIFICATION_ID = 1001
     private const val REQUEST_OPEN_APP = 1002
     private const val REQUEST_STOP_SERVICE = 1003
+    private const val STATE_PREFERENCES_NAME = "ravbot_foreground_service"
+    private const val KEY_SERVICE_RUNNING = "service_running"
 
     fun createStartIntent(
         context: Context,
@@ -250,6 +279,29 @@ class RavbotForegroundService : Service() {
           .putExtra(EXTRA_HOST_WEB_FETCH_ENABLED, hostWebFetchEnabled)
           .putExtra(EXTRA_HOST_HAPTICS_ENABLED, hostHapticsEnabled)
           .putExtra(EXTRA_RUNTIME_HAPTICS_STATUS, runtimeHapticsStatus)
+    }
+
+    fun createServiceStateChangedIntent(
+        context: Context,
+        running: Boolean,
+    ): Intent {
+      return Intent(ACTION_SERVICE_STATE_CHANGED)
+          .setPackage(context.packageName)
+          .putExtra(EXTRA_SERVICE_RUNNING, running)
+    }
+
+    internal fun loadPersistedRunningState(context: Context): Boolean {
+      return context
+          .getSharedPreferences(STATE_PREFERENCES_NAME, Context.MODE_PRIVATE)
+          .getBoolean(KEY_SERVICE_RUNNING, false)
+    }
+
+    internal fun persistRunningState(context: Context, running: Boolean) {
+      context
+          .getSharedPreferences(STATE_PREFERENCES_NAME, Context.MODE_PRIVATE)
+          .edit()
+          .putBoolean(KEY_SERVICE_RUNNING, running)
+          .apply()
     }
   }
 }
