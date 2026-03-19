@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <iterator>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -38,6 +39,7 @@ struct EventSink {
   std::vector<std::string> avatar_states;
   std::vector<std::string> speech_requests;
   std::vector<std::string> speech_interrupt_sessions;
+  std::vector<std::string> capture_control_requests;
   std::vector<std::string> vibration_requests;
   std::vector<std::string> web_search_requests;
   std::vector<std::string> web_fetch_requests;
@@ -87,6 +89,19 @@ void capture_speech_interrupt(const char* session_key, void* user_data) {
   std::lock_guard<std::mutex> lock(sink->mutex);
   sink->speech_interrupt_sessions.push_back(session_key != nullptr ? session_key
                                                                    : "");
+}
+
+const char* capture_capture_control(const char* session_key, bool enabled,
+                                    void* user_data) {
+  auto* sink = static_cast<EventSink*>(user_data);
+  if (sink == nullptr) {
+    return nullptr;
+  }
+  std::lock_guard<std::mutex> lock(sink->mutex);
+  sink->capture_control_requests.push_back(
+      std::string(session_key != nullptr ? session_key : "") + ":" +
+      (enabled ? "true" : "false"));
+  return R"({"accepted":true,"requested":true,"detail":"Host accepted capture request."})";
 }
 
 void capture_vibrate(const char* session_key, int duration_ms,
@@ -200,6 +215,8 @@ TEST_F(MobileCApiTest, SendTextTurnEmitsAssistantFinalEvent) {
                                              "device_status"));
       EXPECT_TRUE(json_array_contains_string(event.payload["availableTools"],
                                              "runtime_status"));
+      EXPECT_TRUE(json_array_contains_string(event.payload["availableTools"],
+                                             "speech_status"));
       EXPECT_FALSE(json_array_contains_string(event.payload["availableTools"],
                                               "web_search"));
       EXPECT_EQ(event.payload["toolAvailability"]["web_search"]["reason"],
@@ -399,6 +416,55 @@ TEST_F(MobileCApiTest, FlushAudioTurnPromotesBufferedSpeechToFinalTurn) {
   EXPECT_TRUE(saw_final);
 }
 
+TEST_F(MobileCApiTest, SpeechCaptureEmitsSpeechStateUpdates) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:speech-state",
+                                          "Speech state"));
+  int16_t samples[] = {1, 2, 3, 4};
+  EXPECT_TRUE(ravbot_mobile_push_pcm16(engine, "agent:main:speech-state",
+                                       samples, 4, 16000, false));
+  EXPECT_TRUE(
+      ravbot_mobile_flush_audio_turn(engine, "agent:main:speech-state"));
+  ravbot_mobile_interrupt_generation(engine, "agent:main:speech-state");
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  std::vector<nlohmann::json> speech_payloads;
+  for (const auto& event : sink.events) {
+    if (event.name == "mobile.speech_state") {
+      speech_payloads.push_back(event.payload);
+    }
+  }
+
+  ASSERT_GE(speech_payloads.size(), 4u);
+  EXPECT_EQ(speech_payloads.front()["state"], "idle");
+  auto capturing =
+      std::find_if(speech_payloads.begin(), speech_payloads.end(),
+                   [](const nlohmann::json& payload) {
+                     return payload.value("state", "") == "capturing";
+                   });
+  ASSERT_NE(capturing, speech_payloads.end());
+  EXPECT_TRUE((*capturing)["pendingAudio"]);
+  auto idle_after_capture =
+      std::find_if(std::next(capturing), speech_payloads.end(),
+                   [](const nlohmann::json& payload) {
+                     return payload.value("state", "") == "idle";
+                   });
+  EXPECT_NE(idle_after_capture, speech_payloads.end());
+  EXPECT_EQ(speech_payloads.back()["state"], "interrupted");
+  EXPECT_EQ(speech_payloads.back()["sessionKey"], "agent:main:speech-state");
+}
+
 TEST_F(MobileCApiTest, DeviceCallbacksReceiveAvatarAndSpeechRequests) {
   std::string config_json = MakeConfigJson();
   ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
@@ -462,6 +528,9 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsMissingWebDeviceCallbacks) {
     EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
     EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
     EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
+    EXPECT_FALSE(
+        event.payload["toolAvailability"]["set_capture_enabled"]["available"]
+            .get<bool>());
     EXPECT_FALSE(event.payload["vibrationReady"].get<bool>());
   }
 
@@ -581,6 +650,45 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsVibrationDeviceCallback) {
     EXPECT_TRUE(
         json_array_contains_string(event.payload["availableTools"], "vibrate"));
     EXPECT_EQ(event.payload["toolAvailability"]["vibrate"]["available"], true);
+  }
+  EXPECT_TRUE(saw_runtime);
+}
+
+TEST_F(MobileCApiTest, RuntimeStatusReflectsCaptureControlDeviceCallback) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  ravbot_mobile_device_callbacks_t callbacks{};
+  callbacks.on_capture_control = capture_capture_control;
+  ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, &callbacks, &sink));
+
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:capture-ready",
+                                          "Capture ready"));
+  EXPECT_TRUE(ravbot_mobile_report_device_status(
+      engine, "agent:main:capture-ready", true, false, true, true, true, true,
+      "stopped", "stopped", "idle"));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  bool saw_runtime = false;
+  for (const auto& event : sink.events) {
+    if (event.name != "mobile.runtime_status") {
+      continue;
+    }
+    saw_runtime = true;
+    EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
+    EXPECT_TRUE(
+        event.payload["toolAvailability"]["set_capture_enabled"]["available"]
+            .get<bool>());
+    EXPECT_TRUE(json_array_contains_string(event.payload["availableTools"],
+                                           "set_capture_enabled"));
   }
   EXPECT_TRUE(saw_runtime);
 }

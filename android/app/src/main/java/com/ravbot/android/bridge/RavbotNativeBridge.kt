@@ -3,8 +3,12 @@ package com.ravbot.android.bridge
 import android.os.Handler
 import android.os.Looper
 import com.ravbot.android.network.HostWebToolClient
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+import org.json.JSONObject
 
 data class NativeLoadStatus(
     val isLoaded: Boolean,
@@ -26,6 +30,8 @@ class RavbotNativeBridge {
   private var hostWebSearchEnabled: Boolean = true
   private var hostWebFetchEnabled: Boolean = true
   private var hostHapticsEnabled: Boolean = false
+  @Volatile
+  private var captureControlHandler: ((String, Boolean) -> String)? = null
 
   val loadStatus: NativeLoadStatus
     get() = sharedLoadStatus
@@ -56,6 +62,10 @@ class RavbotNativeBridge {
           engineHandle,
           hostWebSearchEnabled,
           hostWebFetchEnabled,
+      )
+      nativeSetCaptureControlCapability(
+          engineHandle,
+          captureControlHandler != null,
       )
       nativeSetHapticsCapability(engineHandle, hostHapticsEnabled)
     }
@@ -156,6 +166,7 @@ class RavbotNativeBridge {
     val handle = engineHandle.takeIf { it != 0L } ?: return
     nativeSubscribeEvents(handle)
     nativeSetHostWebCapabilities(handle, hostWebSearchEnabled, hostWebFetchEnabled)
+    nativeSetCaptureControlCapability(handle, captureControlHandler != null)
     nativeSetHapticsCapability(handle, hostHapticsEnabled)
   }
 
@@ -176,6 +187,12 @@ class RavbotNativeBridge {
     nativeSetHapticsCapability(handle, enabled)
   }
 
+  fun setCaptureControlHandler(handler: ((String, Boolean) -> String)?) {
+    captureControlHandler = handler
+    val handle = engineHandle.takeIf { it != 0L } ?: return
+    nativeSetCaptureControlCapability(handle, handler != null)
+  }
+
   fun unsubscribeEvents() {
     val handle = engineHandle.takeIf { it != 0L }
     if (handle != null) {
@@ -186,6 +203,7 @@ class RavbotNativeBridge {
 
   fun dispose() {
     unsubscribeEvents()
+    captureControlHandler = null
     if (engineHandle != 0L) {
       nativeFreeEngine(engineHandle)
       engineHandle = 0L
@@ -229,12 +247,107 @@ class RavbotNativeBridge {
         webToolClient.webFetch(sessionId, url, maxChars)
       }.get()
 
+  @Suppress("unused")
+  fun onNativeCaptureControl(
+      sessionId: String,
+      enabled: Boolean,
+  ): String {
+    val handler = captureControlHandler
+    if (handler == null) {
+      return captureControlResponse(
+          accepted = false,
+          requested = enabled,
+          reason = "capture_control_unavailable",
+          detail = "Android host has no capture control handler registered.",
+      )
+    }
+
+    if (Looper.myLooper() == Looper.getMainLooper()) {
+      return invokeCaptureControlHandler(handler, sessionId, enabled)
+    }
+
+    val latch = CountDownLatch(1)
+    val resultRef = AtomicReference<String>()
+    mainHandler.post {
+      resultRef.set(invokeCaptureControlHandler(handler, sessionId, enabled))
+      latch.countDown()
+    }
+    if (!latch.await(5, TimeUnit.SECONDS)) {
+      return captureControlResponse(
+          accepted = false,
+          requested = enabled,
+          reason = "capture_control_timeout",
+          detail = "Timed out waiting for the Android host capture control handler.",
+      )
+    }
+    return resultRef.get()
+        ?: captureControlResponse(
+            accepted = false,
+            requested = enabled,
+            reason = "capture_control_unavailable",
+            detail = "Android host capture control handler returned no result.",
+        )
+  }
+
   @Synchronized
   private fun ensureHostExecutor(): ExecutorService {
     if (hostExecutor.isShutdown || hostExecutor.isTerminated) {
       hostExecutor = Executors.newSingleThreadExecutor()
     }
     return hostExecutor
+  }
+
+  private fun invokeCaptureControlHandler(
+      handler: (String, Boolean) -> String,
+      sessionId: String,
+      enabled: Boolean,
+  ): String {
+    return runCatching {
+          handler(sessionId, enabled)
+        }
+        .fold(
+            onSuccess = { result ->
+              if (result.isBlank()) {
+                captureControlResponse(
+                    accepted = true,
+                    requested = enabled,
+                    detail =
+                        if (enabled) {
+                          "Android host accepted live capture start request."
+                        } else {
+                          "Android host accepted live capture stop request."
+                        },
+                )
+              } else {
+                result
+              }
+            },
+            onFailure = { error ->
+              captureControlResponse(
+                  accepted = false,
+                  requested = enabled,
+                  reason = "capture_control_exception",
+                  detail = error.message ?: "Android host capture control failed.",
+              )
+            },
+        )
+  }
+
+  private fun captureControlResponse(
+      accepted: Boolean,
+      requested: Boolean,
+      reason: String? = null,
+      detail: String,
+  ): String {
+    val json =
+        JSONObject()
+            .put("accepted", accepted)
+            .put("requested", requested)
+            .put("detail", detail)
+    if (!reason.isNullOrBlank()) {
+      json.put("reason", reason)
+    }
+    return json.toString()
   }
 
   private external fun nativeInitEngine(
@@ -299,6 +412,11 @@ class RavbotNativeBridge {
   )
 
   private external fun nativeSetHapticsCapability(
+      handle: Long,
+      enabled: Boolean,
+  )
+
+  private external fun nativeSetCaptureControlCapability(
       handle: Long,
       enabled: Boolean,
   )

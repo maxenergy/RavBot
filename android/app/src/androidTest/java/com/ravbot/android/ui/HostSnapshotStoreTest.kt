@@ -58,6 +58,7 @@ class HostSnapshotStoreTest {
             speechSttModel = "present: /models/sensevoice",
             speechTtsVoice = "present: /models/kokoro",
             speechDetail = "speech backend linked",
+            speechStateStatus = "speech capturing seg 2 320ms",
         )
 
     store.save(snapshot)

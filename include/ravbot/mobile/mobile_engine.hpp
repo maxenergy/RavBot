@@ -93,14 +93,30 @@ class MobileEngine {
   }
 
  private:
+  struct HostToolAvailability {
+    bool device_bridge_attached = false;
+    bool web_search_ready = false;
+    bool web_fetch_ready = false;
+    bool capture_control_ready = false;
+    bool vibration_ready = false;
+    std::string web_search_reason = "device_bridge_missing";
+    std::string web_fetch_reason = "device_bridge_missing";
+    std::string capture_control_reason = "device_bridge_missing";
+    std::string vibration_reason = "device_bridge_missing";
+  };
+
   struct VisionSamplingState {
     int64_t last_timestamp_ms = 0;
     std::optional<double> last_scene_signature;
   };
 
   void Emit(const std::string& event_name, const nlohmann::json& payload) const;
-  nlohmann::json BuildRuntimeStatusPayload() const;
+  HostToolAvailability
+  BuildHostToolAvailability(const std::string& session_key) const;
+  nlohmann::json
+  BuildRuntimeStatusPayload(const std::string& session_key = "") const;
   void EmitRuntimeStatus() const;
+  void EmitSpeechState(const std::string& session_key) const;
   nlohmann::json
   BuildDeviceStatusEventPayload(const std::string& session_key,
                                 const DeviceStatusSnapshot& status) const;
@@ -112,11 +128,17 @@ class MobileEngine {
   EstimateFrameSceneSignature(const CameraFrame& frame) const;
   bool HandleAsrUpdate(const std::string& session_key, const AsrUpdate& update,
                        int sample_rate_hz);
-  std::vector<nlohmann::json> BuildToolSchemas() const;
+  std::vector<nlohmann::json>
+  BuildToolSchemas(const std::string& session_key = "") const;
   std::string ExecuteToolCall(const std::string& session_key,
                               const ToolCall& tool_call) const;
   std::string BuildDeviceStatusToolResult(const std::string& session_key) const;
-  std::string BuildRuntimeStatusToolResult() const;
+  std::string
+  BuildRuntimeStatusToolResult(const std::string& session_key) const;
+  std::string BuildSpeechStatusToolResult(const std::string& session_key) const;
+  std::string
+  BuildSetCaptureEnabledToolResult(const std::string& session_key,
+                                   const nlohmann::json& arguments) const;
   nlohmann::json BuildSpeechStatePayload(const std::string& session_key) const;
   nlohmann::json
   BuildHostCapabilitiesPayload(const std::string& session_key) const;

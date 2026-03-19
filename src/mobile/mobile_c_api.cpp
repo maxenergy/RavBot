@@ -18,8 +18,7 @@
 namespace ravbot::mobile {
 class CallbackDeviceBridge : public DeviceCapabilityBridge {
  public:
-  CallbackDeviceBridge(std::string state_dir,
-                       std::string models_dir,
+  CallbackDeviceBridge(std::string state_dir, std::string models_dir,
                        ravbot_mobile_device_callbacks_t callbacks,
                        void* user_data)
       : state_dir_(std::move(state_dir)),
@@ -27,14 +26,23 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
         callbacks_(callbacks),
         user_data_(user_data) {}
 
-  std::string ResolveStateDirectory() const override { return state_dir_; }
-  std::string ResolveModelsDirectory() const override { return models_dir_; }
-  bool IsForeground() const override { return foreground_; }
+  std::string ResolveStateDirectory() const override {
+    return state_dir_;
+  }
+  std::string ResolveModelsDirectory() const override {
+    return models_dir_;
+  }
+  bool IsForeground() const override {
+    return foreground_;
+  }
   bool SupportsWebSearch() const override {
     return callbacks_.on_web_search != nullptr;
   }
   bool SupportsWebFetch() const override {
     return callbacks_.on_web_fetch != nullptr;
+  }
+  bool SupportsCaptureControl() const override {
+    return callbacks_.on_capture_control != nullptr;
   }
   bool SupportsVibration() const override {
     return callbacks_.on_vibrate != nullptr;
@@ -55,8 +63,7 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
     if (callbacks_.on_speech_request == nullptr) {
       return;
     }
-    callbacks_.on_speech_request(session_key.c_str(), text.c_str(),
-                                 user_data_);
+    callbacks_.on_speech_request(session_key.c_str(), text.c_str(), user_data_);
   }
 
   void InterruptSpeechPlayback(const std::string& session_key) override {
@@ -64,6 +71,19 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
       return;
     }
     callbacks_.on_speech_interrupt(session_key.c_str(), user_data_);
+  }
+
+  std::string SetCaptureEnabled(const std::string& session_key,
+                                bool enabled) override {
+    if (callbacks_.on_capture_control == nullptr) {
+      throw std::runtime_error("capture control callback is not configured");
+    }
+    const char* result =
+        callbacks_.on_capture_control(session_key.c_str(), enabled, user_data_);
+    if (result == nullptr) {
+      throw std::runtime_error("capture control callback returned null");
+    }
+    return result;
   }
 
   void Vibrate(const std::string& session_key, int duration_ms) override {
@@ -74,37 +94,36 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
   }
 
   std::string WebSearch(const std::string& session_key,
-                        const std::string& query,
-                        int count,
+                        const std::string& query, int count,
                         const std::string& freshness) override {
     if (callbacks_.on_web_search == nullptr) {
       throw std::runtime_error("web_search callback is not configured");
     }
-    const char* result = callbacks_.on_web_search(
-        session_key.c_str(), query.c_str(), count, freshness.c_str(),
-        user_data_);
+    const char* result =
+        callbacks_.on_web_search(session_key.c_str(), query.c_str(), count,
+                                 freshness.c_str(), user_data_);
     if (result == nullptr) {
       throw std::runtime_error("web_search callback returned null");
     }
     return result;
   }
 
-  std::string WebFetch(const std::string& session_key,
-                       const std::string& url,
+  std::string WebFetch(const std::string& session_key, const std::string& url,
                        int max_chars) override {
     if (callbacks_.on_web_fetch == nullptr) {
       throw std::runtime_error("web_fetch callback is not configured");
     }
-    const char* result = callbacks_.on_web_fetch(session_key.c_str(),
-                                                 url.c_str(), max_chars,
-                                                 user_data_);
+    const char* result = callbacks_.on_web_fetch(
+        session_key.c_str(), url.c_str(), max_chars, user_data_);
     if (result == nullptr) {
       throw std::runtime_error("web_fetch callback returned null");
     }
     return result;
   }
 
-  void SetForeground(bool foreground) { foreground_ = foreground; }
+  void SetForeground(bool foreground) {
+    foreground_ = foreground;
+  }
 
  private:
   std::string state_dir_;
@@ -159,8 +178,8 @@ ravbot_mobile_engine_t* ravbot_mobile_init_engine(const char* config_json,
   try {
     auto config = parse_config_or_default(config_json);
     auto logger = create_logger(log_level);
-    auto state_path = std::filesystem::path(
-        (state_dir && *state_dir) ? state_dir : ".");
+    auto state_path =
+        std::filesystem::path((state_dir && *state_dir) ? state_dir : ".");
     auto models_path = std::filesystem::path(
         (models_dir && *models_dir) ? models_dir : state_path / "models");
 
@@ -190,8 +209,7 @@ bool ravbot_mobile_start_session(ravbot_mobile_engine_t* engine,
 }
 
 bool ravbot_mobile_send_text_turn(ravbot_mobile_engine_t* engine,
-                                  const char* session_key,
-                                  const char* text) {
+                                  const char* session_key, const char* text) {
   if (!engine || !engine->impl || !session_key || !text) {
     return false;
   }
@@ -199,10 +217,8 @@ bool ravbot_mobile_send_text_turn(ravbot_mobile_engine_t* engine,
 }
 
 bool ravbot_mobile_push_pcm16(ravbot_mobile_engine_t* engine,
-                              const char* session_key,
-                              const int16_t* samples,
-                              size_t sample_count,
-                              int sample_rate_hz,
+                              const char* session_key, const int16_t* samples,
+                              size_t sample_count, int sample_rate_hz,
                               bool end_of_turn) {
   if (!engine || !engine->impl || !session_key) {
     return false;
@@ -221,11 +237,8 @@ bool ravbot_mobile_flush_audio_turn(ravbot_mobile_engine_t* engine,
 
 bool ravbot_mobile_push_camera_frame(ravbot_mobile_engine_t* engine,
                                      const char* session_key,
-                                     const uint8_t* data,
-                                     size_t data_size,
-                                     int width,
-                                     int height,
-                                     const char* format,
+                                     const uint8_t* data, size_t data_size,
+                                     int width, int height, const char* format,
                                      int64_t timestamp_ms) {
   if (!engine || !engine->impl || !session_key || !data || data_size == 0) {
     return false;
@@ -257,17 +270,12 @@ bool ravbot_mobile_report_tts_state(ravbot_mobile_engine_t* engine,
   return engine->impl->ReportTtsPlaybackState(session_key, state);
 }
 
-bool ravbot_mobile_report_device_status(ravbot_mobile_engine_t* engine,
-                                        const char* session_key,
-                                        bool service_running,
-                                        bool capture_requested,
-                                        bool permissions_granted,
-                                        bool host_web_search_enabled,
-                                        bool host_web_fetch_enabled,
-                                        bool host_haptics_enabled,
-                                        const char* microphone_status,
-                                        const char* camera_status,
-                                        const char* speaker_status) {
+bool ravbot_mobile_report_device_status(
+    ravbot_mobile_engine_t* engine, const char* session_key,
+    bool service_running, bool capture_requested, bool permissions_granted,
+    bool host_web_search_enabled, bool host_web_fetch_enabled,
+    bool host_haptics_enabled, const char* microphone_status,
+    const char* camera_status, const char* speaker_status) {
   if (!engine || !engine->impl || !session_key) {
     return false;
   }
@@ -300,8 +308,7 @@ void ravbot_mobile_set_foreground_state(ravbot_mobile_engine_t* engine,
 
 bool ravbot_mobile_set_device_callbacks(
     ravbot_mobile_engine_t* engine,
-    const ravbot_mobile_device_callbacks_t* callbacks,
-    void* user_data) {
+    const ravbot_mobile_device_callbacks_t* callbacks, void* user_data) {
   if (!engine || !engine->impl) {
     return false;
   }

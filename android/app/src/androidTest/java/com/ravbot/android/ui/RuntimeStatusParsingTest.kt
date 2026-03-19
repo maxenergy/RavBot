@@ -205,4 +205,32 @@ class RuntimeStatusParsingTest {
         describeDeviceStatus(payload),
     )
   }
+
+  @Test
+  fun describeSpeechStateSupportsDirectSpeechEventPayload() {
+    val payload =
+        """
+          {
+            "available": true,
+            "state": "capturing",
+            "currentSegmentIndex": 3,
+            "durationMs": 480
+          }
+        """.trimIndent()
+
+    assertEquals("speech capturing seg 3 480ms", describeSpeechState(payload))
+  }
+
+  @Test
+  fun speechStateSummaryOrDefaultClearsUnavailableSpeechPayloads() {
+    val payload =
+        """
+          {
+            "available": false,
+            "state": "idle"
+          }
+        """.trimIndent()
+
+    assertEquals("No live speech state yet.", speechStateSummaryOrDefault(payload))
+  }
 }

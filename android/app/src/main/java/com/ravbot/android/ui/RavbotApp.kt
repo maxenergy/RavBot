@@ -241,6 +241,9 @@ private fun RavbotHostScreen() {
   var speechDetail by rememberSaveable {
     mutableStateOf(restoredSnapshot.speechDetail)
   }
+  var speechStateStatus by rememberSaveable {
+    mutableStateOf(restoredSnapshot.speechStateStatus)
+  }
   var permissionSummary by rememberSaveable {
     mutableStateOf(buildPermissionSummary(context))
   }
@@ -379,6 +382,60 @@ private fun RavbotHostScreen() {
     )
   }
 
+  fun requestForegroundServiceStart() {
+    ContextCompat.startForegroundService(
+        context,
+        RavbotForegroundService.createStartIntent(
+            context = context,
+            sessionReady = sessionReady,
+            captureRequested = captureRequested,
+            microphoneStatus = microphoneStatus,
+            cameraStatus = cameraStatus,
+            speakerStatus = speakerStatus,
+            assistantStatus = assistantStatus,
+            hostWebSearchEnabled = hostWebSearchEnabled,
+            hostWebFetchEnabled = hostWebFetchEnabled,
+            hostHapticsEnabled = effectiveHostHapticsEnabled,
+            runtimeHapticsStatus = runtimeHapticsStatus,
+        ),
+    )
+    serviceRunning = true
+  }
+
+  val currentCaptureControlHandler =
+      rememberUpdatedState(
+          newValue = { requestedSessionId: String, enabled: Boolean ->
+            handleNativeCaptureControl(
+                requestedSessionId = requestedSessionId,
+                enabled = enabled,
+                currentSessionRoute = currentSessionRouteState.value,
+                sessionReady = sessionReady,
+                nativeReady = nativeReady,
+                sessionBound = sessionBound,
+                permissionsGranted = permissionsGranted,
+                isForeground = isForeground,
+                serviceRunning = serviceRunning,
+                captureRequested = captureRequested,
+                sensorsRunning = sensorsRunning,
+                startService = {
+                  requestForegroundServiceStart()
+                  appendLog(
+                      logEntries,
+                      "host",
+                      "Foreground service start requested by native capture control.",
+                  )
+                },
+                startSensors = { startSensors() },
+                stopSensors = {
+                  stopSensors("Live capture stopped by native capture control.")
+                },
+                appendLog = { message -> appendLog(logEntries, "host", message) },
+                updateCaptureRequested = { captureRequested = it },
+                updateSensorsRunning = { sensorsRunning = it },
+            )
+          },
+      )
+
   fun publishDeviceStatus() {
     bridge.reportDeviceStatus(
         serviceRunning = serviceRunning,
@@ -394,6 +451,9 @@ private fun RavbotHostScreen() {
   }
 
   DisposableEffect(bridge) {
+    bridge.setCaptureControlHandler { requestedSessionId, enabled ->
+      currentCaptureControlHandler.value(requestedSessionId, enabled)
+    }
     bridge.subscribeEvents { event ->
       appendLog(logEntries, event)
       val eventSessionKey = parseJsonString(event.payload, "sessionKey")
@@ -537,12 +597,17 @@ private fun RavbotHostScreen() {
             )
         speechDetail = parseJsonString(event.payload, "speechDetail") ?: speechDetail
       }
+      if (event.name == "mobile.speech_state") {
+        speechStateStatus = speechStateSummaryOrDefault(event.payload)
+      }
       if (event.name == "mobile.device_status") {
         nativeDeviceStatus = describeDeviceStatus(event.payload)
+        speechStateStatus = speechStateSummaryOrDefault(event.payload)
       }
     }
 
     onDispose {
+      bridge.setCaptureControlHandler(null)
       audioController.dispose()
       cameraController.dispose()
       speechController.dispose()
@@ -731,6 +796,7 @@ private fun RavbotHostScreen() {
           speechSttModel = speechSttModel,
           speechTtsVoice = speechTtsVoice,
           speechDetail = speechDetail,
+          speechStateStatus = speechStateStatus,
       )
 
   LaunchedEffect(hostSnapshot, restoreFlowCompleted) {
@@ -945,6 +1011,7 @@ private fun RavbotHostScreen() {
                 "Microphone: $microphoneStatus",
                 "Camera: $cameraStatus",
                 "Speaker: $speakerStatus",
+                "Speech state: $speechStateStatus",
                 "Speech level: ${String.format(Locale.US, "%.02f", speechLevel)}",
                 "Last ASR: $lastAsrText",
                 "ASR stats: $lastAsrStats",
@@ -1056,23 +1123,7 @@ private fun RavbotHostScreen() {
 
           OutlinedButton(
               onClick = {
-                ContextCompat.startForegroundService(
-                    context,
-                    RavbotForegroundService.createStartIntent(
-                        context = context,
-                        sessionReady = sessionReady,
-                        captureRequested = captureRequested,
-                        microphoneStatus = microphoneStatus,
-                        cameraStatus = cameraStatus,
-                        speakerStatus = speakerStatus,
-                        assistantStatus = assistantStatus,
-                        hostWebSearchEnabled = hostWebSearchEnabled,
-                        hostWebFetchEnabled = hostWebFetchEnabled,
-                        hostHapticsEnabled = effectiveHostHapticsEnabled,
-                        runtimeHapticsStatus = runtimeHapticsStatus,
-                    ),
-                )
-                serviceRunning = true
+                requestForegroundServiceStart()
                 appendLog(logEntries, "host", "Foreground service start requested.")
               },
           ) {
@@ -1545,6 +1596,109 @@ private fun buildPermissionSummary(context: Context): String {
       missing.joinToString(", ") { permissionLabel(it) }
 }
 
+private fun buildCaptureControlResponse(
+    accepted: Boolean,
+    requested: Boolean,
+    reason: String? = null,
+    detail: String,
+): String {
+  val json =
+      JSONObject()
+          .put("accepted", accepted)
+          .put("requested", requested)
+          .put("detail", detail)
+  if (!reason.isNullOrBlank()) {
+    json.put("reason", reason)
+  }
+  return json.toString()
+}
+
+private fun handleNativeCaptureControl(
+    requestedSessionId: String,
+    enabled: Boolean,
+    currentSessionRoute: String,
+    sessionReady: Boolean,
+    nativeReady: Boolean,
+    sessionBound: Boolean,
+    permissionsGranted: Boolean,
+    isForeground: Boolean,
+    serviceRunning: Boolean,
+    captureRequested: Boolean,
+    sensorsRunning: Boolean,
+    startService: () -> Unit,
+    startSensors: () -> Unit,
+    stopSensors: () -> Unit,
+    appendLog: (String) -> Unit,
+    updateCaptureRequested: (Boolean) -> Unit,
+    updateSensorsRunning: (Boolean) -> Unit,
+): String {
+  val activeRoute = currentSessionRoute.ifBlank { requestedSessionId }
+  if (!nativeReady || !sessionReady || !sessionBound || activeRoute.isBlank()) {
+    return buildCaptureControlResponse(
+        accepted = false,
+        requested = enabled,
+        reason = "session_not_ready",
+        detail = "Android host session is not ready for capture control.",
+    )
+  }
+  if (requestedSessionId.isNotBlank() && requestedSessionId != activeRoute) {
+    return buildCaptureControlResponse(
+        accepted = false,
+        requested = enabled,
+        reason = "session_mismatch",
+        detail =
+            "Android host is bound to $activeRoute and cannot control capture for " +
+                requestedSessionId + ".",
+    )
+  }
+
+  if (enabled) {
+    if (!permissionsGranted) {
+      return buildCaptureControlResponse(
+          accepted = false,
+          requested = true,
+          reason = "permissions_missing",
+          detail = "Camera and microphone permissions are required before capture can start.",
+      )
+    }
+    if (!isForeground) {
+      return buildCaptureControlResponse(
+          accepted = false,
+          requested = true,
+          reason = "background_gated",
+          detail = "Foreground-only capture cannot start while the host app is backgrounded.",
+      )
+    }
+    if (!serviceRunning) {
+      startService()
+    }
+    startSensors()
+    return buildCaptureControlResponse(
+        accepted = true,
+        requested = true,
+        detail = "Android host accepted live capture start request.",
+    )
+  }
+
+  if (captureRequested || sensorsRunning) {
+    stopSensors()
+    return buildCaptureControlResponse(
+        accepted = true,
+        requested = false,
+        detail = "Android host accepted live capture stop request.",
+    )
+  }
+
+  updateCaptureRequested(false)
+  updateSensorsRunning(false)
+  appendLog("Live capture was already stopped when native capture control arrived.")
+  return buildCaptureControlResponse(
+      accepted = true,
+      requested = false,
+      detail = "Live capture was already stopped on the Android host.",
+  )
+}
+
 internal fun effectiveHostHapticsEnabled(
     hostHapticsEnabled: Boolean,
     hapticsAvailable: Boolean,
@@ -1688,7 +1842,10 @@ internal fun describeHostCapabilities(payload: String): String? {
 internal fun describeSpeechState(payload: String): String? {
   return runCatching {
         val json = JSONObject(payload)
-        val speechState = json.optJSONObject("speechState") ?: return null
+        val speechState =
+            json.optJSONObject("speechState")
+                ?: if (json.has("state") && json.has("available")) json else null
+                ?: return null
         if (!speechState.optBoolean("available", false)) {
           return null
         }
@@ -1732,6 +1889,10 @@ internal fun describeSpeechState(payload: String): String? {
         }
       }
       .getOrNull()
+}
+
+internal fun speechStateSummaryOrDefault(payload: String): String {
+  return describeSpeechState(payload) ?: "No live speech state yet."
 }
 
 private fun parseJsonInt(payload: String, field: String): Int? {

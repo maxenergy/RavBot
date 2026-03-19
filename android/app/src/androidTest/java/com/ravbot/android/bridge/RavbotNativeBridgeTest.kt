@@ -138,6 +138,26 @@ class RavbotNativeBridgeTest {
     }
   }
 
+  @Test
+  fun captureControlHandlerRunsOnNativeRequest() {
+    val bridge = RavbotNativeBridge()
+    val resultRef = AtomicReference<String>()
+
+    try {
+      bridge.setCaptureControlHandler { sessionId, enabled ->
+        resultRef.set("$sessionId:$enabled")
+        """{"accepted":true,"requested":$enabled,"detail":"ok"}"""
+      }
+
+      val response = bridge.onNativeCaptureControl("agent:main:android", true)
+      assertEquals("agent:main:android:true", resultRef.get())
+      assertTrue(response.contains("\"accepted\":true"))
+      assertTrue(response.contains("\"requested\":true"))
+    } finally {
+      bridge.dispose()
+    }
+  }
+
   private fun testDir(context: Context, name: String): File {
     val dir = File(context.cacheDir, "ravbot-native-bridge-test/$name")
     dir.deleteRecursively()

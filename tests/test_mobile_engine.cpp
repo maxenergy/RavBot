@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -510,6 +511,52 @@ class FakeVibrateToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
+class FakeCaptureControlToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("\"requested\": true") !=
+              std::string::npos) {
+        response.content = "Android host capture start requested.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_set_capture_enabled";
+    tool_call.name = "set_capture_enabled";
+    tool_call.arguments = {{"enabled", true}};
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override {
+    return "fake-capture-control-tool";
+  }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-capture-control-tool-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
 class FakeRuntimeStatusToolCallingTextProvider : public ravbot::LLMProvider {
  public:
   ravbot::ChatCompletionResponse
@@ -553,6 +600,56 @@ class FakeRuntimeStatusToolCallingTextProvider : public ravbot::LLMProvider {
   }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-runtime-tool-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
+class FakeSpeechStatusToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("\"speechState\"") !=
+              std::string::npos &&
+          last.content.front().content.find("\"state\": \"capturing\"") !=
+              std::string::npos &&
+          last.content.front().content.find("\"currentSegmentIndex\": 1") !=
+              std::string::npos) {
+        response.content = "Speech status snapshot received.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_speech_status";
+    tool_call.name = "speech_status";
+    tool_call.arguments = nlohmann::json::object();
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override {
+    return "fake-speech-tool";
+  }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-speech-tool-model"};
   }
 
   std::vector<ravbot::ChatCompletionRequest> requests;
@@ -653,6 +750,53 @@ class FakeWebFetchToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
+class FakeUnavailableWebSearchToolCallingTextProvider
+    : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("host_toggle_off") !=
+              std::string::npos) {
+        response.content = "Host-backed web search is disabled right now.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_web_search";
+    tool_call.name = "web_search";
+    tool_call.arguments = {{"query", "ravbot android mvp"}, {"count", 3}};
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override {
+    return "fake-web-search-disabled";
+  }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-web-search-disabled-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
 std::vector<std::string>
 tool_names(const ravbot::ChatCompletionRequest& request) {
   std::vector<std::string> names;
@@ -671,6 +815,23 @@ bool json_array_contains_string(const nlohmann::json& array,
       array.begin(), array.end(), [&value](const nlohmann::json& entry) {
         return entry.is_string() && entry.get<std::string>() == value;
       });
+}
+
+ravbot::mobile::DeviceStatusSnapshot
+MakeReadyDeviceStatus(bool web_search_enabled = true,
+                      bool web_fetch_enabled = true,
+                      bool host_haptics_enabled = true) {
+  ravbot::mobile::DeviceStatusSnapshot status;
+  status.service_running = true;
+  status.capture_requested = true;
+  status.permissions_granted = true;
+  status.host_web_search_enabled = web_search_enabled;
+  status.host_web_fetch_enabled = web_fetch_enabled;
+  status.host_haptics_enabled = host_haptics_enabled;
+  status.microphone_status = "running";
+  status.camera_status = "running";
+  status.speaker_status = "idle";
+  return status;
 }
 
 class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
@@ -778,6 +939,9 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   bool SupportsWebFetch() const override {
     return true;
   }
+  bool SupportsCaptureControl() const override {
+    return true;
+  }
   bool SupportsVibration() const override {
     return true;
   }
@@ -796,6 +960,18 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   void InterruptSpeechPlayback(const std::string& session_key) override {
     last_interrupt_session = session_key;
     speech_interrupts += 1;
+  }
+
+  std::string SetCaptureEnabled(const std::string& session_key,
+                                bool enabled) override {
+    capture_control_calls.push_back(session_key + ":" +
+                                    (enabled ? "true" : "false"));
+    return nlohmann::json{
+        {"accepted", true},
+        {"requested", enabled},
+        {"detail", enabled ? "Host accepted capture start request."
+                           : "Host accepted capture stop request."}}
+        .dump(2);
   }
 
   void Vibrate(const std::string& session_key, int duration_ms) override {
@@ -836,6 +1012,7 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   std::vector<std::string> speech_requests;
   int speech_interrupts = 0;
   std::string last_interrupt_session;
+  std::vector<std::string> capture_control_calls;
   std::vector<std::string> vibration_calls;
   std::vector<std::tuple<std::string, std::string, int, std::string>>
       web_search_calls;
@@ -1029,12 +1206,14 @@ class MobileEngineTest : public ::testing::Test {
     logger_ = std::make_shared<spdlog::logger>("mobile-engine-test", sink);
     test_dir_ =
         std::filesystem::temp_directory_path() / "ravbot_mobile_engine_test";
-    std::filesystem::remove_all(test_dir_);
+    std::error_code ec;
+    std::filesystem::remove_all(test_dir_, ec);
     std::filesystem::create_directories(test_dir_);
   }
 
   void TearDown() override {
-    std::filesystem::remove_all(test_dir_);
+    std::error_code ec;
+    std::filesystem::remove_all(test_dir_, ec);
   }
 
   ravbot::RavBotConfig MakeConfig() {
@@ -1101,9 +1280,13 @@ TEST_F(MobileEngineTest, StartSessionUsesConfiguredAvatarDefaultState) {
   });
 
   EXPECT_EQ(engine.StartSession("agent:main:avatar"), "agent:main:avatar");
-  ASSERT_FALSE(events.empty());
-  EXPECT_EQ(events.back().name, ravbot::mobile::kEventMobileAvatarState);
-  EXPECT_EQ(events.back().payload["state"], "watch");
+  ASSERT_GE(events.size(), 2u);
+  EXPECT_EQ(events[events.size() - 2].name,
+            ravbot::mobile::kEventMobileAvatarState);
+  EXPECT_EQ(events[events.size() - 2].payload["state"], "watch");
+  EXPECT_EQ(events.back().name, ravbot::mobile::kEventMobileSpeechState);
+  EXPECT_EQ(events.back().payload["sessionKey"], "agent:main:avatar");
+  EXPECT_EQ(events.back().payload["state"], "idle");
 }
 
 TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
@@ -1203,6 +1386,56 @@ TEST_F(MobileEngineTest, PushPcm16UsesAsrProviderForFinalTurn) {
   EXPECT_EQ(asr_final->payload["durationMs"], 120);
   EXPECT_EQ(asr_final->payload["sampleRateHz"], 16000);
   EXPECT_EQ(asr_final->payload["endReason"], "vad_silence");
+}
+
+TEST_F(MobileEngineTest, SpeechPipelineEmitsSpeechStateEventsForSession) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  engine.SetTextProvider(std::make_shared<FakeTextProvider>("speech reply"));
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
+
+  ASSERT_EQ(engine.StartSession("agent:main:speech-state"),
+            "agent:main:speech-state");
+
+  int16_t samples[4] = {1, 2, 3, 4};
+  ASSERT_TRUE(
+      engine.PushPcm16("agent:main:speech-state", samples, 4, 16000, false));
+  ASSERT_TRUE(engine.FlushAudioTurn("agent:main:speech-state"));
+
+  std::vector<nlohmann::json> speech_payloads;
+  for (const auto& event : events) {
+    if (event.name == ravbot::mobile::kEventMobileSpeechState &&
+        event.payload.value("sessionKey", "") == "agent:main:speech-state") {
+      speech_payloads.push_back(event.payload);
+    }
+  }
+
+  ASSERT_GE(speech_payloads.size(), 3u);
+  EXPECT_EQ(speech_payloads.front()["state"], "idle");
+  EXPECT_FALSE(speech_payloads.front()["available"].get<bool>());
+
+  auto capturing =
+      std::find_if(speech_payloads.begin(), speech_payloads.end(),
+                   [](const nlohmann::json& payload) {
+                     return payload.value("state", "") == "capturing";
+                   });
+  ASSERT_NE(capturing, speech_payloads.end());
+  EXPECT_TRUE((*capturing)["available"].get<bool>());
+  EXPECT_TRUE((*capturing)["pendingAudio"].get<bool>());
+  EXPECT_EQ((*capturing)["currentSegmentIndex"], 1);
+
+  auto idle_completed =
+      std::find_if(speech_payloads.begin(), speech_payloads.end(),
+                   [](const nlohmann::json& payload) {
+                     return payload.value("state", "") == "idle" &&
+                            payload.value("completedSegments", 0) == 1;
+                   });
+  ASSERT_NE(idle_completed, speech_payloads.end());
+  EXPECT_FALSE((*idle_completed)["pendingAudio"].get<bool>());
 }
 
 TEST_F(MobileEngineTest, FlushAudioTurnFinalizesBufferedSpeechTurn) {
@@ -1493,6 +1726,8 @@ TEST_F(MobileEngineTest, StartSessionEmitsRuntimeStatusWithResolvedModelPaths) {
   EXPECT_TRUE(json_array_contains_string(it->payload["availableTools"],
                                          "runtime_status"));
   EXPECT_TRUE(json_array_contains_string(it->payload["availableTools"],
+                                         "speech_status"));
+  EXPECT_TRUE(json_array_contains_string(it->payload["availableTools"],
                                          "camera_snapshot"));
   EXPECT_TRUE(
       json_array_contains_string(it->payload["availableTools"], "memory_list"));
@@ -1500,6 +1735,8 @@ TEST_F(MobileEngineTest, StartSessionEmitsRuntimeStatusWithResolvedModelPaths) {
       json_array_contains_string(it->payload["availableTools"], "web_search"));
   EXPECT_FALSE(
       json_array_contains_string(it->payload["availableTools"], "web_fetch"));
+  EXPECT_FALSE(json_array_contains_string(it->payload["availableTools"],
+                                          "set_capture_enabled"));
   EXPECT_FALSE(
       json_array_contains_string(it->payload["availableTools"], "vibrate"));
   EXPECT_EQ(it->payload["toolAvailability"]["web_search"]["available"], false);
@@ -1545,6 +1782,8 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
       speech_only_status->payload["availableTools"], "web_search"));
   EXPECT_FALSE(json_array_contains_string(
       speech_only_status->payload["availableTools"], "web_fetch"));
+  EXPECT_TRUE(json_array_contains_string(
+      speech_only_status->payload["availableTools"], "speech_status"));
   EXPECT_FALSE(json_array_contains_string(
       speech_only_status->payload["availableTools"], "vibrate"));
   EXPECT_EQ(
@@ -1553,6 +1792,9 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_EQ(
       speech_only_status->payload["toolAvailability"]["web_fetch"]["reason"],
       "web_fetch_unsupported");
+  EXPECT_EQ(speech_only_status
+                ->payload["toolAvailability"]["set_capture_enabled"]["reason"],
+            "capture_control_unsupported");
   EXPECT_EQ(
       speech_only_status->payload["toolAvailability"]["vibrate"]["reason"],
       "vibration_unsupported");
@@ -1586,6 +1828,10 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_TRUE(full_bridge_status->payload["webFetchReady"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["vibrationReady"].get<bool>());
   EXPECT_TRUE(json_array_contains_string(
+      full_bridge_status->payload["availableTools"], "set_capture_enabled"));
+  EXPECT_TRUE(json_array_contains_string(
+      full_bridge_status->payload["availableTools"], "speech_status"));
+  EXPECT_TRUE(json_array_contains_string(
       full_bridge_status->payload["availableTools"], "web_search"));
   EXPECT_TRUE(json_array_contains_string(
       full_bridge_status->payload["availableTools"], "web_fetch"));
@@ -1597,6 +1843,9 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_EQ(
       full_bridge_status->payload["toolAvailability"]["web_fetch"]["available"],
       true);
+  EXPECT_EQ(full_bridge_status->payload["toolAvailability"]
+                                       ["set_capture_enabled"]["available"],
+            true);
   EXPECT_EQ(
       full_bridge_status->payload["toolAvailability"]["vibrate"]["available"],
       true);
@@ -1626,6 +1875,9 @@ TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
   EXPECT_FALSE(runtime_payloads[0]["webSearchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[0]["webFetchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[0]["vibrationReady"].get<bool>());
+  EXPECT_EQ(
+      runtime_payloads[0]["toolAvailability"]["set_capture_enabled"]["reason"],
+      "device_bridge_missing");
   EXPECT_EQ(runtime_payloads[0]["toolAvailability"]["web_search"]["reason"],
             "device_bridge_missing");
 
@@ -1633,6 +1885,9 @@ TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
   EXPECT_FALSE(runtime_payloads[1]["webSearchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[1]["webFetchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[1]["vibrationReady"].get<bool>());
+  EXPECT_EQ(
+      runtime_payloads[1]["toolAvailability"]["set_capture_enabled"]["reason"],
+      "capture_control_unsupported");
   EXPECT_EQ(runtime_payloads[1]["toolAvailability"]["web_search"]["reason"],
             "web_search_unsupported");
 
@@ -1640,6 +1895,10 @@ TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
   EXPECT_TRUE(runtime_payloads[2]["webSearchReady"].get<bool>());
   EXPECT_TRUE(runtime_payloads[2]["webFetchReady"].get<bool>());
   EXPECT_TRUE(runtime_payloads[2]["vibrationReady"].get<bool>());
+  EXPECT_TRUE(json_array_contains_string(runtime_payloads[2]["availableTools"],
+                                         "set_capture_enabled"));
+  EXPECT_TRUE(json_array_contains_string(runtime_payloads[2]["availableTools"],
+                                         "speech_status"));
   EXPECT_TRUE(json_array_contains_string(runtime_payloads[2]["availableTools"],
                                          "web_search"));
   EXPECT_TRUE(json_array_contains_string(runtime_payloads[2]["availableTools"],
@@ -1743,6 +2002,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   ASSERT_EQ(provider->requests.size(), 2u);
   const auto names = tool_names(provider->requests.front());
   EXPECT_NE(std::find(names.begin(), names.end(), "device_status"),
+            names.end());
+  EXPECT_NE(std::find(names.begin(), names.end(), "speech_status"),
             names.end());
   EXPECT_NE(std::find(names.begin(), names.end(), "camera_snapshot"),
             names.end());
@@ -2367,6 +2628,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   engine.SetDeviceBridge(std::make_shared<FakeDeviceBridge>());
   auto provider = std::make_shared<FakeRuntimeStatusToolCallingTextProvider>();
   engine.SetTextProvider(provider);
+  ASSERT_TRUE(engine.ReportDeviceStatus(
+      "agent:main:runtime-tool", MakeReadyDeviceStatus(false, true, false)));
 
   std::vector<ravbot::mobile::MobileEvent> events;
   engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
@@ -2390,13 +2653,22 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   const auto result = tool_result->payload["result"].get<std::string>();
+  const auto result_json = nlohmann::json::parse(result);
+  EXPECT_NE(result.find("\"sessionKey\": \"agent:main:runtime-tool\""),
+            std::string::npos);
   EXPECT_NE(result.find("\"deviceBridgeAttached\": true"), std::string::npos);
-  EXPECT_NE(result.find("\"webSearchReady\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"webSearchReady\": false"), std::string::npos);
   EXPECT_NE(result.find("\"webFetchReady\": true"), std::string::npos);
-  EXPECT_NE(result.find("\"vibrationReady\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"vibrationReady\": false"), std::string::npos);
   EXPECT_NE(result.find("\"availableTools\""), std::string::npos);
-  EXPECT_NE(result.find("\"web_search\""), std::string::npos);
+  EXPECT_TRUE(json_array_contains_string(result_json["availableTools"],
+                                         "set_capture_enabled"));
+  EXPECT_FALSE(
+      json_array_contains_string(result_json["availableTools"], "web_search"));
+  EXPECT_TRUE(
+      json_array_contains_string(result_json["availableTools"], "web_fetch"));
   EXPECT_NE(result.find("\"toolAvailability\""), std::string::npos);
+  EXPECT_NE(result.find("\"host_toggle_off\""), std::string::npos);
   EXPECT_NE(result.find("\"provider\": \"fake-runtime-tool\""),
             std::string::npos);
 
@@ -2406,6 +2678,142 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   EXPECT_EQ(history[3].content[0].text, "Runtime readiness snapshot received.");
 }
 
+TEST_F(MobileEngineTest, SendTextTurnExecutesSpeechStatusToolRoundTrip) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider = std::make_shared<FakeSpeechStatusToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+
+  int16_t samples[] = {1, 2, 3, 4};
+  ASSERT_TRUE(
+      engine.PushPcm16("agent:main:speech-tool", samples, 4, 16000, false));
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
+
+  ASSERT_TRUE(
+      engine.SendTextTurn("agent:main:speech-tool", "How is speech capture?"));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  const auto names = tool_names(provider->requests.front());
+  EXPECT_NE(std::find(names.begin(), names.end(), "speech_status"),
+            names.end());
+
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "speech_status";
+                   });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  const auto result_json =
+      nlohmann::json::parse(tool_result->payload["result"].get<std::string>());
+  EXPECT_TRUE(result_json.contains("speechState"));
+  EXPECT_EQ(result_json["speechState"]["state"], "capturing");
+  EXPECT_TRUE(result_json["speechState"]["pendingAudio"]);
+  EXPECT_TRUE(result_json.contains("audioConfig"));
+  EXPECT_EQ(result_json["audioConfig"]["sampleRateHz"], 16000);
+  EXPECT_TRUE(result_json.contains("runtimeStatus"));
+
+  auto history = engine.session_manager().GetHistory("agent:main:speech-tool");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "speech_status");
+  EXPECT_EQ(history[3].content[0].text, "Speech status snapshot received.");
+}
+
+TEST_F(MobileEngineTest, SpeechStateEventsReflectSessionCaptureLifecycle) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
+
+  EXPECT_EQ(engine.StartSession("agent:main:speech-events"),
+            "agent:main:speech-events");
+  int16_t samples[] = {1, 2, 3, 4};
+  ASSERT_TRUE(
+      engine.PushPcm16("agent:main:speech-events", samples, 4, 16000, false));
+  ASSERT_TRUE(engine.FlushAudioTurn("agent:main:speech-events"));
+  engine.InterruptGeneration("agent:main:speech-events");
+
+  std::vector<nlohmann::json> speech_payloads;
+  for (const auto& event : events) {
+    if (event.name == ravbot::mobile::kEventMobileSpeechState) {
+      speech_payloads.push_back(event.payload);
+    }
+  }
+
+  ASSERT_GE(speech_payloads.size(), 4u);
+  EXPECT_EQ(speech_payloads.front()["state"], "idle");
+  auto capturing =
+      std::find_if(speech_payloads.begin(), speech_payloads.end(),
+                   [](const nlohmann::json& payload) {
+                     return payload.value("state", "") == "capturing";
+                   });
+  ASSERT_NE(capturing, speech_payloads.end());
+  EXPECT_TRUE((*capturing)["pendingAudio"]);
+  auto idle_after_capture =
+      std::find_if(std::next(capturing), speech_payloads.end(),
+                   [](const nlohmann::json& payload) {
+                     return payload.value("state", "") == "idle";
+                   });
+  EXPECT_NE(idle_after_capture, speech_payloads.end());
+  EXPECT_EQ(speech_payloads.back()["state"], "interrupted");
+  EXPECT_EQ(speech_payloads.back()["sessionKey"], "agent:main:speech-events");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnExecutesCaptureControlToolRoundTrip) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto bridge = std::make_shared<FakeDeviceBridge>();
+  engine.SetDeviceBridge(bridge);
+  auto provider = std::make_shared<FakeCaptureControlToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+  ASSERT_TRUE(engine.ReportDeviceStatus(
+      "agent:main:capture-control", MakeReadyDeviceStatus(true, false, false)));
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:capture-control",
+                                  "Start listening and watching now."));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  const auto names = tool_names(provider->requests.front());
+  EXPECT_NE(std::find(names.begin(), names.end(), "set_capture_enabled"),
+            names.end());
+  ASSERT_EQ(bridge->capture_control_calls.size(), 1u);
+  EXPECT_EQ(bridge->capture_control_calls.front(),
+            "agent:main:capture-control:true");
+
+  auto tool_result = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventToolResult &&
+               event.payload.value("name", "") == "set_capture_enabled";
+      });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  const auto result = tool_result->payload["result"].get<std::string>();
+  EXPECT_NE(result.find("\"requested\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"accepted\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"hostResult\""), std::string::npos);
+
+  auto history =
+      engine.session_manager().GetHistory("agent:main:capture-control");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "set_capture_enabled");
+  EXPECT_EQ(history[3].content[0].text,
+            "Android host capture start requested.");
+}
+
 TEST_F(MobileEngineTest, SendTextTurnExecutesVibrateToolRoundTrip) {
   ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
                                       logger_);
@@ -2413,6 +2821,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesVibrateToolRoundTrip) {
   engine.SetDeviceBridge(bridge);
   auto provider = std::make_shared<FakeVibrateToolCallingTextProvider>();
   engine.SetTextProvider(provider);
+  ASSERT_TRUE(engine.ReportDeviceStatus(
+      "agent:main:vibrate", MakeReadyDeviceStatus(true, true, true)));
 
   std::vector<ravbot::mobile::MobileEvent> events;
   engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
@@ -2455,6 +2865,9 @@ TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {
 
   ASSERT_TRUE(without_bridge.SendTextTurn("agent:main:no-web-tools", "hello"));
   auto without_names = tool_names(plain_provider->last_request_);
+  EXPECT_EQ(std::find(without_names.begin(), without_names.end(),
+                      "set_capture_enabled"),
+            without_names.end());
   EXPECT_EQ(std::find(without_names.begin(), without_names.end(), "web_search"),
             without_names.end());
   EXPECT_EQ(std::find(without_names.begin(), without_names.end(), "web_fetch"),
@@ -2472,6 +2885,9 @@ TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {
       "agent:main:speech-only-web-tools", "hello"));
   auto speech_only_names = tool_names(speech_only_provider->last_request_);
   EXPECT_EQ(std::find(speech_only_names.begin(), speech_only_names.end(),
+                      "set_capture_enabled"),
+            speech_only_names.end());
+  EXPECT_EQ(std::find(speech_only_names.begin(), speech_only_names.end(),
                       "web_search"),
             speech_only_names.end());
   EXPECT_EQ(std::find(speech_only_names.begin(), speech_only_names.end(),
@@ -2488,9 +2904,44 @@ TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {
 
   ASSERT_TRUE(with_bridge.SendTextTurn("agent:main:with-web-tools", "hello"));
   auto with_names = tool_names(bridge_provider->last_request_);
+  EXPECT_EQ(
+      std::find(with_names.begin(), with_names.end(), "set_capture_enabled"),
+      with_names.end());
+  EXPECT_EQ(std::find(with_names.begin(), with_names.end(), "web_search"),
+            with_names.end());
+  EXPECT_EQ(std::find(with_names.begin(), with_names.end(), "web_fetch"),
+            with_names.end());
+  EXPECT_EQ(std::find(with_names.begin(), with_names.end(), "vibrate"),
+            with_names.end());
+
+  ASSERT_TRUE(with_bridge.ReportDeviceStatus(
+      "agent:main:with-web-tools", MakeReadyDeviceStatus(false, true, false)));
+  ASSERT_TRUE(
+      with_bridge.SendTextTurn("agent:main:with-web-tools", "hello again"));
+  with_names = tool_names(bridge_provider->last_request_);
+  EXPECT_NE(
+      std::find(with_names.begin(), with_names.end(), "set_capture_enabled"),
+      with_names.end());
+  EXPECT_EQ(std::find(with_names.begin(), with_names.end(), "web_search"),
+            with_names.end());
+  EXPECT_NE(std::find(with_names.begin(), with_names.end(), "web_fetch"),
+            with_names.end());
+  EXPECT_EQ(std::find(with_names.begin(), with_names.end(), "vibrate"),
+            with_names.end());
+
+  ASSERT_TRUE(with_bridge.ReportDeviceStatus(
+      "agent:main:with-web-tools", MakeReadyDeviceStatus(true, true, true)));
+  ASSERT_TRUE(
+      with_bridge.SendTextTurn("agent:main:with-web-tools", "hello final"));
+  with_names = tool_names(bridge_provider->last_request_);
+  EXPECT_NE(
+      std::find(with_names.begin(), with_names.end(), "set_capture_enabled"),
+      with_names.end());
   EXPECT_NE(std::find(with_names.begin(), with_names.end(), "web_search"),
             with_names.end());
   EXPECT_NE(std::find(with_names.begin(), with_names.end(), "web_fetch"),
+            with_names.end());
+  EXPECT_NE(std::find(with_names.begin(), with_names.end(), "vibrate"),
             with_names.end());
 }
 
@@ -2501,6 +2952,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebSearchToolThroughDeviceBridge) {
   auto bridge = std::make_shared<FakeDeviceBridge>();
   engine.SetTextProvider(provider);
   engine.SetDeviceBridge(bridge);
+  ASSERT_TRUE(engine.ReportDeviceStatus(
+      "agent:main:web-search", MakeReadyDeviceStatus(true, false, false)));
 
   std::vector<ravbot::mobile::MobileEvent> events;
   engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
@@ -2549,6 +3002,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebFetchToolThroughDeviceBridge) {
   auto bridge = std::make_shared<FakeDeviceBridge>();
   engine.SetTextProvider(provider);
   engine.SetDeviceBridge(bridge);
+  ASSERT_TRUE(engine.ReportDeviceStatus(
+      "agent:main:web-fetch", MakeReadyDeviceStatus(false, true, false)));
 
   std::vector<ravbot::mobile::MobileEvent> events;
   engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
@@ -2588,6 +3043,50 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebFetchToolThroughDeviceBridge) {
   EXPECT_EQ(history[1].content[0].name, "web_fetch");
   EXPECT_EQ(history[3].content[0].text,
             "I fetched the Android embodied assistant page.");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnRejectsWebSearchToolWhenHostToggleIsOff) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider =
+      std::make_shared<FakeUnavailableWebSearchToolCallingTextProvider>();
+  auto bridge = std::make_shared<FakeDeviceBridge>();
+  engine.SetTextProvider(provider);
+  engine.SetDeviceBridge(bridge);
+  ASSERT_TRUE(
+      engine.ReportDeviceStatus("agent:main:web-search-disabled",
+                                MakeReadyDeviceStatus(false, true, true)));
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:web-search-disabled",
+                                  "Search the web anyway."));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  const auto names = tool_names(provider->requests.front());
+  EXPECT_EQ(std::find(names.begin(), names.end(), "web_search"), names.end());
+  EXPECT_TRUE(bridge->web_search_calls.empty());
+
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "web_search";
+                   });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "error");
+  EXPECT_EQ(tool_result->payload["error"],
+            "web_search is not ready for this session: host_toggle_off");
+
+  auto history =
+      engine.session_manager().GetHistory("agent:main:web-search-disabled");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "web_search");
+  EXPECT_EQ(history[3].content[0].text,
+            "Host-backed web search is disabled right now.");
 }
 
 }  // namespace

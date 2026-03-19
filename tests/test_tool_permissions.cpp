@@ -1,162 +1,169 @@
 // Copyright 2025 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include <gtest/gtest.h>
 #include "ravbot/security/tool_permissions.hpp"
 
+#include <gtest/gtest.h>
+
 class ToolPermissionsTest : public ::testing::Test {
-protected:
-    ravbot::ToolPermissionConfig make_config(
-        const std::vector<std::string>& allow,
-        const std::vector<std::string>& deny) {
-        ravbot::ToolPermissionConfig cfg;
-        cfg.allow = allow;
-        cfg.deny = deny;
-        return cfg;
-    }
+ protected:
+  ravbot::ToolPermissionConfig
+  make_config(const std::vector<std::string>& allow,
+              const std::vector<std::string>& deny) {
+    ravbot::ToolPermissionConfig cfg;
+    cfg.allow = allow;
+    cfg.deny = deny;
+    return cfg;
+  }
 };
 
 // --- Basic allow/deny ---
 
 TEST_F(ToolPermissionsTest, EmptyConfigAllowsAll) {
-    auto checker = ravbot::ToolPermissionChecker(make_config({}, {}));
-    EXPECT_TRUE(checker.IsAllowed("read"));
-    EXPECT_TRUE(checker.IsAllowed("write"));
-    EXPECT_TRUE(checker.IsAllowed("exec"));
-    EXPECT_TRUE(checker.IsAllowed("anything"));
+  auto checker = ravbot::ToolPermissionChecker(make_config({}, {}));
+  EXPECT_TRUE(checker.IsAllowed("read"));
+  EXPECT_TRUE(checker.IsAllowed("write"));
+  EXPECT_TRUE(checker.IsAllowed("exec"));
+  EXPECT_TRUE(checker.IsAllowed("anything"));
 }
 
 TEST_F(ToolPermissionsTest, GroupFsAllowsFileTools) {
-    auto checker = ravbot::ToolPermissionChecker(make_config({"group:fs"}, {}));
-    EXPECT_TRUE(checker.IsAllowed("read"));
-    EXPECT_TRUE(checker.IsAllowed("write"));
-    EXPECT_TRUE(checker.IsAllowed("edit"));
-    EXPECT_FALSE(checker.IsAllowed("exec"));
-    EXPECT_FALSE(checker.IsAllowed("message"));
+  auto checker = ravbot::ToolPermissionChecker(make_config({"group:fs"}, {}));
+  EXPECT_TRUE(checker.IsAllowed("read"));
+  EXPECT_TRUE(checker.IsAllowed("write"));
+  EXPECT_TRUE(checker.IsAllowed("edit"));
+  EXPECT_FALSE(checker.IsAllowed("exec"));
+  EXPECT_FALSE(checker.IsAllowed("message"));
 }
 
 TEST_F(ToolPermissionsTest, GroupRuntimeAllowsExec) {
-    auto checker = ravbot::ToolPermissionChecker(make_config({"group:runtime"}, {}));
-    EXPECT_TRUE(checker.IsAllowed("exec"));
-    EXPECT_FALSE(checker.IsAllowed("read"));
-    EXPECT_FALSE(checker.IsAllowed("write"));
+  auto checker =
+      ravbot::ToolPermissionChecker(make_config({"group:runtime"}, {}));
+  EXPECT_TRUE(checker.IsAllowed("exec"));
+  EXPECT_FALSE(checker.IsAllowed("read"));
+  EXPECT_FALSE(checker.IsAllowed("write"));
 }
 
 TEST_F(ToolPermissionsTest, GroupAllAllowsEverything) {
-    auto checker = ravbot::ToolPermissionChecker(make_config({"group:all"}, {}));
-    EXPECT_TRUE(checker.IsAllowed("read"));
-    EXPECT_TRUE(checker.IsAllowed("write"));
-    EXPECT_TRUE(checker.IsAllowed("edit"));
-    EXPECT_TRUE(checker.IsAllowed("exec"));
-    EXPECT_TRUE(checker.IsAllowed("message"));
+  auto checker = ravbot::ToolPermissionChecker(make_config({"group:all"}, {}));
+  EXPECT_TRUE(checker.IsAllowed("read"));
+  EXPECT_TRUE(checker.IsAllowed("write"));
+  EXPECT_TRUE(checker.IsAllowed("edit"));
+  EXPECT_TRUE(checker.IsAllowed("exec"));
+  EXPECT_TRUE(checker.IsAllowed("message"));
 }
 
 TEST_F(ToolPermissionsTest, SingleToolAllow) {
-    auto checker = ravbot::ToolPermissionChecker(make_config({"tool:read"}, {}));
-    EXPECT_TRUE(checker.IsAllowed("read"));
-    EXPECT_FALSE(checker.IsAllowed("write"));
-    EXPECT_FALSE(checker.IsAllowed("exec"));
+  auto checker = ravbot::ToolPermissionChecker(make_config({"tool:read"}, {}));
+  EXPECT_TRUE(checker.IsAllowed("read"));
+  EXPECT_FALSE(checker.IsAllowed("write"));
+  EXPECT_FALSE(checker.IsAllowed("exec"));
 }
 
 TEST_F(ToolPermissionsTest, DenyOverridesAllow) {
-    auto checker = ravbot::ToolPermissionChecker(make_config({"group:all"}, {"tool:exec"}));
-    EXPECT_TRUE(checker.IsAllowed("read"));
-    EXPECT_TRUE(checker.IsAllowed("write"));
-    EXPECT_FALSE(checker.IsAllowed("exec"));
+  auto checker =
+      ravbot::ToolPermissionChecker(make_config({"group:all"}, {"tool:exec"}));
+  EXPECT_TRUE(checker.IsAllowed("read"));
+  EXPECT_TRUE(checker.IsAllowed("write"));
+  EXPECT_FALSE(checker.IsAllowed("exec"));
 }
 
 TEST_F(ToolPermissionsTest, DenyGroupOverridesAllowGroup) {
-    auto checker = ravbot::ToolPermissionChecker(
-        make_config({"group:all"}, {"group:runtime"}));
-    EXPECT_TRUE(checker.IsAllowed("read"));
-    EXPECT_FALSE(checker.IsAllowed("exec"));
+  auto checker = ravbot::ToolPermissionChecker(
+      make_config({"group:all"}, {"group:runtime"}));
+  EXPECT_TRUE(checker.IsAllowed("read"));
+  EXPECT_FALSE(checker.IsAllowed("exec"));
 }
 
 TEST_F(ToolPermissionsTest, MultipleAllowGroups) {
-    auto checker = ravbot::ToolPermissionChecker(
-        make_config({"group:fs", "group:runtime"}, {}));
-    EXPECT_TRUE(checker.IsAllowed("read"));
-    EXPECT_TRUE(checker.IsAllowed("write"));
-    EXPECT_TRUE(checker.IsAllowed("edit"));
-    EXPECT_TRUE(checker.IsAllowed("exec"));
-    EXPECT_FALSE(checker.IsAllowed("message"));
+  auto checker = ravbot::ToolPermissionChecker(
+      make_config({"group:fs", "group:runtime"}, {}));
+  EXPECT_TRUE(checker.IsAllowed("read"));
+  EXPECT_TRUE(checker.IsAllowed("write"));
+  EXPECT_TRUE(checker.IsAllowed("edit"));
+  EXPECT_TRUE(checker.IsAllowed("exec"));
+  EXPECT_FALSE(checker.IsAllowed("message"));
 }
 
 TEST_F(ToolPermissionsTest, MobileSafeGroupAllowsOnlyMobileFriendlyTools) {
-    auto checker =
-        ravbot::ToolPermissionChecker(make_config({"group:mobile_safe"}, {}));
-    EXPECT_TRUE(checker.IsAllowed("message"));
-    EXPECT_TRUE(checker.IsAllowed("web_search"));
-    EXPECT_TRUE(checker.IsAllowed("device_status"));
-    EXPECT_TRUE(checker.IsAllowed("runtime_status"));
-    EXPECT_TRUE(checker.IsAllowed("vibrate"));
-    EXPECT_TRUE(checker.IsAllowed("camera_snapshot"));
-    EXPECT_TRUE(checker.IsAllowed("time"));
-    EXPECT_TRUE(checker.IsAllowed("memory_list"));
-    EXPECT_TRUE(checker.IsAllowed("memory_search"));
-    EXPECT_TRUE(checker.IsAllowed("memory_delete"));
-    EXPECT_FALSE(checker.IsAllowed("exec"));
-    EXPECT_FALSE(checker.IsAllowed("apply_patch"));
+  auto checker =
+      ravbot::ToolPermissionChecker(make_config({"group:mobile_safe"}, {}));
+  EXPECT_TRUE(checker.IsAllowed("message"));
+  EXPECT_TRUE(checker.IsAllowed("web_search"));
+  EXPECT_TRUE(checker.IsAllowed("device_status"));
+  EXPECT_TRUE(checker.IsAllowed("runtime_status"));
+  EXPECT_TRUE(checker.IsAllowed("speech_status"));
+  EXPECT_TRUE(checker.IsAllowed("set_capture_enabled"));
+  EXPECT_TRUE(checker.IsAllowed("vibrate"));
+  EXPECT_TRUE(checker.IsAllowed("camera_snapshot"));
+  EXPECT_TRUE(checker.IsAllowed("time"));
+  EXPECT_TRUE(checker.IsAllowed("memory_list"));
+  EXPECT_TRUE(checker.IsAllowed("memory_search"));
+  EXPECT_TRUE(checker.IsAllowed("memory_delete"));
+  EXPECT_FALSE(checker.IsAllowed("exec"));
+  EXPECT_FALSE(checker.IsAllowed("apply_patch"));
 }
 
 // --- MCP tool permissions ---
 
 TEST_F(ToolPermissionsTest, McpAllowAllWhenConfigEmpty) {
-    auto checker = ravbot::ToolPermissionChecker(make_config({}, {}));
-    EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "lint"));
-    EXPECT_TRUE(checker.IsMcpToolAllowed("data", "query"));
+  auto checker = ravbot::ToolPermissionChecker(make_config({}, {}));
+  EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "lint"));
+  EXPECT_TRUE(checker.IsMcpToolAllowed("data", "query"));
 }
 
 TEST_F(ToolPermissionsTest, McpAllowSpecificServer) {
-    auto checker = ravbot::ToolPermissionChecker(
-        make_config({"group:all", "mcp:code-tools:*"}, {}));
-    EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "lint"));
-    EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "format"));
-    EXPECT_FALSE(checker.IsMcpToolAllowed("data", "query"));
+  auto checker = ravbot::ToolPermissionChecker(
+      make_config({"group:all", "mcp:code-tools:*"}, {}));
+  EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "lint"));
+  EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "format"));
+  EXPECT_FALSE(checker.IsMcpToolAllowed("data", "query"));
 }
 
 TEST_F(ToolPermissionsTest, McpAllowSpecificTool) {
-    auto checker = ravbot::ToolPermissionChecker(
-        make_config({"group:all", "mcp:code-tools:lint"}, {}));
-    EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "lint"));
-    EXPECT_FALSE(checker.IsMcpToolAllowed("code-tools", "format"));
+  auto checker = ravbot::ToolPermissionChecker(
+      make_config({"group:all", "mcp:code-tools:lint"}, {}));
+  EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "lint"));
+  EXPECT_FALSE(checker.IsMcpToolAllowed("code-tools", "format"));
 }
 
 TEST_F(ToolPermissionsTest, McpDenyOverridesAllow) {
-    auto checker = ravbot::ToolPermissionChecker(
-        make_config({"group:all", "mcp:code-tools:*"}, {"mcp:code-tools:dangerous"}));
-    EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "lint"));
-    EXPECT_FALSE(checker.IsMcpToolAllowed("code-tools", "dangerous"));
+  auto checker = ravbot::ToolPermissionChecker(make_config(
+      {"group:all", "mcp:code-tools:*"}, {"mcp:code-tools:dangerous"}));
+  EXPECT_TRUE(checker.IsMcpToolAllowed("code-tools", "lint"));
+  EXPECT_FALSE(checker.IsMcpToolAllowed("code-tools", "dangerous"));
 }
 
 TEST_F(ToolPermissionsTest, McpDenyEntireServer) {
-    auto checker = ravbot::ToolPermissionChecker(
-        make_config({"mcp:*"}, {"mcp:untrusted:*"}));
-    EXPECT_TRUE(checker.IsMcpToolAllowed("trusted", "anything"));
-    EXPECT_FALSE(checker.IsMcpToolAllowed("untrusted", "anything"));
+  auto checker = ravbot::ToolPermissionChecker(
+      make_config({"mcp:*"}, {"mcp:untrusted:*"}));
+  EXPECT_TRUE(checker.IsMcpToolAllowed("trusted", "anything"));
+  EXPECT_FALSE(checker.IsMcpToolAllowed("untrusted", "anything"));
 }
 
 // --- Default config (FromJson defaults) ---
 
 TEST_F(ToolPermissionsTest, DefaultPermissionConfigFromJson) {
-    nlohmann::json empty_json = nlohmann::json::object();
-    auto cfg = ravbot::ToolPermissionConfig::FromJson(empty_json);
-    // Default: allow group:fs and group:runtime
-    auto checker = ravbot::ToolPermissionChecker(cfg);
-    EXPECT_TRUE(checker.IsAllowed("read"));
-    EXPECT_TRUE(checker.IsAllowed("write"));
-    EXPECT_TRUE(checker.IsAllowed("edit"));
-    EXPECT_TRUE(checker.IsAllowed("exec"));
-    EXPECT_FALSE(checker.IsAllowed("message"));
+  nlohmann::json empty_json = nlohmann::json::object();
+  auto cfg = ravbot::ToolPermissionConfig::FromJson(empty_json);
+  // Default: allow group:fs and group:runtime
+  auto checker = ravbot::ToolPermissionChecker(cfg);
+  EXPECT_TRUE(checker.IsAllowed("read"));
+  EXPECT_TRUE(checker.IsAllowed("write"));
+  EXPECT_TRUE(checker.IsAllowed("edit"));
+  EXPECT_TRUE(checker.IsAllowed("exec"));
+  EXPECT_FALSE(checker.IsAllowed("message"));
 }
 
 TEST_F(ToolPermissionsTest, GroupAllIncludesMobileSafeTools) {
-    auto checker = ravbot::ToolPermissionChecker(make_config({"group:all"}, {}));
-    EXPECT_TRUE(checker.IsAllowed("device_status"));
-    EXPECT_TRUE(checker.IsAllowed("runtime_status"));
-    EXPECT_TRUE(checker.IsAllowed("vibrate"));
-    EXPECT_TRUE(checker.IsAllowed("camera_snapshot"));
-    EXPECT_TRUE(checker.IsAllowed("time"));
-    EXPECT_TRUE(checker.IsAllowed("memory_list"));
-    EXPECT_TRUE(checker.IsAllowed("memory_delete"));
+  auto checker = ravbot::ToolPermissionChecker(make_config({"group:all"}, {}));
+  EXPECT_TRUE(checker.IsAllowed("device_status"));
+  EXPECT_TRUE(checker.IsAllowed("runtime_status"));
+  EXPECT_TRUE(checker.IsAllowed("speech_status"));
+  EXPECT_TRUE(checker.IsAllowed("set_capture_enabled"));
+  EXPECT_TRUE(checker.IsAllowed("vibrate"));
+  EXPECT_TRUE(checker.IsAllowed("camera_snapshot"));
+  EXPECT_TRUE(checker.IsAllowed("time"));
+  EXPECT_TRUE(checker.IsAllowed("memory_list"));
+  EXPECT_TRUE(checker.IsAllowed("memory_delete"));
 }

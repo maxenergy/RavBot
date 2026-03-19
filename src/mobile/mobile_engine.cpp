@@ -24,6 +24,8 @@ namespace {
 
 constexpr char kDeviceStatusToolName[] = "device_status";
 constexpr char kRuntimeStatusToolName[] = "runtime_status";
+constexpr char kSpeechStatusToolName[] = "speech_status";
+constexpr char kSetCaptureEnabledToolName[] = "set_capture_enabled";
 constexpr char kVibrateToolName[] = "vibrate";
 constexpr char kCameraSnapshotToolName[] = "camera_snapshot";
 constexpr char kTimeToolName[] = "time";
@@ -268,6 +270,9 @@ std::string MobileEngine::SubscribeEvents(EventCallback callback) {
     Emit(kEventMobileDeviceStatus,
          BuildDeviceStatusEventPayload(session_key, status));
   }
+  for (const auto& session : session_manager_.ListSessions()) {
+    EmitSpeechState(session.session_key);
+  }
   return id;
 }
 
@@ -288,7 +293,8 @@ std::string MobileEngine::StartSession(const std::string& session_key,
   } catch (const std::exception&) {
     initial_state = AvatarState::kIdle;
   }
-  SetAvatarState(initial_state, session_key);
+  SetAvatarState(initial_state, handle.session_key);
+  EmitSpeechState(handle.session_key);
   return handle.session_key;
 }
 
@@ -307,6 +313,7 @@ bool MobileEngine::PushPcm16(const std::string& session_key,
   SetAvatarState(AvatarState::kListen, session_key);
   AsrUpdate update = asr_provider_->PushPcm16(
       session_key, samples, sample_count, sample_rate_hz, end_of_turn);
+  EmitSpeechState(session_key);
   return HandleAsrUpdate(session_key, update, sample_rate_hz);
 }
 
@@ -317,6 +324,7 @@ bool MobileEngine::FlushAudioTurn(const std::string& session_key) {
 
   SetAvatarState(AvatarState::kListen, session_key);
   AsrUpdate update = asr_provider_->Flush(session_key);
+  EmitSpeechState(session_key);
   if (update.text.empty()) {
     SetAvatarState(AvatarState::kIdle, session_key);
     return false;
@@ -380,6 +388,7 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
 void MobileEngine::InterruptGeneration(const std::string& session_key) {
   if (asr_provider_) {
     asr_provider_->Interrupt(session_key);
+    EmitSpeechState(session_key);
   }
   if (auto bridge = CopyDeviceBridge(); bridge) {
     bridge->InterruptSpeechPlayback(session_key);
@@ -458,13 +467,77 @@ void MobileEngine::Emit(const std::string& event_name,
   }
 }
 
-nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
+MobileEngine::HostToolAvailability
+MobileEngine::BuildHostToolAvailability(const std::string& session_key) const {
+  HostToolAvailability availability;
   const auto bridge = CopyDeviceBridge();
-  const bool device_bridge_attached = bridge != nullptr;
-  const bool web_search_ready =
-      bridge != nullptr && bridge->SupportsWebSearch();
-  const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
-  const bool vibration_ready = bridge != nullptr && bridge->SupportsVibration();
+  availability.device_bridge_attached = bridge != nullptr;
+
+  DeviceStatusSnapshot status;
+  bool has_device_status = false;
+  if (!session_key.empty()) {
+    std::shared_lock<std::shared_mutex> lock(state_mutex_);
+    const auto it = device_statuses_.find(session_key);
+    if (it != device_statuses_.end()) {
+      status = it->second;
+      has_device_status = true;
+    }
+  }
+
+  auto resolve_ready = [&](bool supported, bool enabled, std::string* reason,
+                           const char* unsupported_reason) {
+    if (!availability.device_bridge_attached) {
+      *reason = "device_bridge_missing";
+      return false;
+    }
+    if (!supported) {
+      *reason = unsupported_reason;
+      return false;
+    }
+    if (session_key.empty()) {
+      reason->clear();
+      return true;
+    }
+    if (!has_device_status) {
+      *reason = "status_unpublished";
+      return false;
+    }
+    if (!enabled) {
+      *reason = "host_toggle_off";
+      return false;
+    }
+    reason->clear();
+    return true;
+  };
+
+  availability.web_search_ready =
+      resolve_ready(bridge != nullptr && bridge->SupportsWebSearch(),
+                    status.host_web_search_enabled,
+                    &availability.web_search_reason, "web_search_unsupported");
+  availability.web_fetch_ready =
+      resolve_ready(bridge != nullptr && bridge->SupportsWebFetch(),
+                    status.host_web_fetch_enabled,
+                    &availability.web_fetch_reason, "web_fetch_unsupported");
+  availability.capture_control_ready = resolve_ready(
+      bridge != nullptr && bridge->SupportsCaptureControl(), true,
+      &availability.capture_control_reason, "capture_control_unsupported");
+  availability.vibration_ready =
+      resolve_ready(bridge != nullptr && bridge->SupportsVibration(),
+                    status.host_haptics_enabled, &availability.vibration_reason,
+                    "vibration_unsupported");
+  return availability;
+}
+
+nlohmann::json
+MobileEngine::BuildRuntimeStatusPayload(const std::string& session_key) const {
+  const auto host_tool_availability = BuildHostToolAvailability(session_key);
+  const bool device_bridge_attached =
+      host_tool_availability.device_bridge_attached;
+  const bool web_search_ready = host_tool_availability.web_search_ready;
+  const bool web_fetch_ready = host_tool_availability.web_fetch_ready;
+  const bool capture_control_ready =
+      host_tool_availability.capture_control_ready;
+  const bool vibration_ready = host_tool_availability.vibration_ready;
   const bool vision_provider_placeholder =
       vision_provider_ != nullptr && vision_provider_->IsPlaceholder();
   const bool vision_provider_ready = config_.mobile.vision.enabled &&
@@ -472,7 +545,7 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
                                      !vision_provider_placeholder;
   const std::string vision_provider =
       vision_provider_ ? vision_provider_->ProviderName() : "not_configured";
-  const auto tool_schemas = BuildToolSchemas();
+  const auto tool_schemas = BuildToolSchemas(session_key);
   nlohmann::json available_tools = nlohmann::json::array();
   for (const auto& tool : tool_schemas) {
     const std::string tool_name = tool["function"].value("name", "");
@@ -484,6 +557,7 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
   nlohmann::json tool_availability = {
       {kDeviceStatusToolName, make_tool_availability(true)},
       {kRuntimeStatusToolName, make_tool_availability(true)},
+      {kSpeechStatusToolName, make_tool_availability(true)},
       {kCameraSnapshotToolName, make_tool_availability(true)},
       {kTimeToolName, make_tool_availability(true)},
       {kMemoryListToolName, make_tool_availability(true)},
@@ -492,27 +566,23 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
       {kMemoryWriteToolName, make_tool_availability(true)},
       {kMemoryDeleteToolName, make_tool_availability(true)},
   };
-  if (!device_bridge_attached) {
-    tool_availability[kWebSearchToolName] =
-        make_tool_availability(false, "device_bridge_missing");
-    tool_availability[kWebFetchToolName] =
-        make_tool_availability(false, "device_bridge_missing");
-    tool_availability[kVibrateToolName] =
-        make_tool_availability(false, "device_bridge_missing");
-  } else {
-    tool_availability[kWebSearchToolName] =
-        web_search_ready
-            ? make_tool_availability(true)
-            : make_tool_availability(false, "web_search_unsupported");
-    tool_availability[kWebFetchToolName] =
-        web_fetch_ready
-            ? make_tool_availability(true)
-            : make_tool_availability(false, "web_fetch_unsupported");
-    tool_availability[kVibrateToolName] =
-        vibration_ready
-            ? make_tool_availability(true)
-            : make_tool_availability(false, "vibration_unsupported");
-  }
+  tool_availability[kSetCaptureEnabledToolName] =
+      capture_control_ready
+          ? make_tool_availability(true)
+          : make_tool_availability(
+                false, host_tool_availability.capture_control_reason);
+  tool_availability[kWebSearchToolName] =
+      web_search_ready ? make_tool_availability(true)
+                       : make_tool_availability(
+                             false, host_tool_availability.web_search_reason);
+  tool_availability[kWebFetchToolName] =
+      web_fetch_ready ? make_tool_availability(true)
+                      : make_tool_availability(
+                            false, host_tool_availability.web_fetch_reason);
+  tool_availability[kVibrateToolName] =
+      vibration_ready ? make_tool_availability(true)
+                      : make_tool_availability(
+                            false, host_tool_availability.vibration_reason);
 
   nlohmann::json payload = {
       {"modelsDir", models_dir_.string()},
@@ -530,6 +600,9 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
       {"availableTools", std::move(available_tools)},
       {"availableToolCount", tool_schemas.size()},
       {"toolAvailability", std::move(tool_availability)}};
+  if (!session_key.empty()) {
+    payload["sessionKey"] = session_key;
+  }
   if (!config_.mobile.vision.enabled) {
     payload["visionDetail"] =
         "Continuous vision is disabled in the mobile runtime configuration.";
@@ -571,6 +644,11 @@ void MobileEngine::EmitRuntimeStatus() const {
   Emit(kEventMobileRuntimeStatus, BuildRuntimeStatusPayload());
 }
 
+void MobileEngine::EmitSpeechState(const std::string& session_key) const {
+  Emit(kEventMobileSpeechState,
+       with_session_key(session_key, BuildSpeechStatePayload(session_key)));
+}
+
 nlohmann::json
 MobileEngine::BuildSpeechStatePayload(const std::string& session_key) const {
   if (!speech_pipeline_) {
@@ -610,6 +688,7 @@ void MobileEngine::ResetSessionRuntimeState(const std::string& session_key) {
   if (asr_provider_) {
     asr_provider_->ResetSession(session_key);
   }
+  EmitSpeechState(session_key);
 }
 
 void MobileEngine::SetAvatarState(AvatarState state,
@@ -716,12 +795,14 @@ bool MobileEngine::HandleAsrUpdate(const std::string& session_key,
   return HandleUserTextTurn(session_key, update.text, false);
 }
 
-std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
-  const auto bridge = CopyDeviceBridge();
-  const bool web_search_ready =
-      bridge != nullptr && bridge->SupportsWebSearch();
-  const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
-  const bool vibration_ready = bridge != nullptr && bridge->SupportsVibration();
+std::vector<nlohmann::json>
+MobileEngine::BuildToolSchemas(const std::string& session_key) const {
+  const auto host_tool_availability = BuildHostToolAvailability(session_key);
+  const bool web_search_ready = host_tool_availability.web_search_ready;
+  const bool web_fetch_ready = host_tool_availability.web_fetch_ready;
+  const bool capture_control_ready =
+      host_tool_availability.capture_control_ready;
+  const bool vibration_ready = host_tool_availability.vibration_ready;
   std::vector<nlohmann::json> tools = {
       nlohmann::json{
           {"type", "function"},
@@ -749,6 +830,18 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
       nlohmann::json{
           {"type", "function"},
           {"function",
+           {{"name", kSpeechStatusToolName},
+            {"description",
+             "Get the current on-device speech capture state for this mobile "
+             "session, including buffered audio, interruption state, and "
+             "local ASR/TTS readiness."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties", nlohmann::json::object()},
+              {"additionalProperties", false}}}}}},
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
            {{"name", kCameraSnapshotToolName},
             {"description",
              "Get the latest on-device camera observation summary and frame "
@@ -769,6 +862,25 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
               {"properties", nlohmann::json::object()},
               {"additionalProperties", false}}}}}},
   };
+  if (capture_control_ready) {
+    tools.push_back(nlohmann::json{
+        {"type", "function"},
+        {"function",
+         {{"name", kSetCaptureEnabledToolName},
+          {"description",
+           "Request the Android host to start or stop live microphone and "
+           "camera capture for the current mobile session."},
+          {"parameters",
+           {{"type", "object"},
+            {"properties",
+             {{"enabled",
+               {{"type", "boolean"},
+                {"description",
+                 "True to request live capture start, false to stop live "
+                 "capture."}}}}},
+            {"required", {"enabled"}},
+            {"additionalProperties", false}}}}}});
+  }
   if (vibration_ready) {
     tools.push_back(nlohmann::json{
         {"type", "function"},
@@ -960,6 +1072,39 @@ nlohmann::json MobileEngine::BuildHostCapabilitiesPayload(
 
   auto unpublished = [](const std::string& detail) {
     return std::pair<std::string, std::string>("status_unpublished", detail);
+  };
+
+  auto capture_control_reason = [&]() {
+    if (!bridge) {
+      return std::pair<std::string, std::string>(
+          "device_bridge_missing",
+          "No Android device bridge is attached to serve capture control "
+          "requests.");
+    }
+    if (!bridge->SupportsCaptureControl()) {
+      return std::pair<std::string, std::string>(
+          "capture_control_unsupported",
+          "The attached Android device bridge does not support live capture "
+          "control.");
+    }
+    if (!has_device_status) {
+      return unpublished(
+          "Host has not published capture control status for this session "
+          "yet.");
+    }
+    if (!status.permissions_granted) {
+      return std::pair<std::string, std::string>(
+          "permissions_missing",
+          "Camera and microphone runtime permissions are not granted on the "
+          "host device.");
+    }
+    if (background_gated) {
+      return std::pair<std::string, std::string>(
+          "background_gated",
+          "Foreground-only live capture cannot be started while the host app "
+          "is backgrounded.");
+    }
+    return std::pair<std::string, std::string>("", "");
   };
 
   auto capture_reason = [&]() {
@@ -1175,6 +1320,7 @@ nlohmann::json MobileEngine::BuildHostCapabilitiesPayload(
     return std::pair<std::string, std::string>("", "");
   };
 
+  const auto capture_control_state = capture_control_reason();
   const auto capture_state = capture_reason();
   const auto microphone_state = microphone_reason();
   const auto camera_state = camera_reason();
@@ -1186,6 +1332,13 @@ nlohmann::json MobileEngine::BuildHostCapabilitiesPayload(
   return {
       {"statusPublished", has_device_status},
       {"foregroundOnly", foreground_only},
+      {"captureControl",
+       make_capability_payload(
+           bridge != nullptr && bridge->SupportsCaptureControl(),
+           bridge != nullptr && bridge->SupportsCaptureControl(),
+           capture_control_state.first.empty(),
+           has_device_status && status.capture_requested,
+           capture_control_state.first, capture_control_state.second)},
       {"capture",
        make_capability_payload(
            true, has_device_status && status.capture_requested,
@@ -1249,20 +1402,118 @@ std::string MobileEngine::BuildDeviceStatusToolResult(
   }
   result["hostCapabilities"] = BuildHostCapabilitiesPayload(session_key);
   result["speechState"] = BuildSpeechStatePayload(session_key);
-  result["runtimeStatus"] = BuildRuntimeStatusPayload();
+  result["runtimeStatus"] = BuildRuntimeStatusPayload(session_key);
   return result.dump(2);
 }
 
-std::string MobileEngine::BuildRuntimeStatusToolResult() const {
-  return BuildRuntimeStatusPayload().dump(2);
+std::string MobileEngine::BuildRuntimeStatusToolResult(
+    const std::string& session_key) const {
+  return BuildRuntimeStatusPayload(session_key).dump(2);
+}
+
+std::string MobileEngine::BuildSpeechStatusToolResult(
+    const std::string& session_key) const {
+  nlohmann::json runtime_status = {
+      {"speechProvider", "none"},
+      {"speechBackendLinked", false},
+      {"asrReady", false},
+      {"ttsReady", false},
+      {"speechDetail", "No local mobile speech pipeline is configured."},
+  };
+  if (speech_pipeline_) {
+    runtime_status = speech_pipeline_->runtime_status().ToJson();
+  }
+
+  return nlohmann::json{
+      {"sessionKey", session_key},
+      {"speechState", BuildSpeechStatePayload(session_key)},
+      {"audioConfig",
+       {{"autoListen", config_.mobile.audio.auto_listen},
+        {"tapToTalkEnabled", config_.mobile.audio.tap_to_talk_enabled},
+        {"wakeWordEnabled", config_.mobile.audio.wake_word_enabled},
+        {"bargeInEnabled", config_.mobile.audio.barge_in_enabled},
+        {"sampleRateHz", config_.mobile.audio.sample_rate},
+        {"foregroundOnly", config_.mobile.runtime.foreground_only}}},
+      {"runtimeStatus", std::move(runtime_status)}}
+      .dump(2);
+}
+
+std::string MobileEngine::BuildSetCaptureEnabledToolResult(
+    const std::string& session_key, const nlohmann::json& arguments) const {
+  const auto bridge = CopyDeviceBridge();
+  const auto host_tool_availability = BuildHostToolAvailability(session_key);
+  if (bridge == nullptr) {
+    throw std::runtime_error("set_capture_enabled requires a device bridge");
+  }
+  if (!bridge->SupportsCaptureControl()) {
+    throw std::runtime_error(
+        "set_capture_enabled is not supported by the device bridge");
+  }
+  if (!arguments.contains("enabled") || !arguments["enabled"].is_boolean()) {
+    throw std::runtime_error("enabled must be a boolean");
+  }
+
+  const bool enabled = arguments["enabled"].get<bool>();
+  const std::string bridge_result =
+      bridge->SetCaptureEnabled(session_key, enabled);
+
+  nlohmann::json result = {
+      {"requested", enabled},
+      {"accepted", true},
+      {"detail", enabled ? "Requested Android host live capture start."
+                         : "Requested Android host live capture stop."},
+  };
+
+  auto parsed_result = nlohmann::json::parse(bridge_result, nullptr, false);
+  if (!parsed_result.is_discarded()) {
+    if (parsed_result.is_object()) {
+      if (parsed_result.contains("accepted")) {
+        result["accepted"] = parsed_result["accepted"];
+      }
+      if (parsed_result.contains("reason")) {
+        result["reason"] = parsed_result["reason"];
+      }
+      if (parsed_result.contains("detail")) {
+        result["detail"] = parsed_result["detail"];
+      }
+    }
+    result["hostResult"] = std::move(parsed_result);
+  } else if (!bridge_result.empty()) {
+    result["hostResultRaw"] = bridge_result;
+  }
+
+  result["hostCapabilities"] = BuildHostCapabilitiesPayload(session_key);
+  result["speechState"] = BuildSpeechStatePayload(session_key);
+  result["runtimeStatus"] = BuildRuntimeStatusPayload(session_key);
+  result["captureControlReady"] = host_tool_availability.capture_control_ready;
+  result["captureControlReason"] =
+      host_tool_availability.capture_control_reason;
+  {
+    std::shared_lock<std::shared_mutex> lock(state_mutex_);
+    const auto status_it = device_statuses_.find(session_key);
+    const bool has_device_status = status_it != device_statuses_.end();
+    result["deviceStatusAvailable"] = has_device_status;
+    if (has_device_status) {
+      result["deviceStatus"] = status_it->second.ToJson();
+    }
+  }
+  return result.dump(2);
 }
 
 std::string
 MobileEngine::BuildVibrateToolResult(const std::string& session_key,
                                      const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
+  const auto host_tool_availability = BuildHostToolAvailability(session_key);
   if (!bridge) {
     throw std::runtime_error("vibrate requires a device bridge");
+  }
+  if (!host_tool_availability.vibration_ready) {
+    if (host_tool_availability.vibration_reason == "vibration_unsupported") {
+      throw std::runtime_error("vibrate is not supported by the device bridge");
+    }
+    throw std::runtime_error("vibrate is not ready for this session: " +
+                             host_tool_availability.vibration_reason);
   }
   if (!bridge->SupportsVibration()) {
     throw std::runtime_error("vibrate is not supported by the device bridge");
@@ -1394,8 +1645,17 @@ std::string
 MobileEngine::BuildWebSearchToolResult(const std::string& session_key,
                                        const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
+  const auto host_tool_availability = BuildHostToolAvailability(session_key);
   if (bridge == nullptr) {
     throw std::runtime_error("web_search requires a device bridge");
+  }
+  if (!host_tool_availability.web_search_ready) {
+    if (host_tool_availability.web_search_reason == "web_search_unsupported") {
+      throw std::runtime_error(
+          "web_search is not supported by the device bridge");
+    }
+    throw std::runtime_error("web_search is not ready for this session: " +
+                             host_tool_availability.web_search_reason);
   }
   if (!bridge->SupportsWebSearch()) {
     throw std::runtime_error(
@@ -1414,8 +1674,17 @@ std::string
 MobileEngine::BuildWebFetchToolResult(const std::string& session_key,
                                       const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
+  const auto host_tool_availability = BuildHostToolAvailability(session_key);
   if (bridge == nullptr) {
     throw std::runtime_error("web_fetch requires a device bridge");
+  }
+  if (!host_tool_availability.web_fetch_ready) {
+    if (host_tool_availability.web_fetch_reason == "web_fetch_unsupported") {
+      throw std::runtime_error(
+          "web_fetch is not supported by the device bridge");
+    }
+    throw std::runtime_error("web_fetch is not ready for this session: " +
+                             host_tool_availability.web_fetch_reason);
   }
   if (!bridge->SupportsWebFetch()) {
     throw std::runtime_error("web_fetch is not supported by the device bridge");
@@ -1650,7 +1919,13 @@ std::string MobileEngine::ExecuteToolCall(const std::string& session_key,
     return BuildDeviceStatusToolResult(session_key);
   }
   if (tool_call.name == kRuntimeStatusToolName) {
-    return BuildRuntimeStatusToolResult();
+    return BuildRuntimeStatusToolResult(session_key);
+  }
+  if (tool_call.name == kSpeechStatusToolName) {
+    return BuildSpeechStatusToolResult(session_key);
+  }
+  if (tool_call.name == kSetCaptureEnabledToolName) {
+    return BuildSetCaptureEnabledToolResult(session_key, tool_call.arguments);
   }
   if (tool_call.name == kVibrateToolName) {
     return BuildVibrateToolResult(session_key, tool_call.arguments);
@@ -1711,7 +1986,7 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
         request.model = resolve_request_model(config_);
         request.temperature = config_.agent.temperature;
         request.max_tokens = config_.agent.max_tokens;
-        request.tools = BuildToolSchemas();
+        request.tools = BuildToolSchemas(session_key);
         request.stream = true;
 
         std::vector<std::string> delta_chunks;

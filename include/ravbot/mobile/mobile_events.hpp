@@ -22,6 +22,7 @@ inline constexpr char kEventMobileTtsState[] = "mobile.tts_state";
 inline constexpr char kEventMobileAvatarState[] = "mobile.avatar_state";
 inline constexpr char kEventMobileRuntimeStatus[] = "mobile.runtime_status";
 inline constexpr char kEventMobileDeviceStatus[] = "mobile.device_status";
+inline constexpr char kEventMobileSpeechState[] = "mobile.speech_state";
 inline constexpr char kEventMobileVisionObservation[] =
     "mobile.vision_observation";
 
@@ -53,12 +54,18 @@ inline std::string AvatarStateToString(AvatarState state) {
 }
 
 inline AvatarState AvatarStateFromString(const std::string& state) {
-  if (state == "idle") return AvatarState::kIdle;
-  if (state == "listen") return AvatarState::kListen;
-  if (state == "think") return AvatarState::kThink;
-  if (state == "speak") return AvatarState::kSpeak;
-  if (state == "watch") return AvatarState::kWatch;
-  if (state == "error") return AvatarState::kError;
+  if (state == "idle")
+    return AvatarState::kIdle;
+  if (state == "listen")
+    return AvatarState::kListen;
+  if (state == "think")
+    return AvatarState::kThink;
+  if (state == "speak")
+    return AvatarState::kSpeak;
+  if (state == "watch")
+    return AvatarState::kWatch;
+  if (state == "error")
+    return AvatarState::kError;
   throw std::runtime_error("Unknown avatar state: " + state);
 }
 

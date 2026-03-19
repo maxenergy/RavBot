@@ -1,7 +1,3 @@
-#include <jni.h>
-
-#include <android/log.h>
-
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
@@ -12,6 +8,9 @@
 #include <nlohmann/json.hpp>
 
 #include "ravbot/mobile/mobile_c_api.h"
+
+#include <android/log.h>
+#include <jni.h>
 
 namespace {
 
@@ -28,6 +27,7 @@ struct EngineHandle {
   std::string models_dir;
   bool web_search_enabled = true;
   bool web_fetch_enabled = true;
+  bool capture_control_enabled = false;
   bool vibration_enabled = false;
   std::mutex callback_mutex;
   std::condition_variable callback_cv;
@@ -128,11 +128,19 @@ class ScopedCallbackAccess {
   ScopedCallbackAccess(const ScopedCallbackAccess&) = delete;
   ScopedCallbackAccess& operator=(const ScopedCallbackAccess&) = delete;
 
-  ~ScopedCallbackAccess() { Release(); }
+  ~ScopedCallbackAccess() {
+    Release();
+  }
 
-  bool valid() const { return valid_; }
-  JNIEnv* env() const { return env_; }
-  jobject bridge_ref() const { return bridge_ref_; }
+  bool valid() const {
+    return valid_;
+  }
+  JNIEnv* env() const {
+    return env_;
+  }
+  jobject bridge_ref() const {
+    return bridge_ref_;
+  }
 
  private:
   void Release() {
@@ -161,8 +169,7 @@ class ScopedCallbackAccess {
   bool released_ = false;
 };
 
-void ForwardEventToJava(EngineHandle* engine,
-                        const char* event_name,
+void ForwardEventToJava(EngineHandle* engine, const char* event_name,
                         const char* payload_json) {
   ScopedCallbackAccess callback_access(engine);
   if (!callback_access.valid()) {
@@ -181,11 +188,11 @@ void ForwardEventToJava(EngineHandle* engine,
     return;
   }
 
-  jmethodID callback =
-      env->GetMethodID(bridge_class, "onNativeEvent",
-                       "(Ljava/lang/String;Ljava/lang/String;)V");
+  jmethodID callback = env->GetMethodID(
+      bridge_class, "onNativeEvent", "(Ljava/lang/String;Ljava/lang/String;)V");
   if (callback != nullptr) {
-    jstring j_event_name = env->NewStringUTF(event_name != nullptr ? event_name : "");
+    jstring j_event_name =
+        env->NewStringUTF(event_name != nullptr ? event_name : "");
     jstring j_payload =
         env->NewStringUTF(payload_json != nullptr ? payload_json : "{}");
     env->CallVoidMethod(callback_access.bridge_ref(), callback, j_event_name,
@@ -197,15 +204,13 @@ void ForwardEventToJava(EngineHandle* engine,
   env->DeleteLocalRef(bridge_class);
 }
 
-void OnMobileEvent(const char* event_name,
-                   const char* payload_json,
+void OnMobileEvent(const char* event_name, const char* payload_json,
                    void* user_data) {
   auto* engine = static_cast<EngineHandle*>(user_data);
   ForwardEventToJava(engine, event_name, payload_json);
 }
 
-void OnDeviceAvatarState(const char* session_key,
-                         const char* state,
+void OnDeviceAvatarState(const char* session_key, const char* state,
                          void* user_data) {
   nlohmann::json payload = {{"state", state != nullptr ? state : "idle"}};
   if (session_key != nullptr && *session_key != '\0') {
@@ -215,8 +220,7 @@ void OnDeviceAvatarState(const char* session_key,
   ForwardEventToJava(engine, "device.avatar_state", payload.dump().c_str());
 }
 
-void OnDeviceSpeechRequest(const char* session_key,
-                           const char* text,
+void OnDeviceSpeechRequest(const char* session_key, const char* text,
                            void* user_data) {
   nlohmann::json payload = {{"text", text != nullptr ? text : ""}};
   if (session_key != nullptr && *session_key != '\0') {
@@ -235,8 +239,58 @@ void OnDeviceSpeechInterrupt(const char* session_key, void* user_data) {
   ForwardEventToJava(engine, "device.speech_interrupt", payload.dump().c_str());
 }
 
-void OnDeviceVibrate(const char* session_key,
-                     int duration_ms,
+const char* OnDeviceCaptureControl(const char* session_key, bool enabled,
+                                   void* user_data) {
+  auto* engine = static_cast<EngineHandle*>(user_data);
+  ScopedCallbackAccess callback_access(engine);
+  if (!callback_access.valid()) {
+    return nullptr;
+  }
+
+  JNIEnv* env = callback_access.env();
+  if (env == nullptr) {
+    return nullptr;
+  }
+
+  thread_local std::string result_storage;
+  result_storage.clear();
+
+  jclass bridge_class = env->GetObjectClass(callback_access.bridge_ref());
+  if (bridge_class == nullptr) {
+    return nullptr;
+  }
+
+  jmethodID callback =
+      env->GetMethodID(bridge_class, "onNativeCaptureControl",
+                       "(Ljava/lang/String;Z)Ljava/lang/String;");
+  if (callback == nullptr) {
+    env->DeleteLocalRef(bridge_class);
+    return nullptr;
+  }
+
+  jstring j_session =
+      env->NewStringUTF(session_key != nullptr ? session_key : "");
+  auto* result = static_cast<jstring>(
+      env->CallObjectMethod(callback_access.bridge_ref(), callback, j_session,
+                            enabled ? JNI_TRUE : JNI_FALSE));
+  env->DeleteLocalRef(j_session);
+
+  if (env->ExceptionCheck()) {
+    env->ExceptionDescribe();
+    env->ExceptionClear();
+    env->DeleteLocalRef(bridge_class);
+    return nullptr;
+  }
+
+  if (result != nullptr) {
+    result_storage = ToString(env, result);
+    env->DeleteLocalRef(result);
+  }
+  env->DeleteLocalRef(bridge_class);
+  return result_storage.empty() ? nullptr : result_storage.c_str();
+}
+
+void OnDeviceVibrate(const char* session_key, int duration_ms,
                      void* user_data) {
   nlohmann::json payload = {{"durationMs", duration_ms}};
   if (session_key != nullptr && *session_key != '\0') {
@@ -246,10 +300,8 @@ void OnDeviceVibrate(const char* session_key,
   ForwardEventToJava(engine, "device.vibrate", payload.dump().c_str());
 }
 
-const char* OnDeviceWebSearch(const char* session_key,
-                              const char* query,
-                              int count,
-                              const char* freshness,
+const char* OnDeviceWebSearch(const char* session_key, const char* query,
+                              int count, const char* freshness,
                               void* user_data) {
   auto* engine = static_cast<EngineHandle*>(user_data);
   ScopedCallbackAccess callback_access(engine);
@@ -272,7 +324,8 @@ const char* OnDeviceWebSearch(const char* session_key,
 
   jmethodID callback =
       env->GetMethodID(bridge_class, "onNativeWebSearch",
-                       "(Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;)Ljava/lang/String;");
+                       "(Ljava/lang/String;Ljava/lang/String;ILjava/lang/"
+                       "String;)Ljava/lang/String;");
   if (callback == nullptr) {
     env->DeleteLocalRef(bridge_class);
     return nullptr;
@@ -281,7 +334,8 @@ const char* OnDeviceWebSearch(const char* session_key,
   jstring j_session =
       env->NewStringUTF(session_key != nullptr ? session_key : "");
   jstring j_query = env->NewStringUTF(query != nullptr ? query : "");
-  jstring j_freshness = env->NewStringUTF(freshness != nullptr ? freshness : "");
+  jstring j_freshness =
+      env->NewStringUTF(freshness != nullptr ? freshness : "");
   auto* result = static_cast<jstring>(
       env->CallObjectMethod(callback_access.bridge_ref(), callback, j_session,
                             j_query, count, j_freshness));
@@ -304,10 +358,8 @@ const char* OnDeviceWebSearch(const char* session_key,
   return result_storage.empty() ? nullptr : result_storage.c_str();
 }
 
-const char* OnDeviceWebFetch(const char* session_key,
-                             const char* url,
-                             int max_chars,
-                             void* user_data) {
+const char* OnDeviceWebFetch(const char* session_key, const char* url,
+                             int max_chars, void* user_data) {
   auto* engine = static_cast<EngineHandle*>(user_data);
   ScopedCallbackAccess callback_access(engine);
   if (!callback_access.valid()) {
@@ -327,9 +379,9 @@ const char* OnDeviceWebFetch(const char* session_key,
     return nullptr;
   }
 
-  jmethodID callback =
-      env->GetMethodID(bridge_class, "onNativeWebFetch",
-                       "(Ljava/lang/String;Ljava/lang/String;I)Ljava/lang/String;");
+  jmethodID callback = env->GetMethodID(
+      bridge_class, "onNativeWebFetch",
+      "(Ljava/lang/String;Ljava/lang/String;I)Ljava/lang/String;");
   if (callback == nullptr) {
     env->DeleteLocalRef(bridge_class);
     return nullptr;
@@ -338,9 +390,8 @@ const char* OnDeviceWebFetch(const char* session_key,
   jstring j_session =
       env->NewStringUTF(session_key != nullptr ? session_key : "");
   jstring j_url = env->NewStringUTF(url != nullptr ? url : "");
-  auto* result = static_cast<jstring>(
-      env->CallObjectMethod(callback_access.bridge_ref(), callback, j_session,
-                            j_url, max_chars));
+  auto* result = static_cast<jstring>(env->CallObjectMethod(
+      callback_access.bridge_ref(), callback, j_session, j_url, max_chars));
   env->DeleteLocalRef(j_session);
   env->DeleteLocalRef(j_url);
 
@@ -375,8 +426,9 @@ void ApplyDeviceCallbacks(EngineHandle* engine) {
   callbacks.on_avatar_state = OnDeviceAvatarState;
   callbacks.on_speech_request = OnDeviceSpeechRequest;
   callbacks.on_speech_interrupt = OnDeviceSpeechInterrupt;
-  callbacks.on_vibrate =
-      engine->vibration_enabled ? OnDeviceVibrate : nullptr;
+  callbacks.on_capture_control =
+      engine->capture_control_enabled ? OnDeviceCaptureControl : nullptr;
+  callbacks.on_vibrate = engine->vibration_enabled ? OnDeviceVibrate : nullptr;
   callbacks.on_web_search =
       engine->web_search_enabled ? OnDeviceWebSearch : nullptr;
   callbacks.on_web_fetch =
@@ -423,9 +475,8 @@ void ClearSubscription(JNIEnv* env, EngineHandle* engine) {
   jobject bridge_ref = nullptr;
   {
     std::unique_lock<std::mutex> lock(engine->callback_mutex);
-    engine->callback_cv.wait(lock, [engine] {
-      return engine->active_callback_count == 0;
-    });
+    engine->callback_cv.wait(
+        lock, [engine] { return engine->active_callback_count == 0; });
     bridge_ref = engine->bridge_ref;
     engine->bridge_ref = nullptr;
   }
@@ -453,10 +504,9 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeInitEngine(
   engine->models_dir = ToString(env, models_dir);
 
   std::string config = ToString(env, config_json);
-  engine->engine = ravbot_mobile_init_engine(config.c_str(),
-                                             engine->state_dir.c_str(),
-                                             engine->models_dir.c_str(),
-                                             "info");
+  engine->engine =
+      ravbot_mobile_init_engine(config.c_str(), engine->state_dir.c_str(),
+                                engine->models_dir.c_str(), "info");
   if (engine->engine == nullptr) {
     __android_log_print(ANDROID_LOG_ERROR, kTag,
                         "Failed to create ravbot_mobile_core engine");
@@ -635,14 +685,14 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeReportDeviceStatus(
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeSetForegroundState(
-    JNIEnv* /* env */, jobject /* thiz */, jlong handle, jboolean is_foreground) {
+    JNIEnv* /* env */, jobject /* thiz */, jlong handle,
+    jboolean is_foreground) {
   auto* engine = FromHandle(handle);
   if (engine == nullptr || engine->engine == nullptr) {
     return;
   }
 
-  ravbot_mobile_set_foreground_state(engine->engine,
-                                     is_foreground == JNI_TRUE);
+  ravbot_mobile_set_foreground_state(engine->engine, is_foreground == JNI_TRUE);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -691,5 +741,18 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeSetHapticsCapability(
   }
 
   engine->vibration_enabled = vibration_enabled == JNI_TRUE;
+  ApplyDeviceCallbacks(engine);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeSetCaptureControlCapability(
+    JNIEnv* /* env */, jobject /* thiz */, jlong handle,
+    jboolean capture_control_enabled) {
+  auto* engine = FromHandle(handle);
+  if (engine == nullptr) {
+    return;
+  }
+
+  engine->capture_control_enabled = capture_control_enabled == JNI_TRUE;
   ApplyDeviceCallbacks(engine);
 }

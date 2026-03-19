@@ -47,6 +47,7 @@ data class HostSnapshot(
     val speechSttModel: String = "not resolved",
     val speechTtsVoice: String = "not resolved",
     val speechDetail: String = "No native speech diagnostics emitted yet.",
+    val speechStateStatus: String = "No live speech state yet.",
 ) {
   fun shouldRestoreRuntime(): Boolean {
     return restoreEngine || restoreSession || restoreService || restoreCapture
@@ -96,6 +97,7 @@ data class HostSnapshot(
         .put("speechSttModel", speechSttModel)
         .put("speechTtsVoice", speechTtsVoice)
         .put("speechDetail", speechDetail)
+        .put("speechStateStatus", speechStateStatus)
         .toString()
   }
 
@@ -206,6 +208,11 @@ data class HostSnapshot(
                     parsed.optString(
                         "speechDetail",
                         "No native speech diagnostics emitted yet.",
+                    ),
+                speechStateStatus =
+                    parsed.optString(
+                        "speechStateStatus",
+                        "No live speech state yet.",
                     ),
             )
           }

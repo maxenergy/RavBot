@@ -28,10 +28,17 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   snapshot and the current `mobile.runtime_status` readiness payload, so the
   local model can inspect provider/backend/web/haptics capability state
   directly
+- A dedicated `speech_status` mobile-safe tool plus `mobile.speech_state`
+  events now expose session-scoped speech buffering and interruption state as
+  first-class diagnostics, instead of only nesting them under
+  `device_status` / `camera_snapshot`
 - `device_status` and `camera_snapshot` now also include structured
   `hostCapabilities` diagnostics with per-capability `ready/enabled/active`
   flags plus concrete reasons such as `permissions_missing`,
   `background_gated`, `device_bridge_missing`, and `host_toggle_off`
+- Native `mobile.speech_state` events are now surfaced in the Android host as
+  a dedicated live speech-state summary, so buffering/interruption changes are
+  visible immediately instead of only through `device_status`
 - Session-scoped `speechState` diagnostics are now attached to
   `mobile.device_status`, `device_status`, and `camera_snapshot`, so the host
   and local model can tell whether speech is idle, actively buffering, or was
@@ -51,12 +58,24 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - Compose status cards for live `assistant_delta`/`assistant_final` streaming
   state and mobile tool activity
 - A first native `mobile_safe` tool path: local models can call
-  `device_status`, `runtime_status`, `vibrate`, and `camera_snapshot`, receive
-  the latest host/device
+  `device_status`, `runtime_status`, `speech_status`, `vibrate`, and
+  `camera_snapshot`, receive the latest host/device
   snapshots, use host-backed `web_search` / `web_fetch`, plus `time` and
   `memory_list` / `memory_search` / `memory_get` / `memory_write` /
   `memory_delete` against the mobile workspace, and continue generation with
   the tool results persisted in session history
+- Host-backed tools such as `web_search`, `web_fetch`, `set_capture_enabled`,
+  and `vibrate` are now exposed per mobile session only when the Android host
+  has published a compatible live status snapshot and the corresponding host
+  toggle is enabled; stale tool calls are rejected with explicit
+  `status_unpublished` / `host_toggle_off` style reasons instead of silently
+  falling through to the bridge
+- `set_capture_enabled` now runs end-to-end through the JNI/C API device
+  bridge, so the local model can request live microphone/camera capture start
+  or stop for the active session; the Android host will auto-start the
+  foreground service before enabling capture and returns a structured accept /
+  reject result with reasons such as `session_not_ready`,
+  `permissions_missing`, and `background_gated`
 - `camera_snapshot` now stays scoped to the active mobile session and reports
   freshness metadata such as `ageMs`, `stale`, and
   `capturedWhileForeground`
