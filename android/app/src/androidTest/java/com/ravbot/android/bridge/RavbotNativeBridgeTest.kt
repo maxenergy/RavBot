@@ -6,6 +6,7 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -57,6 +58,79 @@ class RavbotNativeBridgeTest {
       assertTrue(payload.contains("\"hostWebFetchEnabled\":true"))
       assertTrue(payload.contains("\"hostHapticsEnabled\":false"))
       assertTrue(payload.contains("\"speakerStatus\":\"speaking\""))
+    } finally {
+      bridge.dispose()
+      stateDir.deleteRecursively()
+      modelsDir.deleteRecursively()
+    }
+  }
+
+  @Test
+  fun resubscribeAfterUnsubscribePublishesFreshEvents() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val stateDir = testDir(context, "bridge-resubscribe-state")
+    val modelsDir = testDir(context, "bridge-resubscribe-models")
+    val bridge = RavbotNativeBridge()
+    val firstEventRef = AtomicReference<NativeEvent?>()
+    val secondEventRef = AtomicReference<NativeEvent?>()
+    val firstLatch = CountDownLatch(1)
+    val secondLatch = CountDownLatch(1)
+
+    try {
+      assertTrue(
+          bridge.initEngine(
+              configJson = seedConfigJson(),
+              stateDir = stateDir.absolutePath,
+              modelsDir = modelsDir.absolutePath,
+          ),
+      )
+
+      bridge.subscribeEvents { event ->
+        if (event.name == "mobile.device_status") {
+          firstEventRef.set(event)
+          firstLatch.countDown()
+        }
+      }
+      bridge.reportDeviceStatus(
+          serviceRunning = true,
+          captureRequested = false,
+          permissionsGranted = true,
+          hostWebSearchEnabled = true,
+          hostWebFetchEnabled = true,
+          hostHapticsEnabled = false,
+          microphoneStatus = "running",
+          cameraStatus = "stopped",
+          speakerStatus = "idle",
+      )
+
+      assertTrue(firstLatch.await(5, TimeUnit.SECONDS))
+      bridge.unsubscribeEvents()
+
+      bridge.subscribeEvents { event ->
+        if (event.name == "mobile.device_status") {
+          secondEventRef.set(event)
+          secondLatch.countDown()
+        }
+      }
+      bridge.reportDeviceStatus(
+          serviceRunning = false,
+          captureRequested = true,
+          permissionsGranted = true,
+          hostWebSearchEnabled = false,
+          hostWebFetchEnabled = true,
+          hostHapticsEnabled = false,
+          microphoneStatus = "stopped",
+          cameraStatus = "running",
+          speakerStatus = "speaking",
+      )
+
+      assertTrue(secondLatch.await(5, TimeUnit.SECONDS))
+      assertNotNull(firstEventRef.get())
+      assertNotNull(secondEventRef.get())
+      assertTrue(requireNotNull(firstEventRef.get()).payload.contains("\"serviceRunning\":true"))
+      assertTrue(requireNotNull(secondEventRef.get()).payload.contains("\"serviceRunning\":false"))
+      assertTrue(requireNotNull(secondEventRef.get()).payload.contains("\"cameraStatus\":\"running\""))
+      assertEquals(false, requireNotNull(secondEventRef.get()).payload.contains("\"serviceRunning\":true"))
     } finally {
       bridge.dispose()
       stateDir.deleteRecursively()

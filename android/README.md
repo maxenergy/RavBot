@@ -6,6 +6,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - Gradle project structure for a single `app` module
 - Compose-based host UI with a lightweight 2D avatar/state surface
 - Kotlin JNI bridge APIs wired to the embedded `ravbot_mobile_core`
+- JNI bridge teardown now waits for in-flight native callbacks before deleting
+  the Java `GlobalRef`, so unsubscribe/dispose no longer races late device/web
+  callbacks against a freed bridge object
 - Runtime permission handling and a foreground service shell
 - Foreground service notification with `Open` / `Stop` actions plus live
   session, capture, microphone, camera, speaker, and assistant status
