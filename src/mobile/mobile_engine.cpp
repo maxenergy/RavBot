@@ -186,8 +186,11 @@ void MobileEngine::SetVisionProvider(
 
 void MobileEngine::SetDeviceBridge(
     std::shared_ptr<DeviceCapabilityBridge> bridge) {
-  std::unique_lock<std::shared_mutex> lock(state_mutex_);
-  device_bridge_ = std::move(bridge);
+  {
+    std::unique_lock<std::shared_mutex> lock(state_mutex_);
+    device_bridge_ = std::move(bridge);
+  }
+  EmitRuntimeStatus();
 }
 
 std::string MobileEngine::SubscribeEvents(EventCallback callback) {

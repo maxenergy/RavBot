@@ -1055,6 +1055,39 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_TRUE(full_bridge_status->payload["webFetchReady"].get<bool>());
 }
 
+TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
+
+  engine.SetDeviceBridge(std::make_shared<FakeSpeechOnlyDeviceBridge>());
+  engine.SetDeviceBridge(std::make_shared<FakeDeviceBridge>());
+
+  std::vector<nlohmann::json> runtime_payloads;
+  for (const auto& event : events) {
+    if (event.name == ravbot::mobile::kEventMobileRuntimeStatus) {
+      runtime_payloads.push_back(event.payload);
+    }
+  }
+
+  ASSERT_GE(runtime_payloads.size(), 3u);
+  EXPECT_FALSE(runtime_payloads[0]["deviceBridgeAttached"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[0]["webSearchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[0]["webFetchReady"].get<bool>());
+
+  EXPECT_TRUE(runtime_payloads[1]["deviceBridgeAttached"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[1]["webSearchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[1]["webFetchReady"].get<bool>());
+
+  EXPECT_TRUE(runtime_payloads[2]["deviceBridgeAttached"].get<bool>());
+  EXPECT_TRUE(runtime_payloads[2]["webSearchReady"].get<bool>());
+  EXPECT_TRUE(runtime_payloads[2]["webFetchReady"].get<bool>());
+}
+
 TEST_F(MobileEngineTest, ReportTtsPlaybackStateEmitsEventAndAvatarState) {
   ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
                                       logger_);
