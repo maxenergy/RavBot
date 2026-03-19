@@ -62,7 +62,8 @@ build_request_tools(const std::shared_ptr<ToolRegistry>& tool_registry) {
   nlohmann::json tools_json = nlohmann::json::array();
   auto schemas = tool_registry->GetToolSchemas();
 
-  spdlog::info("build_request_tools: Got {} tool schemas from registry", schemas.size());
+  spdlog::info("build_request_tools: Got {} tool schemas from registry",
+               schemas.size());
 
   for (const auto& schema : schemas) {
     nlohmann::json tool;
@@ -336,11 +337,77 @@ static bool is_brief_continuation_prompt(const std::string& text) {
       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
 
   static const std::unordered_set<std::string> kExactMarkers = {
-      "continue",       "please continue", "continue please", "go on",
-      "please go on",   "keep going",      "carry on",        u8"继续",
-      u8"请继续",       u8"继续吧",        u8"继续呀",        u8"继续说",
-      u8"接着",         u8"接着说",        u8"接着来",        u8"继续下去"};
+      "continue",     "please continue", "continue please", "go on",
+      "please go on", "keep going",      "carry on",        u8"继续",
+      u8"请继续",     u8"继续吧",        u8"继续呀",        u8"继续说",
+      u8"接着",       u8"接着说",        u8"接着来",        u8"继续下去"};
   return kExactMarkers.count(lower) > 0;
+}
+
+static bool
+looks_like_short_contextual_decision_reply(const std::string& text) {
+  auto trimmed = text;
+  const auto is_ascii_space = [](unsigned char ch) {
+    return std::isspace(ch) != 0;
+  };
+
+  while (!trimmed.empty() &&
+         is_ascii_space(static_cast<unsigned char>(trimmed.front()))) {
+    trimmed.erase(trimmed.begin());
+  }
+  while (!trimmed.empty() &&
+         is_ascii_space(static_cast<unsigned char>(trimmed.back()))) {
+    trimmed.pop_back();
+  }
+
+  while (!trimmed.empty()) {
+    const unsigned char tail = static_cast<unsigned char>(trimmed.back());
+    if (tail == '.' || tail == '!' || tail == '?' || tail == ',' ||
+        tail == ';' || tail == ':' || tail == '~') {
+      trimmed.pop_back();
+      continue;
+    }
+    break;
+  }
+
+  if (trimmed.empty() || trimmed.size() > 96) {
+    return false;
+  }
+
+  std::string lower = trimmed;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  static const std::vector<std::string> kContextMarkers = {
+      "this",      "that",    "option", "plan",   "approach",   "proposal",
+      "direction", "instead", u8"这个", u8"那个", u8"上面",     u8"前面",
+      u8"刚才",    u8"方案",  u8"思路", u8"做法", u8"这个方案", u8"那个方案"};
+  static const std::vector<std::string> kDecisionMarkers = {
+      "first",     "before",     "research", "compare",  "explore",  "evaluate",
+      "look into", "hold off",   "don't",    "not yet",  u8"先",     u8"再",
+      u8"研究",    u8"调研",     u8"比较",   u8"确认",   u8"操作",   u8"实施",
+      u8"动手",    u8"先研究",   u8"先看看", u8"先分析", u8"先确认", u8"再操作",
+      u8"别急着",  u8"暂时不要", u8"先不要"};
+
+  bool has_context_marker = false;
+  for (const auto& marker : kContextMarkers) {
+    if (lower.find(marker) != std::string::npos ||
+        text.find(marker) != std::string::npos) {
+      has_context_marker = true;
+      break;
+    }
+  }
+
+  int decision_hits = 0;
+  for (const auto& marker : kDecisionMarkers) {
+    if (lower.find(marker) != std::string::npos ||
+        text.find(marker) != std::string::npos) {
+      ++decision_hits;
+    }
+  }
+
+  return has_context_marker && decision_hits >= 1;
 }
 
 static bool has_lookup_intent(const std::string& text) {
@@ -420,12 +487,10 @@ response_looks_like_unfulfilled_lookup_preamble(const std::string& text) {
 
 static bool response_contains_negative_conclusion(const std::string& text) {
   static const std::vector<std::string> kNegativeMarkers = {
-      u8"没有找到", u8"没找到", u8"未找到", u8"不存在",
-      u8"没有专门", u8"没有集中", u8"还没有形成", u8"没有公开",
-      u8"目前没有", u8"暂时没有",
-      "not found", "no results", "doesn't exist", "not available",
-      "no public", "currently no"
-  };
+      u8"没有找到",    u8"没找到",      u8"未找到",     u8"不存在",
+      u8"没有专门",    u8"没有集中",    u8"还没有形成", u8"没有公开",
+      u8"目前没有",    u8"暂时没有",    "not found",    "no results",
+      "doesn't exist", "not available", "no public",    "currently no"};
 
   for (const auto& marker : kNegativeMarkers) {
     if (text.find(marker) != std::string::npos) {
@@ -581,6 +646,7 @@ focus_history_on_latest_turn(const std::vector<Message>& history,
   const auto recent_turn_text = collect_turn_text(history, last_user_turn);
   const bool keep_recent_turn =
       looks_like_follow_up_message(latest_user_text) ||
+      looks_like_short_contextual_decision_reply(latest_user_text) ||
       latest_message_relates_to_recent_turn(latest_user_text, recent_turn_text);
 
   if (!keep_recent_turn) {
@@ -623,9 +689,9 @@ focus_history_on_latest_turn(const std::vector<Message>& history,
   };
 
   bool contains_completed_tool_turn = false;
-  bool ends_with_final_assistant =
-      !focused.empty() && focused.back().role == "assistant" &&
-      !message_has_tool_use_blocks(focused.back());
+  bool ends_with_final_assistant = !focused.empty() &&
+                                   focused.back().role == "assistant" &&
+                                   !message_has_tool_use_blocks(focused.back());
   for (size_t i = 0; i < focused.size(); ++i) {
     if (message_has_only_tool_result_blocks(focused[i])) {
       contains_completed_tool_turn = true;
@@ -1495,18 +1561,21 @@ std::vector<Message> AgentLoop::ProcessMessage(
         try {
           auto metadata = result.metadata;
           if (metadata.contains("role") && metadata["role"] == "user" &&
-              metadata.contains("session") && metadata["session"] == effective_session_key) {
+              metadata.contains("session") &&
+              metadata["session"] == effective_session_key) {
             // Found similar user message in same session
             total_occurrences++;
-            logger_->info("Found similar message: id={}, similarity={:.3f}, hit_count={}",
-                         result.id, result.distance, metadata.value("hit_count", 1));
+            logger_->info(
+                "Found similar message: id={}, similarity={:.3f}, hit_count={}",
+                result.id, result.distance, metadata.value("hit_count", 1));
           }
         } catch (const std::exception& e) {
           logger_->warn("Failed to parse search result metadata: {}", e.what());
         }
       }
 
-      // If found similar messages, this is a repeat (total_occurrences + 1 for current)
+      // If found similar messages, this is a repeat (total_occurrences + 1 for
+      // current)
       if (total_occurrences > 0) {
         int repeat_count = total_occurrences + 1;
         if (suppress_duplicate_notice) {
@@ -1519,7 +1588,8 @@ std::vector<Message> AgentLoop::ProcessMessage(
               "[SYSTEM NOTICE: The user has sent a very similar message " +
               std::to_string(repeat_count) + " times. " +
               "Please acknowledge this repetition in your response and ask if "
-              "there's something unclear or if they need different information.]";
+              "there's something unclear or if they need different "
+              "information.]";
           logger_->info("Duplicate message detected: total occurrences={}",
                         repeat_count);
         }
@@ -1591,8 +1661,9 @@ std::vector<Message> AgentLoop::ProcessMessage(
   logger_->info("DEBUG: Creating new user message with {} content blocks",
                 new_user_msg.content.size());
   for (size_t i = 0; i < new_user_msg.content.size(); ++i) {
-    logger_->info("DEBUG: Content block {}: type={}, text_len={}",
-                  i, new_user_msg.content[i].type, new_user_msg.content[i].text.size());
+    logger_->info("DEBUG: Content block {}: type={}, text_len={}", i,
+                  new_user_msg.content[i].type,
+                  new_user_msg.content[i].text.size());
   }
   context.push_back(std::move(new_user_msg));
 
@@ -1638,14 +1709,17 @@ std::vector<Message> AgentLoop::ProcessMessage(
 
   logger_->info("Request has {} tools", request.tools.size());
   if (request.tools.empty()) {
-    logger_->error("CRITICAL: request_tools is empty! Tool registry may have failed.");
+    logger_->error(
+        "CRITICAL: request_tools is empty! Tool registry may have failed.");
   }
 
-  // CRITICAL: Force tool usage for search/lookup queries (ONLY for first request)
+  // CRITICAL: Force tool usage for search/lookup queries (ONLY for first
+  // request)
   bool force_first_tool_call = has_lookup_intent(message);
   if (force_first_tool_call) {
     request.tool_choice_type = "any";  // Force LLM to call a tool
-    logger_->info("Detected lookup intent, forcing tool_choice=any for first request");
+    logger_->info(
+        "Detected lookup intent, forcing tool_choice=any for first request");
   } else {
     request.tool_choice_type = "auto";
   }
@@ -1659,7 +1733,8 @@ std::vector<Message> AgentLoop::ProcessMessage(
 
   while (iterations < max_iterations_ && !stop_requested_) {
     try {
-      // Reset tool_choice to auto after first request (unless in Lookup Guard retry)
+      // Reset tool_choice to auto after first request (unless in Lookup Guard
+      // retry)
       if (iterations > 0 && !forced_lookup_retry) {
         request.tool_choice_type = "auto";
       }
@@ -1734,7 +1809,8 @@ std::vector<Message> AgentLoop::ProcessMessage(
             collect_trailing_replay_tool_names(request.messages);
 
         if (!forced_lookup_retry && has_lookup_intent(message) &&
-            (response_looks_like_unfulfilled_lookup_preamble(response.content) ||
+            (response_looks_like_unfulfilled_lookup_preamble(
+                 response.content) ||
              response_contains_negative_conclusion(response.content))) {
           logger_->warn(
               "Lookup guard: provider returned a deferred search preamble "
@@ -1750,11 +1826,14 @@ std::vector<Message> AgentLoop::ProcessMessage(
           Message correction_msg;
           correction_msg.role = "user";
           correction_msg.content.push_back(ContentBlock::MakeText(
-              "STOP. You MUST actually call the search tool. Here's an example:\n\n"
+              "STOP. You MUST actually call the search tool. Here's an "
+              "example:\n\n"
               "User: \"Search GitHub for Python projects\"\n"
               "WRONG: \"Let me search... I didn't find any results.\"\n"
-              "CORRECT: [calls github_search_repos tool with query=\"python\"] → returns actual results\n\n"
-              "Now YOU must call github_search_repos or web_search tool RIGHT NOW. "
+              "CORRECT: [calls github_search_repos tool with query=\"python\"] "
+              "→ returns actual results\n\n"
+              "Now YOU must call github_search_repos or web_search tool RIGHT "
+              "NOW. "
               "DO NOT respond with text. ONLY call the tool."));
           request.messages.push_back(std::move(correction_msg));
 
@@ -1919,11 +1998,13 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
     context.push_back(msg);
   }
   Message new_user_msg{"user", message};
-  logger_->info("DEBUG: Creating new user message (stream) with {} content blocks",
-                new_user_msg.content.size());
+  logger_->info(
+      "DEBUG: Creating new user message (stream) with {} content blocks",
+      new_user_msg.content.size());
   for (size_t i = 0; i < new_user_msg.content.size(); ++i) {
-    logger_->info("DEBUG: Content block {}: type={}, text_len={}",
-                  i, new_user_msg.content[i].type, new_user_msg.content[i].text.size());
+    logger_->info("DEBUG: Content block {}: type={}, text_len={}", i,
+                  new_user_msg.content[i].type,
+                  new_user_msg.content[i].text.size());
   }
   context.push_back(std::move(new_user_msg));
 
@@ -2101,31 +2182,43 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
           try {
             // Index user message
             if (!message.empty()) {
-              std::string user_msg_id = effective_session_key + ":user:" +
-                  std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+              std::string user_msg_id =
+                  effective_session_key + ":user:" +
+                  std::to_string(std::chrono::system_clock::now()
+                                     .time_since_epoch()
+                                     .count());
               nlohmann::json user_metadata = {
-                {"role", "user"},
-                {"session", effective_session_key},
-                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
-              };
-              embedding_manager_->IndexText(user_msg_id, message, user_metadata);
+                  {"role", "user"},
+                  {"session", effective_session_key},
+                  {"timestamp", std::chrono::system_clock::now()
+                                    .time_since_epoch()
+                                    .count()}};
+              embedding_manager_->IndexText(user_msg_id, message,
+                                            user_metadata);
               logger_->debug("Indexed user message (stream): {}", user_msg_id);
             }
 
             // Index assistant response
             if (!full_response.empty()) {
-              std::string assistant_msg_id = effective_session_key + ":assistant:" +
-                  std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+              std::string assistant_msg_id =
+                  effective_session_key + ":assistant:" +
+                  std::to_string(std::chrono::system_clock::now()
+                                     .time_since_epoch()
+                                     .count());
               nlohmann::json assistant_metadata = {
-                {"role", "assistant"},
-                {"session", effective_session_key},
-                {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
-              };
-              embedding_manager_->IndexText(assistant_msg_id, full_response, assistant_metadata);
-              logger_->debug("Indexed assistant message (stream): {}", assistant_msg_id);
+                  {"role", "assistant"},
+                  {"session", effective_session_key},
+                  {"timestamp", std::chrono::system_clock::now()
+                                    .time_since_epoch()
+                                    .count()}};
+              embedding_manager_->IndexText(assistant_msg_id, full_response,
+                                            assistant_metadata);
+              logger_->debug("Indexed assistant message (stream): {}",
+                             assistant_msg_id);
             }
           } catch (const std::exception& e) {
-            logger_->warn("Failed to index messages to vector database: {}", e.what());
+            logger_->warn("Failed to index messages to vector database: {}",
+                          e.what());
           }
         }
 
@@ -2218,25 +2311,28 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
 }
 
 void AgentLoop::IndexConversationMessages(
-    const std::string& user_message,
-    const std::vector<Message>& new_messages,
+    const std::string& user_message, const std::vector<Message>& new_messages,
     const std::string& session_key) {
-  logger_->info("IndexConversationMessages called: embedding_manager_={}, session_key='{}'",
-               (void*)embedding_manager_.get(), session_key);
+  logger_->info(
+      "IndexConversationMessages called: embedding_manager_={}, "
+      "session_key='{}'",
+      (void*)embedding_manager_.get(), session_key);
 
   if (!embedding_manager_ || session_key.empty()) {
     logger_->warn("Skipping indexing: embedding_manager_={}, session_key='{}'",
-                 (void*)embedding_manager_.get(), session_key);
+                  (void*)embedding_manager_.get(), session_key);
     return;
   }
 
   try {
-    logger_->info("Indexing conversation messages for session: {}", session_key);
+    logger_->info("Indexing conversation messages for session: {}",
+                  session_key);
 
     // Index user message with duplicate detection
     if (!user_message.empty()) {
       // Search for similar messages to track hit count
-      auto similar_results = embedding_manager_->SearchText(user_message, 10, 0.80f);
+      auto similar_results =
+          embedding_manager_->SearchText(user_message, 10, 0.80f);
 
       int hit_count = 1;
       std::string original_id;
@@ -2246,7 +2342,8 @@ void AgentLoop::IndexConversationMessages(
         try {
           auto metadata = result.metadata;
           if (metadata.contains("role") && metadata["role"] == "user" &&
-              metadata.contains("session") && metadata["session"] == session_key) {
+              metadata.contains("session") &&
+              metadata["session"] == session_key) {
             // Found similar user message in same session
             hit_count++;
             if (original_id.empty()) {
@@ -2258,22 +2355,26 @@ void AgentLoop::IndexConversationMessages(
         }
       }
 
-      std::string user_msg_id = session_key + ":user:" +
-          std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+      std::string user_msg_id =
+          session_key + ":user:" +
+          std::to_string(
+              std::chrono::system_clock::now().time_since_epoch().count());
       nlohmann::json user_metadata = {
-        {"role", "user"},
-        {"session", session_key},
-        {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()},
-        {"hit_count", hit_count}
-      };
+          {"role", "user"},
+          {"session", session_key},
+          {"timestamp",
+           std::chrono::system_clock::now().time_since_epoch().count()},
+          {"hit_count", hit_count}};
 
       if (!original_id.empty()) {
         user_metadata["original_id"] = original_id;
       }
 
-      logger_->debug("Indexing user message: {} (hit_count: {})", user_msg_id, hit_count);
+      logger_->debug("Indexing user message: {} (hit_count: {})", user_msg_id,
+                     hit_count);
       logger_->debug("Calling embedding_manager_->IndexText...");
-      bool result = embedding_manager_->IndexText(user_msg_id, user_message, user_metadata.dump());
+      bool result = embedding_manager_->IndexText(user_msg_id, user_message,
+                                                  user_metadata.dump());
       logger_->debug("IndexText returned: {}", result);
     }
 
@@ -2295,15 +2396,18 @@ void AgentLoop::IndexConversationMessages(
       }
 
       if (!content_text.empty()) {
-        std::string assistant_msg_id = session_key + ":assistant:" +
-            std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+        std::string assistant_msg_id =
+            session_key + ":assistant:" +
+            std::to_string(
+                std::chrono::system_clock::now().time_since_epoch().count());
         nlohmann::json assistant_metadata = {
-          {"role", "assistant"},
-          {"session", session_key},
-          {"timestamp", std::chrono::system_clock::now().time_since_epoch().count()}
-        };
+            {"role", "assistant"},
+            {"session", session_key},
+            {"timestamp",
+             std::chrono::system_clock::now().time_since_epoch().count()}};
         logger_->debug("Indexing assistant message: {}", assistant_msg_id);
-        embedding_manager_->IndexText(assistant_msg_id, content_text, assistant_metadata.dump());
+        embedding_manager_->IndexText(assistant_msg_id, content_text,
+                                      assistant_metadata.dump());
       }
     }
 

@@ -18,9 +18,9 @@
 #include "ravbot/core/skill_loader.hpp"
 #include "ravbot/core/usage_accumulator.hpp"
 #include "ravbot/core/vector_database.hpp"
+#include "ravbot/providers/failover_resolver.hpp"
 #include "ravbot/providers/llm_provider.hpp"
 #include "ravbot/providers/provider_error.hpp"
-#include "ravbot/providers/failover_resolver.hpp"
 #include "ravbot/providers/provider_registry.hpp"
 #include "ravbot/tools/tool_registry.hpp"
 
@@ -72,7 +72,7 @@ class ErroringMockLLMProvider : public ravbot::LLMProvider {
  public:
   int call_count = 0;
   ravbot::ProviderError error{ravbot::ProviderErrorKind::kUnknown, 400,
-                                 "Improperly formed request"};
+                              "Improperly formed request"};
 
   ravbot::ChatCompletionResponse
   ChatCompletion(const ravbot::ChatCompletionRequest&) override {
@@ -100,7 +100,7 @@ class RetryThenSuccessMockLLMProvider : public ravbot::LLMProvider {
   int failures_before_success = 0;
   int call_count = 0;
   ravbot::ProviderError error{ravbot::ProviderErrorKind::kTimeout, 504,
-                                 "temporary timeout"};
+                              "temporary timeout"};
 
   ravbot::ChatCompletionResponse
   ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
@@ -295,8 +295,8 @@ class AgentLoopTest : public ::testing::Test {
     }
   }
 
-  std::shared_ptr<ravbot::EmbeddingManager> CreateEmbeddingManager(
-      int dimension = 128) {
+  std::shared_ptr<ravbot::EmbeddingManager>
+  CreateEmbeddingManager(int dimension = 128) {
     auto registry = std::make_shared<ravbot::EmbeddingProviderRegistry>();
     registry->RegisterProvider(
         "mock", std::make_shared<ravbot::MockEmbeddingProvider>(dimension));
@@ -308,8 +308,8 @@ class AgentLoopTest : public ::testing::Test {
         (test_dir_ / "embeddings.db").string(), logger_, vector_config);
     EXPECT_TRUE(vector_db->Initialize());
 
-    auto manager =
-        std::make_shared<ravbot::EmbeddingManager>(registry, vector_db, logger_);
+    auto manager = std::make_shared<ravbot::EmbeddingManager>(
+        registry, vector_db, logger_);
     manager->SetProvider("mock");
     return manager;
   }
@@ -362,9 +362,8 @@ TEST_F(AgentLoopTest, StreamingCallback) {
 
   std::vector<ravbot::AgentEvent> events;
   agent_loop_->ProcessMessageStream(
-      "Hello", {}, "System.", [&events](const ravbot::AgentEvent& event) {
-        events.push_back(event);
-      });
+      "Hello", {}, "System.",
+      [&events](const ravbot::AgentEvent& event) { events.push_back(event); });
 
   // Should have at least a text_delta and message_end
   EXPECT_FALSE(events.empty());
@@ -457,7 +456,7 @@ TEST_F(AgentLoopTest, NonRetryableProviderErrorThrowsImmediately) {
   agent_config.max_iterations = 5;
 
   ravbot::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
-                            error_provider, agent_config, logger_);
+                         error_provider, agent_config, logger_);
 
   EXPECT_THROW(loop.ProcessMessage("Hello", {}, "System"),
                ravbot::ProviderError);
@@ -475,7 +474,7 @@ TEST_F(AgentLoopTest, RetryableProviderErrorRetriesUntilSuccess) {
   agent_config.max_iterations = 5;
 
   ravbot::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
-                            retry_provider, agent_config, logger_);
+                         retry_provider, agent_config, logger_);
 
   auto new_msgs = loop.ProcessMessage("Hello", {}, "System");
 
@@ -489,8 +488,8 @@ TEST_F(AgentLoopTest, FailoverResolverSwitchesToFallbackProvider) {
 
   registry->RegisterFactory(
       "primary",
-      [](const ravbot::ProviderEntry&,
-         std::shared_ptr<spdlog::logger>) -> std::shared_ptr<ravbot::LLMProvider> {
+      [](const ravbot::ProviderEntry&, std::shared_ptr<spdlog::logger>)
+          -> std::shared_ptr<ravbot::LLMProvider> {
         auto provider = std::make_shared<ErroringMockLLMProvider>();
         provider->error = ravbot::ProviderError(
             ravbot::ProviderErrorKind::kAuthError, 401, "bad primary key");
@@ -498,8 +497,8 @@ TEST_F(AgentLoopTest, FailoverResolverSwitchesToFallbackProvider) {
       });
   registry->RegisterFactory(
       "backup",
-      [](const ravbot::ProviderEntry&,
-         std::shared_ptr<spdlog::logger>) -> std::shared_ptr<ravbot::LLMProvider> {
+      [](const ravbot::ProviderEntry&, std::shared_ptr<spdlog::logger>)
+          -> std::shared_ptr<ravbot::LLMProvider> {
         auto provider = std::make_shared<MockLLMProvider>();
         provider->provider_name = "backup";
         provider->response_text = "fallback response";
@@ -530,7 +529,7 @@ TEST_F(AgentLoopTest, FailoverResolverSwitchesToFallbackProvider) {
   ASSERT_NE(primary_provider, nullptr);
 
   ravbot::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
-                            primary_provider, agent_config, logger_);
+                         primary_provider, agent_config, logger_);
   loop.SetProviderRegistry(registry.get());
   loop.SetFailoverResolver(failover_resolver.get());
 
@@ -551,7 +550,7 @@ TEST_F(AgentLoopTest, StopInterruptsRetryBackoff) {
   agent_config.max_iterations = 5;
 
   ravbot::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
-                            retry_provider, agent_config, logger_);
+                         retry_provider, agent_config, logger_);
 
   std::exception_ptr worker_error;
   std::thread worker([&]() {
@@ -619,9 +618,8 @@ TEST_F(AgentLoopTest, StreamingUsesConfigModel) {
   mock_provider_->response_text = "streamed";
   std::vector<ravbot::AgentEvent> events;
   agent_loop_->ProcessMessageStream(
-      "test", {}, "sys", [&events](const ravbot::AgentEvent& event) {
-        events.push_back(event);
-      });
+      "test", {}, "sys",
+      [&events](const ravbot::AgentEvent& event) { events.push_back(event); });
 
   EXPECT_EQ(mock_provider_->last_request.model, "test-model");
   EXPECT_TRUE(mock_provider_->last_request.stream);
@@ -641,9 +639,8 @@ TEST_F(AgentLoopTest, StreamReturnsNewMessages) {
 
   std::vector<ravbot::AgentEvent> events;
   auto new_msgs = agent_loop_->ProcessMessageStream(
-      "Hello", {}, "System.", [&events](const ravbot::AgentEvent& event) {
-        events.push_back(event);
-      });
+      "Hello", {}, "System.",
+      [&events](const ravbot::AgentEvent& event) { events.push_back(event); });
 
   // Should have at least 1 assistant message (the final response)
   ASSERT_FALSE(new_msgs.empty());
@@ -726,8 +723,7 @@ TEST_F(AgentLoopTest, ContextPrunerCompressesHistoryBeforeStreamingRequest) {
   for (int i = 0; i < 8; ++i) {
     ravbot::Message assistant;
     assistant.role = "assistant";
-    assistant.content.push_back(
-        ravbot::ContentBlock::MakeText("Inspecting"));
+    assistant.content.push_back(ravbot::ContentBlock::MakeText("Inspecting"));
     assistant.content.push_back(ravbot::ContentBlock::MakeToolUse(
         "stream_tool_" + std::to_string(i), "read", {{"path", "/tmp/demo"}}));
     history.push_back(assistant);
@@ -742,9 +738,7 @@ TEST_F(AgentLoopTest, ContextPrunerCompressesHistoryBeforeStreamingRequest) {
   std::vector<ravbot::AgentEvent> events;
   agent_loop_->ProcessMessageStream(
       "continue", history, "System prompt.",
-      [&events](const ravbot::AgentEvent& event) {
-        events.push_back(event);
-      });
+      [&events](const ravbot::AgentEvent& event) { events.push_back(event); });
 
   EXPECT_FALSE(events.empty());
 
@@ -777,13 +771,12 @@ TEST_F(AgentLoopTest, AnthropicSanitizesDanglingToolUseAndMergesUserTurns) {
 
   ravbot::Message unrelated_user;
   unrelated_user.role = "user";
-  unrelated_user.content.push_back(
-      ravbot::ContentBlock::MakeText("Thanks."));
+  unrelated_user.content.push_back(ravbot::ContentBlock::MakeText("Thanks."));
   unrelated_user.content.push_back(
       ravbot::ContentBlock::MakeToolResult("other_call", "orphaned result"));
 
   std::vector<ravbot::Message> history = {prior_user, dangling_assistant,
-                                             unrelated_user};
+                                          unrelated_user};
 
   agent_loop_->ProcessMessage("Continue with that.", history, "System.");
 
@@ -821,14 +814,13 @@ TEST_F(AgentLoopTest, AnthropicSanitizationAlsoAppliesToStreamingRequests) {
   std::vector<ravbot::AgentEvent> events;
   agent_loop_->ProcessMessageStream(
       "continue", {assistant, user_with_orphan_result}, "System.",
-      [&events](const ravbot::AgentEvent& event) {
-        events.push_back(event);
-      });
+      [&events](const ravbot::AgentEvent& event) { events.push_back(event); });
 
   const auto& sent = mock_provider_->last_request.messages;
-  auto first_non_system = std::find_if(
-      sent.begin(), sent.end(),
-      [](const ravbot::Message& msg) { return msg.role != "system"; });
+  auto first_non_system =
+      std::find_if(sent.begin(), sent.end(), [](const ravbot::Message& msg) {
+        return msg.role != "system";
+      });
   ASSERT_NE(first_non_system, sent.end());
   EXPECT_EQ(first_non_system->role, "user");
   ASSERT_EQ(first_non_system->content.size(), 2u);
@@ -899,9 +891,8 @@ TEST_F(AgentLoopTest, AnthropicReplayKeepsFullToolListToMatchSystemPrompt) {
   agent_config.max_tokens = 2048;
   agent_config.max_iterations = 15;
 
-  ravbot::AgentLoop replay_loop(memory_manager_, skill_loader_,
-                                   tool_registry_, replay_provider,
-                                   agent_config, logger_);
+  ravbot::AgentLoop replay_loop(memory_manager_, skill_loader_, tool_registry_,
+                                replay_provider, agent_config, logger_);
 
   auto new_msgs =
       replay_loop.ProcessMessage("Please inspect the file.", {}, "System.");
@@ -939,18 +930,14 @@ TEST_F(AgentLoopTest,
   agent_config.max_tokens = 2048;
   agent_config.max_iterations = 15;
 
-  ravbot::AgentLoop replay_loop(memory_manager_, skill_loader_,
-                                   tool_registry_, replay_provider,
-                                   agent_config, logger_);
+  ravbot::AgentLoop replay_loop(memory_manager_, skill_loader_, tool_registry_,
+                                replay_provider, agent_config, logger_);
 
   std::vector<ravbot::Message> history = {
       ravbot::Message{"user", "你有什么技能？"},
-      ravbot::Message{"assistant",
-                         "我可以帮助你写代码、运行测试和搜索资料。"},
-      ravbot::Message{"user",
-                         "有什么方法可以让你获得长效记忆以及快速检索？"},
-      ravbot::Message{"assistant",
-                         "我可以通过结构化记忆系统来增强长期记忆。"},
+      ravbot::Message{"assistant", "我可以帮助你写代码、运行测试和搜索资料。"},
+      ravbot::Message{"user", "有什么方法可以让你获得长效记忆以及快速检索？"},
+      ravbot::Message{"assistant", "我可以通过结构化记忆系统来增强长期记忆。"},
   };
 
   auto new_msgs = replay_loop.ProcessMessage("帮我详细研究一下obsidian的接入",
@@ -996,9 +983,10 @@ TEST_F(AgentLoopTest, AnthropicFollowUpDoesNotStartWithAssistantTurn) {
   agent_loop_->ProcessMessage("继续", history, "System.");
 
   const auto& sent = mock_provider_->last_request.messages;
-  auto first_non_system = std::find_if(
-      sent.begin(), sent.end(),
-      [](const ravbot::Message& msg) { return msg.role != "system"; });
+  auto first_non_system =
+      std::find_if(sent.begin(), sent.end(), [](const ravbot::Message& msg) {
+        return msg.role != "system";
+      });
   ASSERT_NE(first_non_system, sent.end());
   EXPECT_EQ(first_non_system->role, "user");
   EXPECT_EQ(first_non_system->text(), "继续");
@@ -1014,10 +1002,9 @@ TEST_F(AgentLoopTest, BriefContinuationPromptsSuppressDuplicateNotice) {
     const auto& prompt = prompts[i];
     const auto session_key = "dup-continue-" + std::to_string(i);
     const std::string metadata =
-        std::string("{\"role\":\"user\",\"session\":\"") + session_key +
-        "\"}";
-    ASSERT_TRUE(embedding_manager->IndexText(
-        "seed-" + std::to_string(i), prompt, metadata));
+        std::string("{\"role\":\"user\",\"session\":\"") + session_key + "\"}";
+    ASSERT_TRUE(embedding_manager->IndexText("seed-" + std::to_string(i),
+                                             prompt, metadata));
 
     agent_loop_->ProcessMessage(prompt, {}, "System.", session_key);
     const auto& sent = mock_provider_->last_request.messages;
@@ -1059,8 +1046,8 @@ TEST_F(AgentLoopTest,
   final_answer.content.push_back(ravbot::ContentBlock::MakeText(
       "你好！我的记忆里主要记录了项目更名、工作区路径和一些运行时信息。"));
 
-  std::vector<ravbot::Message> history = {
-      question, assistant_tool, tool_result, final_answer};
+  std::vector<ravbot::Message> history = {question, assistant_tool, tool_result,
+                                          final_answer};
 
   agent_loop_->ProcessMessage("请继续解释刚才的记忆内容", history, "System.");
 
@@ -1083,6 +1070,31 @@ TEST_F(AgentLoopTest,
   }
 }
 
+TEST_F(AgentLoopTest, ShortContextualDecisionReplyKeepsRecentAssistantContext) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"user", "你建议我现在直接实现这个机制吗？"},
+      ravbot::Message{
+          "assistant",
+          "我建议先做两种方案对比：方案 A 是自动 checkpoint，方案 B "
+          "是对话归档，然后再决定是否直接实现。"},
+  };
+
+  agent_loop_->ProcessMessage(u8"先研究有没有更好的方案再操作。", history,
+                              "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  ASSERT_EQ(sent.size(), 4u);
+  EXPECT_EQ(sent[0].role, "system");
+  EXPECT_EQ(sent[1].role, "user");
+  EXPECT_EQ(sent[1].text(), "你建议我现在直接实现这个机制吗？");
+  EXPECT_EQ(sent[2].role, "assistant");
+  EXPECT_NE(sent[2].text().find("方案 A"), std::string::npos);
+  EXPECT_EQ(sent[3].role, "user");
+  EXPECT_EQ(sent[3].text(), u8"先研究有没有更好的方案再操作。");
+}
+
 TEST_F(AgentLoopTest, RepeatedQuestionsStillAddDuplicateNotice) {
   auto embedding_manager = CreateEmbeddingManager();
   agent_loop_->SetEmbeddingManager(embedding_manager);
@@ -1091,8 +1103,7 @@ TEST_F(AgentLoopTest, RepeatedQuestionsStillAddDuplicateNotice) {
   const std::string session_key = "dup-question";
   ASSERT_TRUE(embedding_manager->IndexText(
       "seed-question", "What is RavBot?",
-      std::string("{\"role\":\"user\",\"session\":\"") + session_key +
-          "\"}"));
+      std::string("{\"role\":\"user\",\"session\":\"") + session_key + "\"}"));
 
   agent_loop_->ProcessMessage("What is RavBot?", {}, "System.", session_key);
   const auto& sent = mock_provider_->last_request.messages;
@@ -1122,8 +1133,7 @@ TEST_F(AgentLoopTest, NonAnthropicRequestsAlsoRepairOrphanToolResults) {
   orphan_user.role = "user";
   orphan_user.content.push_back(
       ravbot::ContentBlock::MakeToolResult("wrong_call", "bad result"));
-  orphan_user.content.push_back(
-      ravbot::ContentBlock::MakeText("follow-up"));
+  orphan_user.content.push_back(ravbot::ContentBlock::MakeText("follow-up"));
 
   agent_loop_->ProcessMessage("continue", {assistant, orphan_user}, "System.");
 
@@ -1154,7 +1164,7 @@ TEST_F(AgentLoopTest, ExplicitLookupRequestRetriesOnDeferredPreamble) {
   agent_config.max_iterations = 15;
 
   ravbot::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
-                            lookup_provider, agent_config, logger_);
+                         lookup_provider, agent_config, logger_);
 
   auto new_msgs = loop.ProcessMessage(
       u8"我需要你帮我找github上的obsidian相关的长效记忆", {}, "System.");
@@ -1205,7 +1215,7 @@ TEST_F(AgentLoopTest, AnthropicWebSearchReplayKeepsToolsAndAddsHint) {
   agent_config.max_iterations = 15;
 
   ravbot::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
-                            replay_provider, agent_config, logger_);
+                         replay_provider, agent_config, logger_);
 
   auto new_msgs = loop.ProcessMessage(
       u8"我需要你帮我找github上的obsidian相关的长效记忆", {}, "System.");
@@ -1264,7 +1274,7 @@ TEST_F(AgentLoopTest, WebSearchReplayRetriesRawSearchDumpResponse) {
   agent_config.max_iterations = 15;
 
   ravbot::AgentLoop loop(memory_manager_, skill_loader_, tool_registry_,
-                            replay_provider, agent_config, logger_);
+                         replay_provider, agent_config, logger_);
 
   auto new_msgs = loop.ProcessMessage(
       u8"我需要你帮我找github上的obsidian相关的长效记忆", {}, "System.");
