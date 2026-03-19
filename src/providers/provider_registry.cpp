@@ -260,7 +260,39 @@ std::shared_ptr<LLMProvider> ProviderRegistry::GetProvider(
 
 std::shared_ptr<LLMProvider> ProviderRegistry::GetProviderForModel(
     const ModelRef& ref) {
-  return GetProvider(ref.provider);
+  const auto* model = FindModelDefinition(ref);
+  if (!HasModelScopedOverride(model)) {
+    return GetProvider(ref.provider);
+  }
+
+  auto fit = factories_.find(ref.provider);
+  if (fit == factories_.end()) {
+    logger_->error("No factory registered for provider: {}", ref.provider);
+    return nullptr;
+  }
+
+  const std::string instance_key = ref.to_string();
+  auto it = instances_.find(instance_key);
+  if (it != instances_.end()) {
+    return it->second;
+  }
+
+  auto provider = fit->second(BuildEffectiveEntryForModel(ref), logger_);
+  instances_[instance_key] = provider;
+  return provider;
+}
+
+std::shared_ptr<LLMProvider> ProviderRegistry::GetProviderForModelWithKey(
+    const ModelRef& ref,
+    const std::string& api_key) {
+  auto fit = factories_.find(ref.provider);
+  if (fit == factories_.end()) {
+    logger_->error("No factory for provider: {}", ref.provider);
+    return nullptr;
+  }
+
+  ProviderEntry entry = BuildEffectiveEntryForModel(ref, &api_key);
+  return fit->second(entry, logger_);
 }
 
 std::shared_ptr<LLMProvider> ProviderRegistry::GetProviderWithKey(
@@ -412,6 +444,75 @@ std::string ProviderRegistry::resolve_api_key(
   if (val) return val;
 
   return "";
+}
+
+const ModelDefinition* ProviderRegistry::FindModelDefinition(
+    const ModelRef& ref) const {
+  auto entry_it = entries_.find(ref.provider);
+  if (entry_it == entries_.end()) {
+    return nullptr;
+  }
+
+  const auto& models = entry_it->second.models;
+  auto model_it = std::find_if(
+      models.begin(), models.end(),
+      [&ref](const ModelDefinition& model) { return model.id == ref.model; });
+  if (model_it == models.end()) {
+    return nullptr;
+  }
+  return &(*model_it);
+}
+
+bool ProviderRegistry::HasModelScopedOverride(
+    const ModelDefinition* model) const {
+  if (!model) {
+    return false;
+  }
+
+  return !model->api_key.empty() || !model->api_key_env.empty() ||
+         !model->base_url.empty() || !model->api.empty() ||
+         model->timeout > 0;
+}
+
+ProviderEntry ProviderRegistry::BuildEffectiveEntryForModel(
+    const ModelRef& ref,
+    const std::string* api_key_override) const {
+  ProviderEntry entry;
+  auto entry_it = entries_.find(ref.provider);
+  if (entry_it != entries_.end()) {
+    entry = entry_it->second;
+  } else {
+    entry.id = ref.provider;
+  }
+
+  const auto* model = FindModelDefinition(ref);
+  if (model) {
+    if (!model->base_url.empty()) {
+      entry.base_url = model->base_url;
+    }
+    if (!model->api.empty()) {
+      entry.api = model->api;
+    }
+    if (model->timeout > 0) {
+      entry.timeout = model->timeout;
+    }
+    if (!model->api_key_env.empty()) {
+      entry.api_key_env = model->api_key_env;
+    }
+    if (!model->api_key.empty()) {
+      entry.api_key = model->api_key;
+    } else if (entry.api_key.empty()) {
+      entry.api_key = resolve_api_key(entry);
+    }
+  }
+
+  if (api_key_override != nullptr) {
+    entry.api_key = *api_key_override;
+  } else if (entry.api_key.empty()) {
+    entry.api_key = resolve_api_key(entry);
+  }
+
+  return entry;
 }
 
 }  // namespace ravbot

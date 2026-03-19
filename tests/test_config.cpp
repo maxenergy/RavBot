@@ -753,6 +753,23 @@ TEST_F(ConfigTest, ModelEntryConfigFromJson) {
     EXPECT_TRUE(e.params.contains("temperature"));
 }
 
+TEST_F(ConfigTest, ModelDefinitionParsesProviderOverrides) {
+    nlohmann::json j = {
+        {"id", "dashscope/qwen3.5-plus"},
+        {"name", "Qwen 3.5 Plus"},
+        {"baseUrl", "https://dashscope.aliyuncs.com/api/v1"},
+        {"apiKey", "dashscope-key"},
+        {"api", "anthropic-messages"},
+        {"timeout", 120}
+    };
+    auto m = ravbot::ModelDefinition::FromJson(j);
+    EXPECT_EQ(m.id, "dashscope/qwen3.5-plus");
+    EXPECT_EQ(m.base_url, "https://dashscope.aliyuncs.com/api/v1");
+    EXPECT_EQ(m.api_key, "dashscope-key");
+    EXPECT_EQ(m.api, "anthropic-messages");
+    EXPECT_EQ(m.timeout, 120);
+}
+
 TEST_F(ConfigTest, ProviderConfigWithModels) {
     nlohmann::json j = {
         {"apiKey", "test-key"},

@@ -84,6 +84,12 @@ class ProviderRegistry {
   // Get or create a provider for a model ref
   std::shared_ptr<LLMProvider> GetProviderForModel(const ModelRef& ref);
 
+  // Create a provider for a model ref using a specific API key.
+  // This still respects per-model baseUrl/api overrides when present.
+  std::shared_ptr<LLMProvider> GetProviderForModelWithKey(
+      const ModelRef& ref,
+      const std::string& api_key);
+
   // Create a provider instance using a specific API key
   // (for multi-profile auth rotation). Not cached.
   std::shared_ptr<LLMProvider> GetProviderWithKey(
@@ -131,6 +137,12 @@ class ProviderRegistry {
 
   // Resolve API key from entry (direct value or env var)
   std::string resolve_api_key(const ProviderEntry& entry) const;
+
+  const ModelDefinition* FindModelDefinition(const ModelRef& ref) const;
+  bool HasModelScopedOverride(const ModelDefinition* model) const;
+  ProviderEntry BuildEffectiveEntryForModel(
+      const ModelRef& ref,
+      const std::string* api_key_override = nullptr) const;
 };
 
 }  // namespace ravbot

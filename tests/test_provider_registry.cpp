@@ -355,4 +355,96 @@ TEST(QwenProviderStreamTest, ParsesBufferedSseResponse) {
   EXPECT_EQ(final_usage.total_tokens, 3);
 }
 
+class CapturingProvider : public ravbot::LLMProvider {
+ public:
+  explicit CapturingProvider(std::string name) : name_(std::move(name)) {}
+
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest&) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest&,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    ravbot::ChatCompletionResponse response;
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override { return name_; }
+  std::vector<std::string> GetSupportedModels() const override { return {}; }
+
+ private:
+  std::string name_;
+};
+
+TEST(ProviderRegistryTest, ModelScopedOverridesReplaceProviderTransport) {
+  auto reg = std::make_unique<ProviderRegistry>(make_logger("providers-model"));
+  ProviderEntry captured_entry;
+
+  reg->RegisterFactory(
+      "anthropic",
+      [&captured_entry](const ProviderEntry& entry,
+                        std::shared_ptr<spdlog::logger> /*logger*/) {
+        captured_entry = entry;
+        return std::make_shared<CapturingProvider>("captured");
+      });
+
+  ProviderEntry entry;
+  entry.id = "anthropic";
+  entry.api_key = "provider-key";
+  entry.base_url = "http://127.0.0.1:8991";
+  entry.api = "anthropic-messages";
+  entry.models.push_back(ravbot::ModelDefinition::FromJson(
+      {{"id", "dashscope/qwen3.5-plus"},
+       {"name", "Qwen 3.5 Plus"},
+       {"baseUrl", "https://dashscope.aliyuncs.com/api/v1"},
+       {"apiKey", "dashscope-key"},
+       {"api", "anthropic-messages"}}));
+  reg->AddProvider(entry);
+
+  auto provider =
+      reg->GetProviderForModel(ModelRef::parse("anthropic/dashscope/qwen3.5-plus"));
+  ASSERT_NE(provider, nullptr);
+  EXPECT_EQ(captured_entry.base_url, "https://dashscope.aliyuncs.com/api/v1");
+  EXPECT_EQ(captured_entry.api_key, "dashscope-key");
+  EXPECT_EQ(captured_entry.api, "anthropic-messages");
+}
+
+TEST(ProviderRegistryTest, ModelScopedOverridesKeepTransportWhenProfileKeyChanges) {
+  auto reg =
+      std::make_unique<ProviderRegistry>(make_logger("providers-model-key"));
+  ProviderEntry captured_entry;
+
+  reg->RegisterFactory(
+      "anthropic",
+      [&captured_entry](const ProviderEntry& entry,
+                        std::shared_ptr<spdlog::logger> /*logger*/) {
+        captured_entry = entry;
+        return std::make_shared<CapturingProvider>("captured");
+      });
+
+  ProviderEntry entry;
+  entry.id = "anthropic";
+  entry.api_key = "provider-key";
+  entry.base_url = "http://127.0.0.1:8991";
+  entry.models.push_back(ravbot::ModelDefinition::FromJson(
+      {{"id", "dashscope/qwen3.5-plus"},
+       {"name", "Qwen 3.5 Plus"},
+       {"baseUrl", "https://dashscope.aliyuncs.com/api/v1"},
+       {"apiKey", "dashscope-key"}}));
+  reg->AddProvider(entry);
+
+  auto provider = reg->GetProviderForModelWithKey(
+      ModelRef::parse("anthropic/dashscope/qwen3.5-plus"),
+      "profile-key");
+  ASSERT_NE(provider, nullptr);
+  EXPECT_EQ(captured_entry.base_url, "https://dashscope.aliyuncs.com/api/v1");
+  EXPECT_EQ(captured_entry.api_key, "profile-key");
+}
+
 }  // namespace ravbot

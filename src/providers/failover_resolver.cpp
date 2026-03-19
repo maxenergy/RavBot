@@ -137,8 +137,8 @@ std::optional<ResolvedProvider> FailoverResolver::try_resolve_model(
           for (const auto& profile : prof_it->second) {
             if (profile.id == pin.profile_id) {
               // Temporarily override the entry's API key
-              auto provider = registry_->GetProviderWithKey(
-                  provider_id, profile.api_key);
+              auto provider = registry_->GetProviderForModelWithKey(
+                  ref, profile.api_key);
               if (provider) {
                 return ResolvedProvider{provider, provider_id,
                                         pin.profile_id, ref.model, false};
@@ -163,8 +163,8 @@ std::optional<ResolvedProvider> FailoverResolver::try_resolve_model(
         continue;
       }
 
-      auto provider = registry_->GetProviderWithKey(
-          provider_id, profile.api_key);
+      auto provider = registry_->GetProviderForModelWithKey(
+          ref, profile.api_key);
       if (provider) {
         return ResolvedProvider{provider, provider_id,
                                 profile.id, ref.model, false};
@@ -179,8 +179,8 @@ std::optional<ResolvedProvider> FailoverResolver::try_resolve_model(
       if (cooldown_.TryProbe(probe_key)) {
         logger_->info("Probing cooled-down profile {}:{} (probe throttle)",
                       provider_id, prof_it->second[0].id);
-        auto provider = registry_->GetProviderWithKey(
-            provider_id, prof_it->second[0].api_key);
+        auto provider = registry_->GetProviderForModelWithKey(
+            ref, prof_it->second[0].api_key);
         if (provider) {
           return ResolvedProvider{provider, provider_id,
                                   prof_it->second[0].id, ref.model, false};
@@ -200,7 +200,7 @@ std::optional<ResolvedProvider> FailoverResolver::try_resolve_model(
     if (cooldown_.TryProbe(key)) {
       logger_->info("Probing cooled-down provider '{}' (probe throttle)",
                     provider_id);
-      auto provider = registry_->GetProvider(provider_id);
+      auto provider = registry_->GetProviderForModel(ref);
       if (provider) {
         return ResolvedProvider{provider, provider_id, "", ref.model, false};
       }
@@ -208,7 +208,7 @@ std::optional<ResolvedProvider> FailoverResolver::try_resolve_model(
     return std::nullopt;
   }
 
-  auto provider = registry_->GetProvider(provider_id);
+  auto provider = registry_->GetProviderForModel(ref);
   if (provider) {
     return ResolvedProvider{provider, provider_id, "", ref.model, false};
   }

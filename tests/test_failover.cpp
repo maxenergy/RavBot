@@ -267,6 +267,39 @@ TEST_F(FailoverResolverTest, ProfileRotationOnCooldown) {
     EXPECT_EQ(result->provider->GetProviderName(), "anthropic:sk-backup-key");
 }
 
+TEST_F(FailoverResolverTest, ProfiledResolveUsesModelScopedTransportOverrides) {
+    registry_->RegisterFactory(
+        "anthropic_model",
+        [](const ProviderEntry& entry, auto /*logger*/) {
+            return std::make_shared<MockFailoverLLM>(
+                "anthropic_model:" + entry.base_url + ":" + entry.api_key);
+        });
+
+    ProviderEntry entry;
+    entry.id = "anthropic_model";
+    entry.api_key = "provider-key";
+    entry.base_url = "http://127.0.0.1:8991";
+    entry.models.push_back(ravbot::ModelDefinition::FromJson({
+        {"id", "dashscope/qwen3.5-plus"},
+        {"name", "Qwen 3.5 Plus"},
+        {"baseUrl", "https://dashscope.aliyuncs.com/api/v1"},
+        {"apiKey", "dashscope-key"}
+    }));
+    registry_->AddProvider(entry);
+
+    resolver_->SetProfiles(
+        "anthropic_model",
+        {{"prod", "profile-key", ""}});
+
+    auto result =
+        resolver_->Resolve("anthropic_model/dashscope/qwen3.5-plus");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->profile_id, "prod");
+    EXPECT_EQ(
+        result->provider->GetProviderName(),
+        "anthropic_model:https://dashscope.aliyuncs.com/api/v1:profile-key");
+}
+
 TEST_F(FailoverResolverTest, FallbackChain) {
     resolver_->SetFallbackChain({"openai/gpt-4o"});
 

@@ -174,6 +174,11 @@ ModelDefinition ModelDefinition::FromJson(const nlohmann::json& json) {
     }
     m.context_window = json.value("contextWindow", json.value("context_window", 0));
     m.max_tokens = json.value("maxTokens", json.value("max_tokens", 0));
+    m.api_key = json.value("apiKey", json.value("api_key", ""));
+    m.api_key_env = json.value("apiKeyEnv", json.value("api_key_env", ""));
+    m.base_url = json.value("baseUrl", json.value("base_url", ""));
+    m.api = json.value("api", "");
+    m.timeout = json.value("timeout", 0);
     return m;
 }
 

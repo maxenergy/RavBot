@@ -55,6 +55,11 @@ struct ModelDefinition {
     ModelCost cost;
     int context_window = 0;      // 128000
     int max_tokens = 0;          // 8192
+    std::string api_key;         // Optional per-model API key override
+    std::string api_key_env;     // Optional per-model API key env override
+    std::string base_url;        // Optional per-model base URL override
+    std::string api;             // Optional per-model API kind override
+    int timeout = 0;             // Optional per-model timeout override
     static ModelDefinition FromJson(const nlohmann::json& json);
 };
 
