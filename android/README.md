@@ -26,7 +26,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   own for local-model tool calls
 - Android host haptics are now bridged into native readiness, exposed as a
   `vibrate` mobile-safe tool when the device supports vibration, and can be
-  toggled on or off from the host UI/runtime service state
+  toggled on or off from the host UI/runtime service state; the host only
+  publishes haptics as enabled when the user toggle is on and Android
+  actually reports a vibrator
 - Native `modelsDir` resolution for relative mobile model paths
 - `mobile.runtime_status` diagnostics for provider/backend/model readiness
 - Compose status cards for live `assistant_delta`/`assistant_final` streaming
@@ -59,6 +61,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   Android host keeps those diagnostics visible across relaunches
   A placeholder provider reports `visionProviderReady=false` until a real VLM
   backend is linked.
+- `mobile.runtime_status` now also reports the exact currently exposed
+  mobile tool list plus per-tool availability reasons for bridge-gated tools
+  such as `web_search`, `web_fetch`, and `vibrate`
 - The Android host now treats `visionProviderReady` as the canonical vision
   readiness flag and still accepts legacy `visionReady` payloads for
   compatibility.
@@ -70,6 +75,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   and `camera_not_running`
 - Android CameraX frames now carry a capture-time-derived epoch timestamp into
   native `camera_snapshot` results instead of using only JNI receive time
+- Native placeholder `SpeechPipeline` buffering, flush, interrupt, and
+  utterance indexing are now scoped per mobile session, so one conversation's
+  buffered speech no longer leaks into another session's ASR turn
 - Avatar mouth motion driven by microphone level while listening and by a
   synthetic speaking envelope while Android `TextToSpeech` is active
 - Native `SpeechPipeline` facade for STT/TTS asset readiness and placeholder ASR

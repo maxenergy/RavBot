@@ -31,12 +31,13 @@ class MobileAsrProvider {
  public:
   virtual ~MobileAsrProvider() = default;
 
-  virtual AsrUpdate PushPcm16(const int16_t* samples,
+  virtual AsrUpdate PushPcm16(const std::string& session_key,
+                              const int16_t* samples,
                               size_t sample_count,
                               int sample_rate_hz,
                               bool end_of_turn) = 0;
-  virtual AsrUpdate Flush() = 0;
-  virtual void Interrupt() = 0;
+  virtual AsrUpdate Flush(const std::string& session_key) = 0;
+  virtual void Interrupt(const std::string& session_key) = 0;
 };
 
 class MobileVisionProvider {

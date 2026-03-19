@@ -6,6 +6,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -637,34 +638,48 @@ std::vector<std::string> tool_names(
   return names;
 }
 
+bool json_array_contains_string(const nlohmann::json& array,
+                                const std::string& value) {
+  if (!array.is_array()) {
+    return false;
+  }
+  return std::any_of(array.begin(), array.end(),
+                     [&value](const nlohmann::json& entry) {
+                       return entry.is_string() &&
+                              entry.get<std::string>() == value;
+                     });
+}
+
 class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
  public:
-  ravbot::mobile::AsrUpdate PushPcm16(const int16_t* samples,
+  struct SessionState {
+    bool interrupted = false;
+    bool has_pending_audio = false;
+    uint64_t utterance_index = 0;
+  };
+
+  ravbot::mobile::AsrUpdate PushPcm16(const std::string& session_key,
+                                      const int16_t* samples,
                                       size_t sample_count,
                                       int sample_rate_hz,
                                       bool end_of_turn) override {
+    auto& state = session_states[session_key];
     (void)samples;
     (void)sample_count;
-    (void)sample_rate_hz;
-    has_pending_audio = true;
+    if (state.interrupted) {
+      state.interrupted = false;
+      state.has_pending_audio = false;
+      return {};
+    }
+    state.has_pending_audio = true;
     if (end_of_turn) {
-      has_pending_audio = false;
-      ravbot::mobile::AsrUpdate update;
-      update.text = "ni hao ravbot";
-      update.is_final = true;
-      update.segment_index = 1;
-      update.sample_rate_hz = sample_rate_hz;
-      update.duration_ms = 120;
-      update.average_level = 0.12;
-      update.peak_level = 0.34;
-      update.end_reason = "vad_silence";
-      return update;
+      return FinalUpdate(state, sample_rate_hz, "vad_silence");
     }
     ravbot::mobile::AsrUpdate update;
     update.text = "ni hao";
     update.is_final = false;
-    update.segment_index = 1;
-    update.sample_rate_hz = sample_rate_hz;
+    update.segment_index = state.utterance_index + 1;
+    update.sample_rate_hz = 16000;
     update.duration_ms = 60;
     update.average_level = 0.1;
     update.peak_level = 0.2;
@@ -672,30 +687,51 @@ class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
     return update;
   }
 
-  ravbot::mobile::AsrUpdate Flush() override {
-    if (!has_pending_audio) {
+  ravbot::mobile::AsrUpdate Flush(const std::string& session_key) override {
+    auto it = session_states.find(session_key);
+    if (it == session_states.end()) {
       return {};
     }
-    has_pending_audio = false;
+    auto& state = it->second;
+    if (state.interrupted) {
+      state.interrupted = false;
+      state.has_pending_audio = false;
+      return {};
+    }
+    if (!state.has_pending_audio) {
+      return {};
+    }
+    return FinalUpdate(state, 16000, "flush");
+  }
+
+  void Interrupt(const std::string& session_key) override {
+    auto& state = session_states[session_key];
+    state.interrupted = true;
+    state.has_pending_audio = false;
+    interrupted_sessions.push_back(session_key);
+  }
+
+  std::vector<std::string> interrupted_sessions;
+  std::unordered_map<std::string, SessionState> session_states;
+
+ private:
+  ravbot::mobile::AsrUpdate FinalUpdate(SessionState& state,
+                                        int sample_rate_hz,
+                                        const std::string& end_reason) {
+    (void)sample_rate_hz;
+    state.has_pending_audio = false;
     ravbot::mobile::AsrUpdate update;
     update.text = "ni hao ravbot";
     update.is_final = true;
-    update.segment_index = 1;
+    update.segment_index = state.utterance_index + 1;
     update.sample_rate_hz = 16000;
-    update.duration_ms = 180;
-    update.average_level = 0.14;
-    update.peak_level = 0.36;
-    update.end_reason = "flush";
+    update.duration_ms = end_reason == "flush" ? 180 : 120;
+    update.average_level = end_reason == "flush" ? 0.14 : 0.12;
+    update.peak_level = end_reason == "flush" ? 0.36 : 0.34;
+    update.end_reason = end_reason;
+    state.utterance_index += 1;
     return update;
   }
-
-  void Interrupt() override {
-    interrupted = true;
-    has_pending_audio = false;
-  }
-
-  bool interrupted = false;
-  bool has_pending_audio = false;
 };
 
 class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
@@ -1131,6 +1167,60 @@ TEST_F(MobileEngineTest, FlushAudioTurnFinalizesBufferedSpeechTurn) {
   EXPECT_EQ(asr_final->payload["endReason"], "flush");
 }
 
+TEST_F(MobileEngineTest, FlushAudioTurnAndInterruptStayScopedPerSession) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  engine.SetTextProvider(
+      std::make_shared<FakeTextProvider>("speech reply after isolation"));
+  auto asr_provider = std::make_shared<FakeAsrProvider>();
+  engine.SetAsrProvider(asr_provider);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
+
+  int16_t samples[4] = {1, 2, 3, 4};
+  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-a", samples, 4, 16000,
+                               false));
+  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-b", samples, 4, 16000,
+                               false));
+
+  engine.InterruptGeneration("agent:main:speech-b");
+  ASSERT_TRUE(engine.FlushAudioTurn("agent:main:speech-a"));
+  EXPECT_FALSE(engine.FlushAudioTurn("agent:main:speech-b"));
+
+  auto history_a = engine.session_manager().GetHistory("agent:main:speech-a");
+  ASSERT_EQ(history_a.size(), 2u);
+  EXPECT_EQ(history_a[0].content[0].text, "ni hao ravbot");
+  EXPECT_EQ(history_a[1].content[0].text, "speech reply after isolation");
+
+  auto history_b = engine.session_manager().GetHistory("agent:main:speech-b");
+  EXPECT_TRUE(history_b.empty());
+  ASSERT_EQ(asr_provider->interrupted_sessions.size(), 1u);
+  EXPECT_EQ(asr_provider->interrupted_sessions[0], "agent:main:speech-b");
+
+  size_t final_event_count = 0;
+  bool saw_a_final = false;
+  bool saw_b_final = false;
+  for (const auto& event : events) {
+    if (event.name != ravbot::mobile::kEventMobileAsrFinal) {
+      continue;
+    }
+    final_event_count += 1;
+    if (event.payload.value("sessionKey", "") == "agent:main:speech-a") {
+      saw_a_final = true;
+      EXPECT_EQ(event.payload["endReason"], "flush");
+    }
+    if (event.payload.value("sessionKey", "") == "agent:main:speech-b") {
+      saw_b_final = true;
+    }
+  }
+  EXPECT_EQ(final_event_count, 1u);
+  EXPECT_TRUE(saw_a_final);
+  EXPECT_FALSE(saw_b_final);
+}
+
 TEST_F(MobileEngineTest, PushCameraFrameRequiresForegroundWhenConfigured) {
   ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
                                       logger_);
@@ -1283,6 +1373,27 @@ TEST_F(MobileEngineTest, StartSessionEmitsRuntimeStatusWithResolvedModelPaths) {
   EXPECT_FALSE(it->payload["webSearchReady"].get<bool>());
   EXPECT_FALSE(it->payload["webFetchReady"].get<bool>());
   EXPECT_FALSE(it->payload["vibrationReady"].get<bool>());
+  EXPECT_TRUE(json_array_contains_string(it->payload["availableTools"],
+                                         "device_status"));
+  EXPECT_TRUE(json_array_contains_string(it->payload["availableTools"],
+                                         "runtime_status"));
+  EXPECT_TRUE(json_array_contains_string(it->payload["availableTools"],
+                                         "camera_snapshot"));
+  EXPECT_TRUE(
+      json_array_contains_string(it->payload["availableTools"], "memory_list"));
+  EXPECT_FALSE(
+      json_array_contains_string(it->payload["availableTools"], "web_search"));
+  EXPECT_FALSE(
+      json_array_contains_string(it->payload["availableTools"], "web_fetch"));
+  EXPECT_FALSE(
+      json_array_contains_string(it->payload["availableTools"], "vibrate"));
+  EXPECT_EQ(it->payload["toolAvailability"]["web_search"]["available"], false);
+  EXPECT_EQ(it->payload["toolAvailability"]["web_search"]["reason"],
+            "device_bridge_missing");
+  EXPECT_EQ(it->payload["toolAvailability"]["web_fetch"]["reason"],
+            "device_bridge_missing");
+  EXPECT_EQ(it->payload["toolAvailability"]["vibrate"]["reason"],
+            "device_bridge_missing");
 }
 
 TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
@@ -1315,6 +1426,18 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_FALSE(speech_only_status->payload["webSearchReady"].get<bool>());
   EXPECT_FALSE(speech_only_status->payload["webFetchReady"].get<bool>());
   EXPECT_FALSE(speech_only_status->payload["vibrationReady"].get<bool>());
+  EXPECT_FALSE(json_array_contains_string(speech_only_status->payload["availableTools"],
+                                          "web_search"));
+  EXPECT_FALSE(json_array_contains_string(speech_only_status->payload["availableTools"],
+                                          "web_fetch"));
+  EXPECT_FALSE(json_array_contains_string(speech_only_status->payload["availableTools"],
+                                          "vibrate"));
+  EXPECT_EQ(speech_only_status->payload["toolAvailability"]["web_search"]["reason"],
+            "web_search_unsupported");
+  EXPECT_EQ(speech_only_status->payload["toolAvailability"]["web_fetch"]["reason"],
+            "web_fetch_unsupported");
+  EXPECT_EQ(speech_only_status->payload["toolAvailability"]["vibrate"]["reason"],
+            "vibration_unsupported");
 
   ravbot::mobile::MobileEngine full_bridge_engine(MakeConfig(), test_dir_,
                                                   test_dir_, logger_);
@@ -1344,6 +1467,18 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_TRUE(full_bridge_status->payload["webSearchReady"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["webFetchReady"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["vibrationReady"].get<bool>());
+  EXPECT_TRUE(json_array_contains_string(full_bridge_status->payload["availableTools"],
+                                         "web_search"));
+  EXPECT_TRUE(json_array_contains_string(full_bridge_status->payload["availableTools"],
+                                         "web_fetch"));
+  EXPECT_TRUE(json_array_contains_string(full_bridge_status->payload["availableTools"],
+                                         "vibrate"));
+  EXPECT_EQ(full_bridge_status->payload["toolAvailability"]["web_search"]["available"],
+            true);
+  EXPECT_EQ(full_bridge_status->payload["toolAvailability"]["web_fetch"]["available"],
+            true);
+  EXPECT_EQ(full_bridge_status->payload["toolAvailability"]["vibrate"]["available"],
+            true);
 }
 
 TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
@@ -1370,16 +1505,26 @@ TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
   EXPECT_FALSE(runtime_payloads[0]["webSearchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[0]["webFetchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[0]["vibrationReady"].get<bool>());
+  EXPECT_EQ(runtime_payloads[0]["toolAvailability"]["web_search"]["reason"],
+            "device_bridge_missing");
 
   EXPECT_TRUE(runtime_payloads[1]["deviceBridgeAttached"].get<bool>());
   EXPECT_FALSE(runtime_payloads[1]["webSearchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[1]["webFetchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[1]["vibrationReady"].get<bool>());
+  EXPECT_EQ(runtime_payloads[1]["toolAvailability"]["web_search"]["reason"],
+            "web_search_unsupported");
 
   EXPECT_TRUE(runtime_payloads[2]["deviceBridgeAttached"].get<bool>());
   EXPECT_TRUE(runtime_payloads[2]["webSearchReady"].get<bool>());
   EXPECT_TRUE(runtime_payloads[2]["webFetchReady"].get<bool>());
   EXPECT_TRUE(runtime_payloads[2]["vibrationReady"].get<bool>());
+  EXPECT_TRUE(json_array_contains_string(runtime_payloads[2]["availableTools"],
+                                         "web_search"));
+  EXPECT_TRUE(json_array_contains_string(runtime_payloads[2]["availableTools"],
+                                         "web_fetch"));
+  EXPECT_TRUE(json_array_contains_string(runtime_payloads[2]["availableTools"],
+                                         "vibrate"));
 }
 
 TEST_F(MobileEngineTest, ReportTtsPlaybackStateEmitsEventAndAvatarState) {
@@ -2014,6 +2159,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   EXPECT_NE(result.find("\"webSearchReady\": true"), std::string::npos);
   EXPECT_NE(result.find("\"webFetchReady\": true"), std::string::npos);
   EXPECT_NE(result.find("\"vibrationReady\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"availableTools\""), std::string::npos);
+  EXPECT_NE(result.find("\"web_search\""), std::string::npos);
+  EXPECT_NE(result.find("\"toolAvailability\""), std::string::npos);
   EXPECT_NE(result.find("\"provider\": \"fake-runtime-tool\""),
             std::string::npos);
 

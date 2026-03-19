@@ -118,7 +118,8 @@ SpeechPipeline::SpeechPipeline(const MobileModelsConfig& config,
   }
 }
 
-AsrUpdate SpeechPipeline::PushPcm16(const int16_t* samples,
+AsrUpdate SpeechPipeline::PushPcm16(const std::string& session_key,
+                                    const int16_t* samples,
                                     size_t sample_count,
                                     int sample_rate_hz,
                                     bool end_of_turn) {
@@ -126,71 +127,85 @@ AsrUpdate SpeechPipeline::PushPcm16(const int16_t* samples,
     return {};
   }
 
-  if (interrupted_) {
-    interrupted_ = false;
-    ResetPendingUtterance(false);
+  auto& state = session_states_[session_key];
+  if (state.interrupted) {
+    state.interrupted = false;
+    ResetPendingUtterance(&state, false);
     return {};
   }
 
-  sample_rate_hz_ = sample_rate_hz > 0 ? sample_rate_hz : sample_rate_hz_;
-  buffered_samples_ += sample_count;
-  buffered_chunks_ += 1;
-  accumulated_level_ += AverageAbsLevel(samples, sample_count);
-  peak_level_ = std::max(peak_level_, PeakAbsLevel(samples, sample_count));
-  has_pending_audio_ = true;
+  state.sample_rate_hz =
+      sample_rate_hz > 0 ? sample_rate_hz : state.sample_rate_hz;
+  state.buffered_samples += sample_count;
+  state.buffered_chunks += 1;
+  state.accumulated_level += AverageAbsLevel(samples, sample_count);
+  state.peak_level =
+      std::max(state.peak_level, PeakAbsLevel(samples, sample_count));
+  state.has_pending_audio = true;
 
   if (logger_) {
-    logger_->debug("SpeechPipeline accepted {} samples (final={})",
-                   sample_count, end_of_turn);
+    logger_->debug(
+        "SpeechPipeline accepted {} samples for session {} (final={})",
+        sample_count, session_key, end_of_turn);
   }
 
   if (!end_of_turn) {
-    if (buffered_chunks_ == 1 || buffered_chunks_ % 3 == 0) {
-      return BuildPlaceholderUpdate(false);
+    if (state.buffered_chunks == 1 || state.buffered_chunks % 3 == 0) {
+      return BuildPlaceholderUpdate(state, false);
     }
     return {};
   }
 
-  finalize_reason_ = "vad_silence";
-  return Flush();
+  state.finalize_reason = "vad_silence";
+  return Flush(session_key);
 }
 
-AsrUpdate SpeechPipeline::Flush() {
-  if (interrupted_) {
-    interrupted_ = false;
-    ResetPendingUtterance(false);
-    return {};
-  }
-  if (!has_pending_audio_) {
+AsrUpdate SpeechPipeline::Flush(const std::string& session_key) {
+  auto it = session_states_.find(session_key);
+  if (it == session_states_.end()) {
     return {};
   }
 
-  AsrUpdate update = BuildPlaceholderUpdate(true);
-  ResetPendingUtterance(true);
+  auto& state = it->second;
+  if (state.interrupted) {
+    state.interrupted = false;
+    ResetPendingUtterance(&state, false);
+    return {};
+  }
+  if (!state.has_pending_audio) {
+    return {};
+  }
+
+  AsrUpdate update = BuildPlaceholderUpdate(state, true);
+  ResetPendingUtterance(&state, true);
   return update;
 }
 
-void SpeechPipeline::Interrupt() {
-  interrupted_ = true;
-  ResetPendingUtterance(false);
+void SpeechPipeline::Interrupt(const std::string& session_key) {
+  auto& state = session_states_[session_key];
+  state.interrupted = true;
+  ResetPendingUtterance(&state, false);
 }
 
-AsrUpdate SpeechPipeline::BuildPlaceholderUpdate(bool is_final) const {
-  if (!has_pending_audio_) {
+AsrUpdate SpeechPipeline::BuildPlaceholderUpdate(const SessionState& state,
+                                                 bool is_final) const {
+  if (!state.has_pending_audio) {
     return {};
   }
 
-  const int sample_rate = sample_rate_hz_ > 0 ? sample_rate_hz_ : 16000;
+  const int sample_rate = state.sample_rate_hz > 0 ? state.sample_rate_hz : 16000;
   const double duration_seconds =
-      static_cast<double>(buffered_samples_) / static_cast<double>(sample_rate);
+      static_cast<double>(state.buffered_samples) /
+      static_cast<double>(sample_rate);
   const int duration_ms = std::max(
       1, static_cast<int>(duration_seconds * 1000.0));
   const double average_level =
-      buffered_chunks_ > 0
-          ? accumulated_level_ / static_cast<double>(buffered_chunks_)
+      state.buffered_chunks > 0
+          ? state.accumulated_level /
+                static_cast<double>(state.buffered_chunks)
           : 0.0;
   const double average_norm = average_level / 32767.0;
-  const double peak_norm = peak_level_ / 32767.0;
+  const double peak_norm = state.peak_level / 32767.0;
 
   std::ostringstream text;
   text.setf(std::ios::fixed);
@@ -202,7 +217,7 @@ AsrUpdate SpeechPipeline::BuildPlaceholderUpdate(bool is_final) const {
     AsrUpdate update;
     update.text = text.str();
     update.is_final = false;
-    update.segment_index = utterance_index_ + 1;
+    update.segment_index = state.utterance_index + 1;
     update.sample_rate_hz = sample_rate;
     update.duration_ms = duration_ms;
     update.average_level = average_norm;
@@ -211,7 +226,7 @@ AsrUpdate SpeechPipeline::BuildPlaceholderUpdate(bool is_final) const {
     return update;
   }
 
-  const uint64_t segment_number = utterance_index_ + 1;
+  const uint64_t segment_number = state.utterance_index + 1;
   text << (runtime_status_.asr_ready ? "speech segment "
                                      : "audio segment ")
        << segment_number
@@ -227,20 +242,24 @@ AsrUpdate SpeechPipeline::BuildPlaceholderUpdate(bool is_final) const {
   update.duration_ms = duration_ms;
   update.average_level = average_norm;
   update.peak_level = peak_norm;
-  update.end_reason = finalize_reason_;
+  update.end_reason = state.finalize_reason;
   return update;
 }
 
-void SpeechPipeline::ResetPendingUtterance(bool complete_turn) {
-  if (complete_turn && has_pending_audio_) {
-    utterance_index_ += 1;
+void SpeechPipeline::ResetPendingUtterance(SessionState* state,
+                                           bool complete_turn) {
+  if (state == nullptr) {
+    return;
   }
-  has_pending_audio_ = false;
-  buffered_samples_ = 0;
-  buffered_chunks_ = 0;
-  accumulated_level_ = 0.0;
-  peak_level_ = 0.0;
-  finalize_reason_ = "flush";
+  if (complete_turn && state->has_pending_audio) {
+    state->utterance_index += 1;
+  }
+  state->has_pending_audio = false;
+  state->buffered_samples = 0;
+  state->buffered_chunks = 0;
+  state->accumulated_level = 0.0;
+  state->peak_level = 0.0;
+  state->finalize_reason = "flush";
 }
 
 SpeechPipeline::RuntimeStatus SpeechPipeline::BuildRuntimeStatus() const {

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -36,33 +37,39 @@ class SpeechPipeline : public MobileAsrProvider {
                  const std::filesystem::path& models_dir,
                  std::shared_ptr<spdlog::logger> logger);
 
-  AsrUpdate PushPcm16(const int16_t* samples,
+  AsrUpdate PushPcm16(const std::string& session_key,
+                      const int16_t* samples,
                       size_t sample_count,
                       int sample_rate_hz,
                       bool end_of_turn) override;
-  AsrUpdate Flush() override;
-  void Interrupt() override;
+  AsrUpdate Flush(const std::string& session_key) override;
+  void Interrupt(const std::string& session_key) override;
 
   const RuntimeStatus& runtime_status() const { return runtime_status_; }
 
  private:
+  struct SessionState {
+    bool interrupted = false;
+    bool has_pending_audio = false;
+    size_t buffered_samples = 0;
+    size_t buffered_chunks = 0;
+    int sample_rate_hz = 16000;
+    double accumulated_level = 0.0;
+    double peak_level = 0.0;
+    uint64_t utterance_index = 0;
+    std::string finalize_reason = "flush";
+  };
+
   RuntimeStatus BuildRuntimeStatus() const;
-  AsrUpdate BuildPlaceholderUpdate(bool is_final) const;
-  void ResetPendingUtterance(bool complete_turn);
+  AsrUpdate BuildPlaceholderUpdate(const SessionState& state,
+                                   bool is_final) const;
+  void ResetPendingUtterance(SessionState* state, bool complete_turn);
 
   MobileModelsConfig config_;
   std::filesystem::path models_dir_;
   std::shared_ptr<spdlog::logger> logger_;
   RuntimeStatus runtime_status_;
-  bool interrupted_ = false;
-  bool has_pending_audio_ = false;
-  size_t buffered_samples_ = 0;
-  size_t buffered_chunks_ = 0;
-  int sample_rate_hz_ = 16000;
-  double accumulated_level_ = 0.0;
-  double peak_level_ = 0.0;
-  uint64_t utterance_index_ = 0;
-  std::string finalize_reason_ = "flush";
+  std::unordered_map<std::string, SessionState> session_states_;
 };
 
 }  // namespace ravbot::mobile

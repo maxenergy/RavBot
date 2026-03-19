@@ -5,6 +5,13 @@ import org.junit.Test
 
 class RuntimeStatusParsingTest {
   @Test
+  fun effectiveHostHapticsEnabledRequiresDeviceAvailability() {
+    assertEquals(true, effectiveHostHapticsEnabled(true, true))
+    assertEquals(false, effectiveHostHapticsEnabled(true, false))
+    assertEquals(false, effectiveHostHapticsEnabled(false, true))
+  }
+
+  @Test
   fun parseVisionRuntimeReadyPrefersProviderScopedFlag() {
     val payload =
         """

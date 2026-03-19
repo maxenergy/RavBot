@@ -297,6 +297,11 @@ private fun RavbotHostScreen() {
       remember(context.applicationContext) {
         HapticsController(context.applicationContext)
       }
+  val effectiveHostHapticsEnabled =
+      effectiveHostHapticsEnabled(
+          hostHapticsEnabled = hostHapticsEnabled,
+          hapticsAvailable = hapticsController.isAvailable,
+      )
   val permissionLauncher =
       rememberLauncherForActivityResult(
           contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -366,7 +371,7 @@ private fun RavbotHostScreen() {
         permissionsGranted = permissionsGranted,
         hostWebSearchEnabled = hostWebSearchEnabled,
         hostWebFetchEnabled = hostWebFetchEnabled,
-        hostHapticsEnabled = hostHapticsEnabled,
+        hostHapticsEnabled = effectiveHostHapticsEnabled,
         microphoneStatus = microphoneStatus,
         cameraStatus = cameraStatus,
         speakerStatus = speakerStatus,
@@ -589,7 +594,7 @@ private fun RavbotHostScreen() {
               assistantStatus = assistantStatus,
               hostWebSearchEnabled = hostWebSearchEnabled,
               hostWebFetchEnabled = hostWebFetchEnabled,
-              hostHapticsEnabled = hostHapticsEnabled,
+              hostHapticsEnabled = effectiveHostHapticsEnabled,
               runtimeHapticsStatus = runtimeHapticsStatus,
           ),
       )
@@ -690,6 +695,7 @@ private fun RavbotHostScreen() {
       hostWebSearchEnabled,
       hostWebFetchEnabled,
       hostHapticsEnabled,
+      hapticsController.isAvailable,
   ) {
     if (!nativeReady) {
       return@LaunchedEffect
@@ -707,11 +713,11 @@ private fun RavbotHostScreen() {
     )
   }
 
-  LaunchedEffect(nativeReady, hostHapticsEnabled, hapticsController.isAvailable) {
+  LaunchedEffect(nativeReady, effectiveHostHapticsEnabled) {
     if (!nativeReady) {
       return@LaunchedEffect
     }
-    bridge.setHapticsEnabled(hostHapticsEnabled && hapticsController.isAvailable)
+    bridge.setHapticsEnabled(effectiveHostHapticsEnabled)
   }
 
   DisposableEffect(
@@ -965,7 +971,12 @@ private fun RavbotHostScreen() {
                 appendLog(
                     logEntries,
                     "host",
-                    "Host haptics ${if (hostHapticsEnabled) "enabled" else "disabled"}.",
+                    when {
+                      hostHapticsEnabled && !hapticsController.isAvailable ->
+                          "Host haptics requested, but this device reports no vibrator."
+                      hostHapticsEnabled -> "Host haptics enabled."
+                      else -> "Host haptics disabled."
+                    },
                 )
               },
           ) {
@@ -999,7 +1010,7 @@ private fun RavbotHostScreen() {
                         assistantStatus = assistantStatus,
                         hostWebSearchEnabled = hostWebSearchEnabled,
                         hostWebFetchEnabled = hostWebFetchEnabled,
-                        hostHapticsEnabled = hostHapticsEnabled,
+                        hostHapticsEnabled = effectiveHostHapticsEnabled,
                         runtimeHapticsStatus = runtimeHapticsStatus,
                     ),
                 )
@@ -1186,6 +1197,7 @@ private fun RavbotHostScreen() {
       hostWebSearchEnabled,
       hostWebFetchEnabled,
       hostHapticsEnabled,
+      hapticsController.isAvailable,
   ) {
     if (!serviceRunning) {
       return@LaunchedEffect
@@ -1201,7 +1213,7 @@ private fun RavbotHostScreen() {
             assistantStatus = assistantStatus,
             hostWebSearchEnabled = hostWebSearchEnabled,
             hostWebFetchEnabled = hostWebFetchEnabled,
-            hostHapticsEnabled = hostHapticsEnabled,
+            hostHapticsEnabled = effectiveHostHapticsEnabled,
             runtimeHapticsStatus = runtimeHapticsStatus,
         ),
     )
@@ -1473,6 +1485,13 @@ private fun buildPermissionSummary(context: Context): String {
 
   return "${required.size - missing.size}/${required.size} granted, missing: " +
       missing.joinToString(", ") { permissionLabel(it) }
+}
+
+internal fun effectiveHostHapticsEnabled(
+    hostHapticsEnabled: Boolean,
+    hapticsAvailable: Boolean,
+): Boolean {
+  return hostHapticsEnabled && hapticsAvailable
 }
 
 private fun hasAllRuntimePermissions(context: Context): Boolean {

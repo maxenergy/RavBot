@@ -60,7 +60,7 @@ TEST_F(SpeechPipelineTest, EmitsPlaceholderTranscriptsUntilRealBackendExists) {
   ravbot::mobile::SpeechPipeline pipeline(config, test_dir_, MakeLogger());
   int16_t samples[4] = {1, 2, 3, 4};
 
-  auto partial = pipeline.PushPcm16(samples, 4, 16000, false);
+  auto partial = pipeline.PushPcm16("session-alpha", samples, 4, 16000, false);
   EXPECT_NE(partial.text.find("listening on device"), std::string::npos);
   EXPECT_FALSE(partial.is_final);
   EXPECT_EQ(partial.segment_index, 1u);
@@ -68,7 +68,7 @@ TEST_F(SpeechPipelineTest, EmitsPlaceholderTranscriptsUntilRealBackendExists) {
   EXPECT_EQ(partial.end_reason, "streaming");
   EXPECT_GT(partial.duration_ms, 0);
 
-  auto final = pipeline.Flush();
+  auto final = pipeline.Flush("session-alpha");
   EXPECT_NE(final.text.find("audio segment 1 received on device"),
             std::string::npos);
   EXPECT_TRUE(final.is_final);
@@ -86,9 +86,9 @@ TEST_F(SpeechPipelineTest, ThrottlesPartialEventsAcrossContinuousSpeech) {
   ravbot::mobile::SpeechPipeline pipeline(config, test_dir_, MakeLogger());
   int16_t samples[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-  auto first = pipeline.PushPcm16(samples, 8, 16000, false);
-  auto second = pipeline.PushPcm16(samples, 8, 16000, false);
-  auto third = pipeline.PushPcm16(samples, 8, 16000, false);
+  auto first = pipeline.PushPcm16("session-alpha", samples, 8, 16000, false);
+  auto second = pipeline.PushPcm16("session-alpha", samples, 8, 16000, false);
+  auto third = pipeline.PushPcm16("session-alpha", samples, 8, 16000, false);
 
   EXPECT_FALSE(first.text.empty());
   EXPECT_TRUE(second.text.empty());
@@ -104,15 +104,48 @@ TEST_F(SpeechPipelineTest, InterruptDropsBufferedSpeechTurn) {
   ravbot::mobile::SpeechPipeline pipeline(config, test_dir_, MakeLogger());
   int16_t samples[4] = {1, 2, 3, 4};
 
-  EXPECT_FALSE(pipeline.PushPcm16(samples, 4, 16000, false).text.empty());
-  pipeline.Interrupt();
-  EXPECT_TRUE(pipeline.Flush().text.empty());
+  EXPECT_FALSE(
+      pipeline.PushPcm16("session-alpha", samples, 4, 16000, false).text.empty());
+  pipeline.Interrupt("session-alpha");
+  EXPECT_TRUE(pipeline.Flush("session-alpha").text.empty());
 
-  auto restarted = pipeline.PushPcm16(samples, 4, 16000, true);
+  auto restarted = pipeline.PushPcm16("session-alpha", samples, 4, 16000, true);
   EXPECT_NE(restarted.text.find("audio segment 1 received on device"),
             std::string::npos);
   EXPECT_TRUE(restarted.is_final);
   EXPECT_EQ(restarted.end_reason, "vad_silence");
+}
+
+TEST_F(SpeechPipelineTest, KeepsBufferedSpeechScopedPerSession) {
+  ravbot::MobileModelsConfig config;
+  config.stt_model = "SenseVoiceSmall";
+
+  ravbot::mobile::SpeechPipeline pipeline(config, test_dir_, MakeLogger());
+  int16_t samples[4] = {1, 2, 3, 4};
+
+  auto alpha_partial =
+      pipeline.PushPcm16("session-alpha", samples, 4, 16000, false);
+  auto beta_partial =
+      pipeline.PushPcm16("session-beta", samples, 4, 16000, false);
+  pipeline.Interrupt("session-beta");
+  auto alpha_final = pipeline.Flush("session-alpha");
+  auto beta_final = pipeline.Flush("session-beta");
+
+  EXPECT_FALSE(alpha_partial.text.empty());
+  EXPECT_EQ(alpha_partial.segment_index, 1u);
+  EXPECT_FALSE(beta_partial.text.empty());
+  EXPECT_EQ(beta_partial.segment_index, 1u);
+  EXPECT_TRUE(alpha_final.is_final);
+  EXPECT_EQ(alpha_final.segment_index, 1u);
+  EXPECT_EQ(alpha_final.end_reason, "flush");
+  EXPECT_TRUE(beta_final.text.empty());
+
+  auto alpha_restart =
+      pipeline.PushPcm16("session-alpha", samples, 4, 16000, true);
+  auto beta_restart =
+      pipeline.PushPcm16("session-beta", samples, 4, 16000, true);
+  EXPECT_EQ(alpha_restart.segment_index, 2u);
+  EXPECT_EQ(beta_restart.segment_index, 1u);
 }
 
 }  // namespace

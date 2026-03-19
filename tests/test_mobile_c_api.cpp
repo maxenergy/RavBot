@@ -1,6 +1,7 @@
 // Copyright 2026 RavBot Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+#include <algorithm>
 #include <filesystem>
 #include <mutex>
 #include <string>
@@ -13,6 +14,18 @@
 #include "ravbot/mobile/mobile_c_api.h"
 
 namespace {
+
+bool json_array_contains_string(const nlohmann::json& array,
+                                const std::string& value) {
+  if (!array.is_array()) {
+    return false;
+  }
+  return std::any_of(array.begin(), array.end(),
+                     [&value](const nlohmann::json& entry) {
+                       return entry.is_string() &&
+                              entry.get<std::string>() == value;
+                     });
+}
 
 struct CapturedEvent {
   std::string name;
@@ -190,6 +203,14 @@ TEST_F(MobileCApiTest, SendTextTurnEmitsAssistantFinalEvent) {
       EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
       EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
       EXPECT_FALSE(event.payload["vibrationReady"].get<bool>());
+      EXPECT_TRUE(json_array_contains_string(event.payload["availableTools"],
+                                             "device_status"));
+      EXPECT_TRUE(json_array_contains_string(event.payload["availableTools"],
+                                             "runtime_status"));
+      EXPECT_FALSE(json_array_contains_string(event.payload["availableTools"],
+                                              "web_search"));
+      EXPECT_EQ(event.payload["toolAvailability"]["web_search"]["reason"],
+                "device_bridge_missing");
       EXPECT_TRUE(event.payload.contains("detail"));
       EXPECT_TRUE(event.payload.contains("speechDetail"));
     }
@@ -477,6 +498,12 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsPartialWebDeviceCallbacks) {
       EXPECT_TRUE(event.payload["webSearchReady"].get<bool>());
       EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
       EXPECT_FALSE(event.payload["vibrationReady"].get<bool>());
+      EXPECT_TRUE(json_array_contains_string(event.payload["availableTools"],
+                                             "web_search"));
+      EXPECT_FALSE(json_array_contains_string(event.payload["availableTools"],
+                                              "web_fetch"));
+      EXPECT_EQ(event.payload["toolAvailability"]["web_fetch"]["reason"],
+                "web_fetch_unsupported");
     }
     EXPECT_TRUE(saw_runtime);
   }
@@ -510,6 +537,12 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsPartialWebDeviceCallbacks) {
       EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
       EXPECT_TRUE(event.payload["webFetchReady"].get<bool>());
       EXPECT_FALSE(event.payload["vibrationReady"].get<bool>());
+      EXPECT_FALSE(json_array_contains_string(event.payload["availableTools"],
+                                              "web_search"));
+      EXPECT_TRUE(json_array_contains_string(event.payload["availableTools"],
+                                             "web_fetch"));
+      EXPECT_EQ(event.payload["toolAvailability"]["web_search"]["reason"],
+                "web_search_unsupported");
     }
     EXPECT_TRUE(saw_runtime);
   }
@@ -543,6 +576,9 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsVibrationDeviceCallback) {
     saw_runtime = true;
     EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
     EXPECT_TRUE(event.payload["vibrationReady"].get<bool>());
+    EXPECT_TRUE(
+        json_array_contains_string(event.payload["availableTools"], "vibrate"));
+    EXPECT_EQ(event.payload["toolAvailability"]["vibrate"]["available"], true);
   }
   EXPECT_TRUE(saw_runtime);
 }

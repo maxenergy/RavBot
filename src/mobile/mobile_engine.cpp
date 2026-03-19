@@ -48,6 +48,15 @@ nlohmann::json with_session_key(const std::string& session_key,
   return payload;
 }
 
+nlohmann::json make_tool_availability(bool available,
+                                      const std::string& reason = {}) {
+  nlohmann::json payload = {{"available", available}};
+  if (!reason.empty()) {
+    payload["reason"] = reason;
+  }
+  return payload;
+}
+
 std::string make_tool_call_id(int round, size_t index) {
   return "mobile_tool_" + std::to_string(round) + "_" +
          std::to_string(index + 1);
@@ -281,8 +290,8 @@ bool MobileEngine::PushPcm16(const std::string& session_key,
 
   SetAvatarState(AvatarState::kListen, session_key);
   AsrUpdate update =
-      asr_provider_->PushPcm16(samples, sample_count, sample_rate_hz,
-                               end_of_turn);
+      asr_provider_->PushPcm16(session_key, samples, sample_count,
+                               sample_rate_hz, end_of_turn);
   return HandleAsrUpdate(session_key, update, sample_rate_hz);
 }
 
@@ -292,7 +301,7 @@ bool MobileEngine::FlushAudioTurn(const std::string& session_key) {
   }
 
   SetAvatarState(AvatarState::kListen, session_key);
-  AsrUpdate update = asr_provider_->Flush();
+  AsrUpdate update = asr_provider_->Flush(session_key);
   if (update.text.empty()) {
     SetAvatarState(AvatarState::kIdle, session_key);
     return false;
@@ -358,7 +367,7 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
 
 void MobileEngine::InterruptGeneration(const std::string& session_key) {
   if (asr_provider_) {
-    asr_provider_->Interrupt();
+    asr_provider_->Interrupt(session_key);
   }
   if (auto bridge = CopyDeviceBridge(); bridge) {
     bridge->InterruptSpeechPlayback(session_key);
@@ -452,6 +461,48 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
       !vision_provider_placeholder;
   const std::string vision_provider =
       vision_provider_ ? vision_provider_->ProviderName() : "not_configured";
+  const auto tool_schemas = BuildToolSchemas();
+  nlohmann::json available_tools = nlohmann::json::array();
+  for (const auto& tool : tool_schemas) {
+    const std::string tool_name = tool["function"].value("name", "");
+    if (!tool_name.empty()) {
+      available_tools.push_back(tool_name);
+    }
+  }
+
+  nlohmann::json tool_availability = {
+      {kDeviceStatusToolName, make_tool_availability(true)},
+      {kRuntimeStatusToolName, make_tool_availability(true)},
+      {kCameraSnapshotToolName, make_tool_availability(true)},
+      {kTimeToolName, make_tool_availability(true)},
+      {kMemoryListToolName, make_tool_availability(true)},
+      {kMemorySearchToolName, make_tool_availability(true)},
+      {kMemoryGetToolName, make_tool_availability(true)},
+      {kMemoryWriteToolName, make_tool_availability(true)},
+      {kMemoryDeleteToolName, make_tool_availability(true)},
+  };
+  if (!device_bridge_attached) {
+    tool_availability[kWebSearchToolName] =
+        make_tool_availability(false, "device_bridge_missing");
+    tool_availability[kWebFetchToolName] =
+        make_tool_availability(false, "device_bridge_missing");
+    tool_availability[kVibrateToolName] =
+        make_tool_availability(false, "device_bridge_missing");
+  } else {
+    tool_availability[kWebSearchToolName] =
+        web_search_ready
+            ? make_tool_availability(true)
+            : make_tool_availability(false, "web_search_unsupported");
+    tool_availability[kWebFetchToolName] =
+        web_fetch_ready
+            ? make_tool_availability(true)
+            : make_tool_availability(false, "web_fetch_unsupported");
+    tool_availability[kVibrateToolName] =
+        vibration_ready
+            ? make_tool_availability(true)
+            : make_tool_availability(false, "vibration_unsupported");
+  }
+
   nlohmann::json payload = {{"modelsDir", models_dir_.string()},
                             {"sttModel", config_.mobile.models.stt_model},
                             {"ttsVoice", config_.mobile.models.tts_voice},
@@ -465,7 +516,11 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
                             {"deviceBridgeAttached", device_bridge_attached},
                             {"webSearchReady", web_search_ready},
                             {"webFetchReady", web_fetch_ready},
-                            {"vibrationReady", vibration_ready}};
+                            {"vibrationReady", vibration_ready},
+                            {"availableTools", std::move(available_tools)},
+                            {"availableToolCount", tool_schemas.size()},
+                            {"toolAvailability",
+                             std::move(tool_availability)}};
   if (!config_.mobile.vision.enabled) {
     payload["visionDetail"] =
         "Continuous vision is disabled in the mobile runtime configuration.";
