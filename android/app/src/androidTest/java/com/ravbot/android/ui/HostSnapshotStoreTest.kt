@@ -36,6 +36,7 @@ class HostSnapshotStoreTest {
             runtimeModelsDir = "/data/user/0/com.ravbot.android/files/ravbot-models",
             hostWebSearchEnabled = false,
             hostWebFetchEnabled = true,
+            hostHapticsEnabled = false,
             runtimeDeviceBridgeStatus = "ready",
             runtimeWebSearchStatus = "ready",
             runtimeWebFetchStatus = "disabled",
@@ -67,6 +68,7 @@ class HostSnapshotStoreTest {
     assertEquals("What can you see and hear right now?", cleared.promptText)
     assertTrue(cleared.hostWebSearchEnabled)
     assertTrue(cleared.hostWebFetchEnabled)
+    assertTrue(cleared.hostHapticsEnabled)
     assertEquals("unknown", cleared.runtimeDeviceBridgeStatus)
     assertEquals("unknown", cleared.runtimeWebSearchStatus)
     assertEquals("unknown", cleared.runtimeWebFetchStatus)

@@ -28,20 +28,26 @@ class MainActivityTest {
   }
 
   @Test
-  fun hostScreenShowsAndTogglesHostWebControls() {
+  fun hostScreenShowsAndTogglesHostCapabilityControls() {
     composeRule.onNodeWithText("Disable web search").assertIsDisplayed()
     composeRule.onNodeWithText("Disable web fetch").assertIsDisplayed()
+    composeRule.onNodeWithText("Disable haptics").assertIsDisplayed()
     composeRule.onNodeWithText("Host web search toggle: enabled").assertIsDisplayed()
     composeRule.onNodeWithText("Host web fetch toggle: enabled").assertIsDisplayed()
+    composeRule.onNodeWithText("Host haptics toggle: enabled").assertIsDisplayed()
 
     composeRule.onNodeWithText("Disable web search").performClick()
     composeRule.onNodeWithText("Disable web fetch").performClick()
+    composeRule.onNodeWithText("Disable haptics").performClick()
 
     composeRule.onNodeWithText("Enable web search").assertIsDisplayed()
     composeRule.onNodeWithText("Enable web fetch").assertIsDisplayed()
+    composeRule.onNodeWithText("Enable haptics").assertIsDisplayed()
     composeRule.onNodeWithText("Host web search toggle: disabled")
         .assertIsDisplayed()
     composeRule.onNodeWithText("Host web fetch toggle: disabled")
+        .assertIsDisplayed()
+    composeRule.onNodeWithText("Host haptics toggle: disabled")
         .assertIsDisplayed()
   }
 
@@ -65,6 +71,7 @@ class MainActivityTest {
             assistantStatus = "streaming",
             hostWebSearchEnabled = false,
             hostWebFetchEnabled = true,
+            hostHapticsEnabled = false,
             runtimeHapticsStatus = "ready",
         )
 
@@ -94,6 +101,10 @@ class MainActivityTest {
     assertEquals(
         true,
         intent.getBooleanExtra(RavbotForegroundService.EXTRA_HOST_WEB_FETCH_ENABLED, false),
+    )
+    assertEquals(
+        false,
+        intent.getBooleanExtra(RavbotForegroundService.EXTRA_HOST_HAPTICS_ENABLED, true),
     )
     assertEquals(
         "ready",

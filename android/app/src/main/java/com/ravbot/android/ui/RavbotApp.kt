@@ -168,6 +168,9 @@ private fun RavbotHostScreen() {
   var hostWebFetchEnabled by rememberSaveable {
     mutableStateOf(restoredSnapshot.hostWebFetchEnabled)
   }
+  var hostHapticsEnabled by rememberSaveable {
+    mutableStateOf(restoredSnapshot.hostHapticsEnabled)
+  }
   var runtimeDeviceBridgeStatus by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeDeviceBridgeStatus)
   }
@@ -544,6 +547,7 @@ private fun RavbotHostScreen() {
               assistantStatus = assistantStatus,
               hostWebSearchEnabled = hostWebSearchEnabled,
               hostWebFetchEnabled = hostWebFetchEnabled,
+              hostHapticsEnabled = hostHapticsEnabled,
               runtimeHapticsStatus = runtimeHapticsStatus,
           ),
       )
@@ -605,6 +609,7 @@ private fun RavbotHostScreen() {
           runtimeModelsDir = runtimeModelsDir,
           hostWebSearchEnabled = hostWebSearchEnabled,
           hostWebFetchEnabled = hostWebFetchEnabled,
+          hostHapticsEnabled = hostHapticsEnabled,
           runtimeDeviceBridgeStatus = runtimeDeviceBridgeStatus,
           runtimeWebSearchStatus = runtimeWebSearchStatus,
           runtimeWebFetchStatus = runtimeWebFetchStatus,
@@ -666,11 +671,11 @@ private fun RavbotHostScreen() {
     )
   }
 
-  LaunchedEffect(nativeReady, hapticsController.isAvailable) {
+  LaunchedEffect(nativeReady, hostHapticsEnabled, hapticsController.isAvailable) {
     if (!nativeReady) {
       return@LaunchedEffect
     }
-    bridge.setHapticsEnabled(hapticsController.isAvailable)
+    bridge.setHapticsEnabled(hostHapticsEnabled && hapticsController.isAvailable)
   }
 
   DisposableEffect(
@@ -795,6 +800,7 @@ private fun RavbotHostScreen() {
                 "Provider: $runtimeProvider",
                 "Host web search toggle: ${if (hostWebSearchEnabled) "enabled" else "disabled"}",
                 "Host web fetch toggle: ${if (hostWebFetchEnabled) "enabled" else "disabled"}",
+                "Host haptics toggle: ${if (hostHapticsEnabled) "enabled" else "disabled"}",
                 "Device bridge: $runtimeDeviceBridgeStatus",
                 "Web search: $runtimeWebSearchStatus",
                 "Web fetch: $runtimeWebFetchStatus",
@@ -915,6 +921,24 @@ private fun RavbotHostScreen() {
         ) {
           OutlinedButton(
               onClick = {
+                hostHapticsEnabled = !hostHapticsEnabled
+                appendLog(
+                    logEntries,
+                    "host",
+                    "Host haptics ${if (hostHapticsEnabled) "enabled" else "disabled"}.",
+                )
+              },
+          ) {
+            Text(if (hostHapticsEnabled) "Disable haptics" else "Enable haptics")
+          }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          OutlinedButton(
+              onClick = {
                 permissionLauncher.launch(requiredRuntimePermissions())
               },
           ) {
@@ -935,6 +959,7 @@ private fun RavbotHostScreen() {
                         assistantStatus = assistantStatus,
                         hostWebSearchEnabled = hostWebSearchEnabled,
                         hostWebFetchEnabled = hostWebFetchEnabled,
+                        hostHapticsEnabled = hostHapticsEnabled,
                         runtimeHapticsStatus = runtimeHapticsStatus,
                     ),
                 )
@@ -1109,6 +1134,7 @@ private fun RavbotHostScreen() {
       assistantStatus,
       hostWebSearchEnabled,
       hostWebFetchEnabled,
+      hostHapticsEnabled,
   ) {
     if (!serviceRunning) {
       return@LaunchedEffect
@@ -1124,6 +1150,7 @@ private fun RavbotHostScreen() {
             assistantStatus = assistantStatus,
             hostWebSearchEnabled = hostWebSearchEnabled,
             hostWebFetchEnabled = hostWebFetchEnabled,
+            hostHapticsEnabled = hostHapticsEnabled,
             runtimeHapticsStatus = runtimeHapticsStatus,
         ),
     )

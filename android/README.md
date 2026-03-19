@@ -23,8 +23,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   local model can inspect provider/backend/web capability state directly
 - A dedicated `runtime_status` tool now exposes that readiness payload on its
   own for local-model tool calls
-- Android host haptics are now bridged into native readiness and exposed as a
-  `vibrate` mobile-safe tool when the device supports vibration
+- Android host haptics are now bridged into native readiness, exposed as a
+  `vibrate` mobile-safe tool when the device supports vibration, and can be
+  toggled on or off from the host UI/runtime service state
 - Native `modelsDir` resolution for relative mobile model paths
 - `mobile.runtime_status` diagnostics for provider/backend/model readiness
 - Compose status cards for live `assistant_delta`/`assistant_final` streaming

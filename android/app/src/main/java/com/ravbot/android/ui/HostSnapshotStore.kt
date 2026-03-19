@@ -25,6 +25,7 @@ data class HostSnapshot(
     val runtimeModelsDir: String = "not set",
     val hostWebSearchEnabled: Boolean = true,
     val hostWebFetchEnabled: Boolean = true,
+    val hostHapticsEnabled: Boolean = true,
     val runtimeDeviceBridgeStatus: String = "unknown",
     val runtimeWebSearchStatus: String = "unknown",
     val runtimeWebFetchStatus: String = "unknown",
@@ -69,6 +70,7 @@ data class HostSnapshot(
         .put("runtimeModelsDir", runtimeModelsDir)
         .put("hostWebSearchEnabled", hostWebSearchEnabled)
         .put("hostWebFetchEnabled", hostWebFetchEnabled)
+        .put("hostHapticsEnabled", hostHapticsEnabled)
         .put("runtimeDeviceBridgeStatus", runtimeDeviceBridgeStatus)
         .put("runtimeWebSearchStatus", runtimeWebSearchStatus)
         .put("runtimeWebFetchStatus", runtimeWebFetchStatus)
@@ -142,6 +144,8 @@ data class HostSnapshot(
                     parsed.optBoolean("hostWebSearchEnabled", true),
                 hostWebFetchEnabled =
                     parsed.optBoolean("hostWebFetchEnabled", true),
+                hostHapticsEnabled =
+                    parsed.optBoolean("hostHapticsEnabled", true),
                 runtimeDeviceBridgeStatus =
                     parsed.optString("runtimeDeviceBridgeStatus", "unknown"),
                 runtimeWebSearchStatus =
