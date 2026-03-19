@@ -148,4 +148,29 @@ TEST_F(SpeechPipelineTest, KeepsBufferedSpeechScopedPerSession) {
   EXPECT_EQ(beta_restart.segment_index, 1u);
 }
 
+TEST_F(SpeechPipelineTest, ResetSessionClearsBufferedSpeechForThatSessionOnly) {
+  ravbot::MobileModelsConfig config;
+  config.stt_model = "SenseVoiceSmall";
+
+  ravbot::mobile::SpeechPipeline pipeline(config, test_dir_, MakeLogger());
+  int16_t samples[4] = {1, 2, 3, 4};
+
+  EXPECT_FALSE(
+      pipeline.PushPcm16("session-alpha", samples, 4, 16000, false).text.empty());
+  EXPECT_FALSE(
+      pipeline.PushPcm16("session-beta", samples, 4, 16000, false).text.empty());
+
+  pipeline.ResetSession("session-alpha");
+
+  EXPECT_TRUE(pipeline.Flush("session-alpha").text.empty());
+  auto beta_final = pipeline.Flush("session-beta");
+  EXPECT_TRUE(beta_final.is_final);
+  EXPECT_EQ(beta_final.segment_index, 1u);
+
+  auto alpha_restart =
+      pipeline.PushPcm16("session-alpha", samples, 4, 16000, true);
+  EXPECT_TRUE(alpha_restart.is_final);
+  EXPECT_EQ(alpha_restart.segment_index, 1u);
+}
+
 }  // namespace

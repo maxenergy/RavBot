@@ -187,6 +187,13 @@ void SpeechPipeline::Interrupt(const std::string& session_key) {
   ResetPendingUtterance(&state, false);
 }
 
+void SpeechPipeline::ResetSession(const std::string& session_key) {
+  if (session_key.empty()) {
+    return;
+  }
+  session_states_.erase(session_key);
+}
+
 AsrUpdate SpeechPipeline::BuildPlaceholderUpdate(const SessionState& state,
                                                  bool is_final) const {
   if (!state.has_pending_audio) {

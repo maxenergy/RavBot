@@ -84,6 +84,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - Native placeholder `SpeechPipeline` buffering, flush, interrupt, and
   utterance indexing are now scoped per mobile session, so one conversation's
   buffered speech no longer leaks into another session's ASR turn
+- Rebinding the same mobile `sessionKey` now clears volatile camera snapshots,
+  device status, vision sampling state, and pending ASR buffers for that
+  session, while keeping the persisted conversation history intact
 - Avatar mouth motion driven by microphone level while listening and by a
   synthetic speaking envelope while Android `TextToSpeech` is active
 - Native `SpeechPipeline` facade for STT/TTS asset readiness and placeholder ASR

@@ -711,7 +711,13 @@ class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
     interrupted_sessions.push_back(session_key);
   }
 
+  void ResetSession(const std::string& session_key) override {
+    session_states.erase(session_key);
+    reset_sessions.push_back(session_key);
+  }
+
   std::vector<std::string> interrupted_sessions;
+  std::vector<std::string> reset_sessions;
   std::unordered_map<std::string, SessionState> session_states;
 
  private:
@@ -1219,6 +1225,44 @@ TEST_F(MobileEngineTest, FlushAudioTurnAndInterruptStayScopedPerSession) {
   EXPECT_EQ(final_event_count, 1u);
   EXPECT_TRUE(saw_a_final);
   EXPECT_FALSE(saw_b_final);
+}
+
+TEST_F(MobileEngineTest, StartSessionClearsPendingAudioForSameSession) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  engine.SetTextProvider(
+      std::make_shared<FakeTextProvider>("speech reply after reset"));
+  auto asr_provider = std::make_shared<FakeAsrProvider>();
+  engine.SetAsrProvider(asr_provider);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
+
+  int16_t samples[4] = {1, 2, 3, 4};
+  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-reset", samples, 4, 16000,
+                               false));
+
+  ASSERT_EQ(engine.StartSession("agent:main:speech-reset"),
+            "agent:main:speech-reset");
+  EXPECT_FALSE(engine.FlushAudioTurn("agent:main:speech-reset"));
+  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-reset", samples, 4, 16000,
+                               true));
+
+  ASSERT_EQ(asr_provider->reset_sessions.size(), 1u);
+  EXPECT_EQ(asr_provider->reset_sessions[0], "agent:main:speech-reset");
+
+  auto asr_final = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventMobileAsrFinal &&
+               event.payload.value("sessionKey", "") ==
+                   "agent:main:speech-reset";
+      });
+  ASSERT_NE(asr_final, events.end());
+  EXPECT_EQ(asr_final->payload["segmentIndex"], 1);
+  EXPECT_EQ(asr_final->payload["endReason"], "vad_silence");
 }
 
 TEST_F(MobileEngineTest, PushCameraFrameRequiresForegroundWhenConfigured) {
@@ -1919,6 +1963,49 @@ TEST_F(MobileEngineTest, CameraSnapshotReportsBackgroundGatedReason) {
             std::string::npos);
   EXPECT_EQ(history[3].content[0].text,
             "Camera snapshot unavailable because background_gated.");
+}
+
+TEST_F(MobileEngineTest, StartSessionClearsVolatileCameraStateForSameSession) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider =
+      std::make_shared<FakeMissingCameraToolCallingTextProvider>();
+  auto vision = std::make_shared<FakeVisionProvider>();
+  engine.SetTextProvider(provider);
+  engine.SetVisionProvider(vision);
+
+  ravbot::mobile::DeviceStatusSnapshot status;
+  status.service_running = true;
+  status.capture_requested = true;
+  status.permissions_granted = true;
+  status.camera_status = "running";
+  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:camera-reset", status));
+
+  ravbot::mobile::CameraFrame frame;
+  frame.width = 320;
+  frame.height = 240;
+  frame.format = "YUV420_LUMA";
+  frame.timestamp_ms = 4242;
+  frame.data.assign(320 * 240, static_cast<uint8_t>(128));
+  ASSERT_TRUE(engine.PushCameraFrame("agent:main:camera-reset", frame));
+
+  ASSERT_EQ(engine.StartSession("agent:main:camera-reset"),
+            "agent:main:camera-reset");
+  ASSERT_TRUE(
+      engine.SendTextTurn("agent:main:camera-reset", "What do you see now?"));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  auto history = engine.session_manager().GetHistory("agent:main:camera-reset");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "camera_snapshot");
+  EXPECT_NE(history[2].content[0].content.find("\"available\": false"),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"reason\": \"no_frame_yet\""),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"deviceStatusAvailable\": false"),
+            std::string::npos);
+  EXPECT_EQ(history[3].content[0].text,
+            "No camera snapshot is available for this session.");
 }
 
 TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryWriteToolRoundTrip) {

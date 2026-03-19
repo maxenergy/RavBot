@@ -263,6 +263,7 @@ void MobileEngine::UnsubscribeEvents(const std::string& subscription_id) {
 std::string MobileEngine::StartSession(const std::string& session_key,
                                        const std::string& display_name) {
   auto handle = session_manager_.GetOrCreate(session_key, display_name, "mobile");
+  ResetSessionRuntimeState(handle.session_key);
   EmitRuntimeStatus();
   AvatarState initial_state = AvatarState::kIdle;
   try {
@@ -559,6 +560,23 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
 
 void MobileEngine::EmitRuntimeStatus() const {
   Emit(kEventMobileRuntimeStatus, BuildRuntimeStatusPayload());
+}
+
+void MobileEngine::ResetSessionRuntimeState(const std::string& session_key) {
+  if (session_key.empty()) {
+    return;
+  }
+
+  {
+    std::unique_lock<std::shared_mutex> lock(state_mutex_);
+    device_statuses_.erase(session_key);
+    last_vision_observations_.erase(session_key);
+    vision_sampling_states_.erase(session_key);
+  }
+
+  if (asr_provider_) {
+    asr_provider_->ResetSession(session_key);
+  }
 }
 
 void MobileEngine::SetAvatarState(AvatarState state,

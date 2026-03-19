@@ -38,6 +38,7 @@ class MobileAsrProvider {
                               bool end_of_turn) = 0;
   virtual AsrUpdate Flush(const std::string& session_key) = 0;
   virtual void Interrupt(const std::string& session_key) = 0;
+  virtual void ResetSession(const std::string& session_key) = 0;
 };
 
 class MobileVisionProvider {
@@ -99,6 +100,7 @@ class MobileEngine {
   void Emit(const std::string& event_name, const nlohmann::json& payload) const;
   nlohmann::json BuildRuntimeStatusPayload() const;
   void EmitRuntimeStatus() const;
+  void ResetSessionRuntimeState(const std::string& session_key);
   void SetAvatarState(AvatarState state, const std::string& session_key = "");
   bool ShouldProcessVisionFrame(const std::string& session_key,
                                 const CameraFrame& frame);

@@ -44,6 +44,7 @@ class SpeechPipeline : public MobileAsrProvider {
                       bool end_of_turn) override;
   AsrUpdate Flush(const std::string& session_key) override;
   void Interrupt(const std::string& session_key) override;
+  void ResetSession(const std::string& session_key) override;
 
   const RuntimeStatus& runtime_status() const { return runtime_status_; }
 
