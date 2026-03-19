@@ -525,6 +525,8 @@ private fun RavbotHostScreen() {
               cameraStatus = cameraStatus,
               speakerStatus = speakerStatus,
               assistantStatus = assistantStatus,
+              hostWebSearchEnabled = hostWebSearchEnabled,
+              hostWebFetchEnabled = hostWebFetchEnabled,
           ),
       )
       serviceRunning = true
@@ -900,6 +902,8 @@ private fun RavbotHostScreen() {
                         cameraStatus = cameraStatus,
                         speakerStatus = speakerStatus,
                         assistantStatus = assistantStatus,
+                        hostWebSearchEnabled = hostWebSearchEnabled,
+                        hostWebFetchEnabled = hostWebFetchEnabled,
                     ),
                 )
                 serviceRunning = true
@@ -1071,6 +1075,8 @@ private fun RavbotHostScreen() {
       cameraStatus,
       speakerStatus,
       assistantStatus,
+      hostWebSearchEnabled,
+      hostWebFetchEnabled,
   ) {
     if (!serviceRunning) {
       return@LaunchedEffect
@@ -1084,6 +1090,8 @@ private fun RavbotHostScreen() {
             cameraStatus = cameraStatus,
             speakerStatus = speakerStatus,
             assistantStatus = assistantStatus,
+            hostWebSearchEnabled = hostWebSearchEnabled,
+            hostWebFetchEnabled = hostWebFetchEnabled,
         ),
     )
   }

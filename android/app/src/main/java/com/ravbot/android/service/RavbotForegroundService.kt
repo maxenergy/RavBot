@@ -19,6 +19,8 @@ class RavbotForegroundService : Service() {
   private var cameraStatus = "stopped"
   private var speakerStatus = "idle"
   private var assistantStatus = "idle"
+  private var hostWebSearchEnabled = true
+  private var hostWebFetchEnabled = true
 
   override fun onBind(intent: Intent?): IBinder? = null
 
@@ -78,7 +80,9 @@ class RavbotForegroundService : Service() {
   private fun buildNotificationSummary(): String {
     val sessionLine = if (sessionReady) "session ready" else "session idle"
     val captureLine = if (captureRequested) "capture on" else "capture off"
-    return "$sessionLine | $captureLine | mic $microphoneStatus | cam $cameraStatus"
+    val webSearchLine = if (hostWebSearchEnabled) "web search on" else "web search off"
+    val webFetchLine = if (hostWebFetchEnabled) "web fetch on" else "web fetch off"
+    return "$sessionLine | $captureLine | $webSearchLine | $webFetchLine"
   }
 
   private fun buildNotificationDetails(): String {
@@ -90,6 +94,8 @@ class RavbotForegroundService : Service() {
             "Camera: $cameraStatus",
             "Speaker: $speakerStatus",
             "Assistant: $assistantStatus",
+            "Host web search: ${if (hostWebSearchEnabled) "enabled" else "disabled"}",
+            "Host web fetch: ${if (hostWebFetchEnabled) "enabled" else "disabled"}",
         )
         .joinToString("\n")
   }
@@ -131,6 +137,12 @@ class RavbotForegroundService : Service() {
     intent.getStringExtra(EXTRA_CAMERA_STATUS)?.let { cameraStatus = it }
     intent.getStringExtra(EXTRA_SPEAKER_STATUS)?.let { speakerStatus = it }
     intent.getStringExtra(EXTRA_ASSISTANT_STATUS)?.let { assistantStatus = it }
+    if (intent.hasExtra(EXTRA_HOST_WEB_SEARCH_ENABLED)) {
+      hostWebSearchEnabled = intent.getBooleanExtra(EXTRA_HOST_WEB_SEARCH_ENABLED, true)
+    }
+    if (intent.hasExtra(EXTRA_HOST_WEB_FETCH_ENABLED)) {
+      hostWebFetchEnabled = intent.getBooleanExtra(EXTRA_HOST_WEB_FETCH_ENABLED, true)
+    }
   }
 
   private fun ensureNotificationChannel() {
@@ -160,6 +172,8 @@ class RavbotForegroundService : Service() {
     const val EXTRA_CAMERA_STATUS = "camera_status"
     const val EXTRA_SPEAKER_STATUS = "speaker_status"
     const val EXTRA_ASSISTANT_STATUS = "assistant_status"
+    const val EXTRA_HOST_WEB_SEARCH_ENABLED = "host_web_search_enabled"
+    const val EXTRA_HOST_WEB_FETCH_ENABLED = "host_web_fetch_enabled"
 
     private const val CHANNEL_ID = "ravbot.runtime"
     private const val NOTIFICATION_ID = 1001
@@ -174,6 +188,8 @@ class RavbotForegroundService : Service() {
         cameraStatus: String = "stopped",
         speakerStatus: String = "idle",
         assistantStatus: String = "idle",
+        hostWebSearchEnabled: Boolean = true,
+        hostWebFetchEnabled: Boolean = true,
     ): Intent {
       return Intent(context, RavbotForegroundService::class.java)
           .setAction(ACTION_START)
@@ -183,6 +199,8 @@ class RavbotForegroundService : Service() {
           .putExtra(EXTRA_CAMERA_STATUS, cameraStatus)
           .putExtra(EXTRA_SPEAKER_STATUS, speakerStatus)
           .putExtra(EXTRA_ASSISTANT_STATUS, assistantStatus)
+          .putExtra(EXTRA_HOST_WEB_SEARCH_ENABLED, hostWebSearchEnabled)
+          .putExtra(EXTRA_HOST_WEB_FETCH_ENABLED, hostWebFetchEnabled)
     }
 
     fun createStopIntent(context: Context): Intent {
@@ -198,6 +216,8 @@ class RavbotForegroundService : Service() {
         cameraStatus: String,
         speakerStatus: String,
         assistantStatus: String,
+        hostWebSearchEnabled: Boolean,
+        hostWebFetchEnabled: Boolean,
     ): Intent {
       return Intent(context, RavbotForegroundService::class.java)
           .setAction(ACTION_UPDATE_STATUS)
@@ -207,6 +227,8 @@ class RavbotForegroundService : Service() {
           .putExtra(EXTRA_CAMERA_STATUS, cameraStatus)
           .putExtra(EXTRA_SPEAKER_STATUS, speakerStatus)
           .putExtra(EXTRA_ASSISTANT_STATUS, assistantStatus)
+          .putExtra(EXTRA_HOST_WEB_SEARCH_ENABLED, hostWebSearchEnabled)
+          .putExtra(EXTRA_HOST_WEB_FETCH_ENABLED, hostWebFetchEnabled)
     }
   }
 }

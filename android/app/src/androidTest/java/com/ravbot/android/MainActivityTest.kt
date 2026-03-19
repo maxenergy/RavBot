@@ -58,6 +58,8 @@ class MainActivityTest {
             cameraStatus = "running",
             speakerStatus = "speaking",
             assistantStatus = "streaming",
+            hostWebSearchEnabled = false,
+            hostWebFetchEnabled = true,
         )
 
     assertEquals(RavbotForegroundService.ACTION_UPDATE_STATUS, intent.action)
@@ -78,6 +80,14 @@ class MainActivityTest {
     assertEquals(
         "streaming",
         intent.getStringExtra(RavbotForegroundService.EXTRA_ASSISTANT_STATUS),
+    )
+    assertEquals(
+        false,
+        intent.getBooleanExtra(RavbotForegroundService.EXTRA_HOST_WEB_SEARCH_ENABLED, true),
+    )
+    assertEquals(
+        true,
+        intent.getBooleanExtra(RavbotForegroundService.EXTRA_HOST_WEB_FETCH_ENABLED, false),
     )
   }
 }
