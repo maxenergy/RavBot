@@ -103,4 +103,62 @@ class RuntimeStatusParsingTest {
         describeToolAvailability(payload),
     )
   }
+
+  @Test
+  fun describeHostCapabilitiesListsBlockedCapabilitiesWithReasons() {
+    val payload =
+        """
+          {
+            "hostCapabilities": {
+              "camera": {
+                "ready": false,
+                "reason": "background_gated"
+              },
+              "capture": {
+                "ready": false,
+                "reason": "background_gated"
+              },
+              "microphone": {
+                "ready": true
+              }
+            }
+          }
+        """.trimIndent()
+
+    assertEquals(
+        "camera (background_gated), capture (background_gated)",
+        describeHostCapabilities(payload),
+    )
+  }
+
+  @Test
+  fun describeDeviceStatusIncludesBlockedHostCapabilitiesSummary() {
+    val payload =
+        """
+          {
+            "foreground": false,
+            "serviceRunning": true,
+            "captureRequested": true,
+            "permissionsGranted": true,
+            "microphoneStatus": "running",
+            "cameraStatus": "running",
+            "speakerStatus": "idle",
+            "hostCapabilities": {
+              "camera": {
+                "ready": false,
+                "reason": "background_gated"
+              },
+              "capture": {
+                "ready": false,
+                "reason": "background_gated"
+              }
+            }
+          }
+        """.trimIndent()
+
+    assertEquals(
+        "background | service on | capture on | permissions ok | mic running | cam running | speaker idle | blocked camera (background_gated), capture (background_gated)",
+        describeDeviceStatus(payload),
+    )
+  }
 }

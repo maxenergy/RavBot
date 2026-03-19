@@ -10,10 +10,11 @@
 #include <utility>
 #include <vector>
 
-#include <gtest/gtest.h>
 #include <spdlog/sinks/null_sink.h>
 
 #include "ravbot/mobile/mobile_engine.hpp"
+
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -21,8 +22,8 @@ class FakeTextProvider : public ravbot::LLMProvider {
  public:
   explicit FakeTextProvider(std::string reply) : reply_(std::move(reply)) {}
 
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     last_request_ = request;
     ravbot::ChatCompletionResponse response;
     response.content = reply_;
@@ -37,7 +38,9 @@ class FakeTextProvider : public ravbot::LLMProvider {
     callback(ChatCompletion(request));
   }
 
-  std::string GetProviderName() const override { return "fake"; }
+  std::string GetProviderName() const override {
+    return "fake";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-model"};
   }
@@ -50,8 +53,8 @@ class FakeTextProvider : public ravbot::LLMProvider {
 
 class FakeStreamingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     last_request_ = request;
     ravbot::ChatCompletionResponse response;
     response.content = "unused";
@@ -76,7 +79,9 @@ class FakeStreamingTextProvider : public ravbot::LLMProvider {
     callback(second);
   }
 
-  std::string GetProviderName() const override { return "fake-stream"; }
+  std::string GetProviderName() const override {
+    return "fake-stream";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-stream-model"};
   }
@@ -86,8 +91,8 @@ class FakeStreamingTextProvider : public ravbot::LLMProvider {
 
 class FakeToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -120,7 +125,9 @@ class FakeToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-tool"; }
+  std::string GetProviderName() const override {
+    return "fake-tool";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-tool-model"};
   }
@@ -130,8 +137,8 @@ class FakeToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeCameraToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -140,8 +147,7 @@ class FakeCameraToolCallingTextProvider : public ravbot::LLMProvider {
           last.content.front().type == "tool_result" &&
           last.content.front().content.find("desk with phone") !=
               std::string::npos) {
-        response.content =
-            "Latest camera observation shows a desk with phone.";
+        response.content = "Latest camera observation shows a desk with phone.";
         return response;
       }
     }
@@ -165,7 +171,9 @@ class FakeCameraToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-camera-tool"; }
+  std::string GetProviderName() const override {
+    return "fake-camera-tool";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-camera-tool-model"};
   }
@@ -175,8 +183,8 @@ class FakeCameraToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeMissingCameraToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -223,8 +231,8 @@ class FakeMissingCameraToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeMemoryWriteToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -259,7 +267,9 @@ class FakeMemoryWriteToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-memory-write"; }
+  std::string GetProviderName() const override {
+    return "fake-memory-write";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-memory-write-model"};
   }
@@ -269,8 +279,8 @@ class FakeMemoryWriteToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeMemorySearchToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -303,7 +313,9 @@ class FakeMemorySearchToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-memory-search"; }
+  std::string GetProviderName() const override {
+    return "fake-memory-search";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-memory-search-model"};
   }
@@ -313,8 +325,8 @@ class FakeMemorySearchToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeMemoryListToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -349,7 +361,9 @@ class FakeMemoryListToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-memory-list"; }
+  std::string GetProviderName() const override {
+    return "fake-memory-list";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-memory-list-model"};
   }
@@ -359,8 +373,8 @@ class FakeMemoryListToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeMemoryDeleteToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -393,7 +407,9 @@ class FakeMemoryDeleteToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-memory-delete"; }
+  std::string GetProviderName() const override {
+    return "fake-memory-delete";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-memory-delete-model"};
   }
@@ -403,8 +419,8 @@ class FakeMemoryDeleteToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeTimeToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -438,7 +454,9 @@ class FakeTimeToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-time-tool"; }
+  std::string GetProviderName() const override {
+    return "fake-time-tool";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-time-tool-model"};
   }
@@ -448,8 +466,8 @@ class FakeTimeToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeVibrateToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -482,7 +500,9 @@ class FakeVibrateToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-vibrate-tool"; }
+  std::string GetProviderName() const override {
+    return "fake-vibrate-tool";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-vibrate-tool-model"};
   }
@@ -492,8 +512,8 @@ class FakeVibrateToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeRuntimeStatusToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -540,8 +560,8 @@ class FakeRuntimeStatusToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeWebSearchToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -574,7 +594,9 @@ class FakeWebSearchToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-web-search"; }
+  std::string GetProviderName() const override {
+    return "fake-web-search";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-web-search-model"};
   }
@@ -584,8 +606,8 @@ class FakeWebSearchToolCallingTextProvider : public ravbot::LLMProvider {
 
 class FakeWebFetchToolCallingTextProvider : public ravbot::LLMProvider {
  public:
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -621,7 +643,9 @@ class FakeWebFetchToolCallingTextProvider : public ravbot::LLMProvider {
     callback(response);
   }
 
-  std::string GetProviderName() const override { return "fake-web-fetch"; }
+  std::string GetProviderName() const override {
+    return "fake-web-fetch";
+  }
   std::vector<std::string> GetSupportedModels() const override {
     return {"fake-web-fetch-model"};
   }
@@ -629,8 +653,8 @@ class FakeWebFetchToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
-std::vector<std::string> tool_names(
-    const ravbot::ChatCompletionRequest& request) {
+std::vector<std::string>
+tool_names(const ravbot::ChatCompletionRequest& request) {
   std::vector<std::string> names;
   for (const auto& tool : request.tools) {
     names.push_back(tool["function"].value("name", ""));
@@ -643,11 +667,10 @@ bool json_array_contains_string(const nlohmann::json& array,
   if (!array.is_array()) {
     return false;
   }
-  return std::any_of(array.begin(), array.end(),
-                     [&value](const nlohmann::json& entry) {
-                       return entry.is_string() &&
-                              entry.get<std::string>() == value;
-                     });
+  return std::any_of(
+      array.begin(), array.end(), [&value](const nlohmann::json& entry) {
+        return entry.is_string() && entry.get<std::string>() == value;
+      });
 }
 
 class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
@@ -660,8 +683,7 @@ class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
 
   ravbot::mobile::AsrUpdate PushPcm16(const std::string& session_key,
                                       const int16_t* samples,
-                                      size_t sample_count,
-                                      int sample_rate_hz,
+                                      size_t sample_count, int sample_rate_hz,
                                       bool end_of_turn) override {
     auto& state = session_states[session_key];
     (void)samples;
@@ -721,8 +743,7 @@ class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
   std::unordered_map<std::string, SessionState> session_states;
 
  private:
-  ravbot::mobile::AsrUpdate FinalUpdate(SessionState& state,
-                                        int sample_rate_hz,
+  ravbot::mobile::AsrUpdate FinalUpdate(SessionState& state, int sample_rate_hz,
                                         const std::string& end_reason) {
     (void)sample_rate_hz;
     state.has_pending_audio = false;
@@ -742,12 +763,24 @@ class FakeAsrProvider : public ravbot::mobile::MobileAsrProvider {
 
 class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
  public:
-  std::string ResolveStateDirectory() const override { return "/tmp/state"; }
-  std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
-  bool IsForeground() const override { return true; }
-  bool SupportsWebSearch() const override { return true; }
-  bool SupportsWebFetch() const override { return true; }
-  bool SupportsVibration() const override { return true; }
+  std::string ResolveStateDirectory() const override {
+    return "/tmp/state";
+  }
+  std::string ResolveModelsDirectory() const override {
+    return "/tmp/models";
+  }
+  bool IsForeground() const override {
+    return true;
+  }
+  bool SupportsWebSearch() const override {
+    return true;
+  }
+  bool SupportsWebFetch() const override {
+    return true;
+  }
+  bool SupportsVibration() const override {
+    return true;
+  }
 
   void SetAvatarState(const std::string& session_key,
                       ravbot::mobile::AvatarState state) override {
@@ -770,8 +803,7 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   }
 
   std::string WebSearch(const std::string& session_key,
-                        const std::string& query,
-                        int count,
+                        const std::string& query, int count,
                         const std::string& freshness) override {
     web_search_calls.push_back({session_key, query, count, freshness});
     return nlohmann::json{
@@ -787,8 +819,7 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
         .dump(2);
   }
 
-  std::string WebFetch(const std::string& session_key,
-                       const std::string& url,
+  std::string WebFetch(const std::string& session_key, const std::string& url,
                        int max_chars) override {
     web_fetch_calls.push_back({session_key, url, max_chars});
     return nlohmann::json{
@@ -811,13 +842,24 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   std::vector<std::tuple<std::string, std::string, int>> web_fetch_calls;
 };
 
-class FakeSpeechOnlyDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
+class FakeSpeechOnlyDeviceBridge
+    : public ravbot::mobile::DeviceCapabilityBridge {
  public:
-  std::string ResolveStateDirectory() const override { return "/tmp/state"; }
-  std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
-  bool IsForeground() const override { return true; }
-  bool SupportsWebSearch() const override { return false; }
-  bool SupportsWebFetch() const override { return false; }
+  std::string ResolveStateDirectory() const override {
+    return "/tmp/state";
+  }
+  std::string ResolveModelsDirectory() const override {
+    return "/tmp/models";
+  }
+  bool IsForeground() const override {
+    return true;
+  }
+  bool SupportsWebSearch() const override {
+    return false;
+  }
+  bool SupportsWebFetch() const override {
+    return false;
+  }
 
   void SetAvatarState(const std::string& /*session_key*/,
                       ravbot::mobile::AvatarState /*state*/) override {}
@@ -825,14 +867,12 @@ class FakeSpeechOnlyDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge
                              const std::string& /*text*/) override {}
   void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
   std::string WebSearch(const std::string& /*session_key*/,
-                        const std::string& /*query*/,
-                        int /*count*/,
+                        const std::string& /*query*/, int /*count*/,
                         const std::string& /*freshness*/) override {
     return "{}";
   }
   std::string WebFetch(const std::string& /*session_key*/,
-                       const std::string& /*url*/,
-                       int /*max_chars*/) override {
+                       const std::string& /*url*/, int /*max_chars*/) override {
     return "{}";
   }
 };
@@ -840,11 +880,21 @@ class FakeSpeechOnlyDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge
 class FakeWebSearchOnlyDeviceBridge
     : public ravbot::mobile::DeviceCapabilityBridge {
  public:
-  std::string ResolveStateDirectory() const override { return "/tmp/state"; }
-  std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
-  bool IsForeground() const override { return true; }
-  bool SupportsWebSearch() const override { return true; }
-  bool SupportsWebFetch() const override { return false; }
+  std::string ResolveStateDirectory() const override {
+    return "/tmp/state";
+  }
+  std::string ResolveModelsDirectory() const override {
+    return "/tmp/models";
+  }
+  bool IsForeground() const override {
+    return true;
+  }
+  bool SupportsWebSearch() const override {
+    return true;
+  }
+  bool SupportsWebFetch() const override {
+    return false;
+  }
 
   void SetAvatarState(const std::string& /*session_key*/,
                       ravbot::mobile::AvatarState /*state*/) override {}
@@ -852,14 +902,12 @@ class FakeWebSearchOnlyDeviceBridge
                              const std::string& /*text*/) override {}
   void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
   std::string WebSearch(const std::string& /*session_key*/,
-                        const std::string& /*query*/,
-                        int /*count*/,
+                        const std::string& /*query*/, int /*count*/,
                         const std::string& /*freshness*/) override {
     return "{}";
   }
   std::string WebFetch(const std::string& /*session_key*/,
-                       const std::string& /*url*/,
-                       int /*max_chars*/) override {
+                       const std::string& /*url*/, int /*max_chars*/) override {
     return "{}";
   }
 };
@@ -867,11 +915,21 @@ class FakeWebSearchOnlyDeviceBridge
 class FakeWebFetchOnlyDeviceBridge
     : public ravbot::mobile::DeviceCapabilityBridge {
  public:
-  std::string ResolveStateDirectory() const override { return "/tmp/state"; }
-  std::string ResolveModelsDirectory() const override { return "/tmp/models"; }
-  bool IsForeground() const override { return true; }
-  bool SupportsWebSearch() const override { return false; }
-  bool SupportsWebFetch() const override { return true; }
+  std::string ResolveStateDirectory() const override {
+    return "/tmp/state";
+  }
+  std::string ResolveModelsDirectory() const override {
+    return "/tmp/models";
+  }
+  bool IsForeground() const override {
+    return true;
+  }
+  bool SupportsWebSearch() const override {
+    return false;
+  }
+  bool SupportsWebFetch() const override {
+    return true;
+  }
 
   void SetAvatarState(const std::string& /*session_key*/,
                       ravbot::mobile::AvatarState /*state*/) override {}
@@ -879,28 +937,28 @@ class FakeWebFetchOnlyDeviceBridge
                              const std::string& /*text*/) override {}
   void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
   std::string WebSearch(const std::string& /*session_key*/,
-                        const std::string& /*query*/,
-                        int /*count*/,
+                        const std::string& /*query*/, int /*count*/,
                         const std::string& /*freshness*/) override {
     return "{}";
   }
   std::string WebFetch(const std::string& /*session_key*/,
-                       const std::string& /*url*/,
-                       int /*max_chars*/) override {
+                       const std::string& /*url*/, int /*max_chars*/) override {
     return "{}";
   }
 };
 
 class FakeVisionProvider : public ravbot::mobile::MobileVisionProvider {
  public:
-  std::optional<std::string> ObserveFrame(
-      const ravbot::mobile::CameraFrame& frame) override {
+  std::optional<std::string>
+  ObserveFrame(const ravbot::mobile::CameraFrame& frame) override {
     ++call_count;
     last_width = frame.width;
     return "desk with phone";
   }
 
-  std::string ProviderName() const override { return "fake_vision_provider"; }
+  std::string ProviderName() const override {
+    return "fake_vision_provider";
+  }
 
   int call_count = 0;
   int last_width = 0;
@@ -913,8 +971,8 @@ class FakeUnavailableCameraReasonToolCallingTextProvider
       std::string expected_reason)
       : expected_reason_(std::move(expected_reason)) {}
 
-  ravbot::ChatCompletionResponse ChatCompletion(
-      const ravbot::ChatCompletionRequest& request) override {
+  ravbot::ChatCompletionResponse
+  ChatCompletion(const ravbot::ChatCompletionRequest& request) override {
     ravbot::ChatCompletionResponse response;
     response.finish_reason = "stop";
     if (!request.messages.empty()) {
@@ -924,7 +982,7 @@ class FakeUnavailableCameraReasonToolCallingTextProvider
           last.content.front().content.find("\"available\": false") !=
               std::string::npos &&
           last.content.front().content.find("\"reason\": \"" +
-                                                expected_reason_ + "\"") !=
+                                            expected_reason_ + "\"") !=
               std::string::npos) {
         response.content =
             "Camera snapshot unavailable because " + expected_reason_ + ".";
@@ -969,13 +1027,15 @@ class MobileEngineTest : public ::testing::Test {
   void SetUp() override {
     auto sink = std::make_shared<spdlog::sinks::null_sink_mt>();
     logger_ = std::make_shared<spdlog::logger>("mobile-engine-test", sink);
-    test_dir_ = std::filesystem::temp_directory_path() /
-                "ravbot_mobile_engine_test";
+    test_dir_ =
+        std::filesystem::temp_directory_path() / "ravbot_mobile_engine_test";
     std::filesystem::remove_all(test_dir_);
     std::filesystem::create_directories(test_dir_);
   }
 
-  void TearDown() override { std::filesystem::remove_all(test_dir_); }
+  void TearDown() override {
+    std::filesystem::remove_all(test_dir_);
+  }
 
   ravbot::RavBotConfig MakeConfig() {
     ravbot::RavBotConfig config;
@@ -1036,10 +1096,9 @@ TEST_F(MobileEngineTest, StartSessionUsesConfiguredAvatarDefaultState) {
   ravbot::mobile::MobileEngine engine(config, test_dir_, test_dir_, logger_);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   EXPECT_EQ(engine.StartSession("agent:main:avatar"), "agent:main:avatar");
   ASSERT_FALSE(events.empty());
@@ -1083,6 +1142,14 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
   EXPECT_FALSE(first_status->payload["hostHapticsEnabled"]);
   EXPECT_EQ(first_status->payload["microphoneStatus"], "running");
   EXPECT_EQ(first_status->payload["speakerStatus"], "speaking");
+  EXPECT_TRUE(first_status->payload.contains("hostCapabilities"));
+  EXPECT_TRUE(first_status->payload["hostCapabilities"]["capture"]["ready"]);
+  EXPECT_TRUE(first_status->payload["hostCapabilities"]["microphone"]["ready"]);
+  EXPECT_TRUE(first_status->payload["hostCapabilities"]["camera"]["ready"]);
+  EXPECT_EQ(first_status->payload["hostCapabilities"]["webSearch"]["reason"],
+            "device_bridge_missing");
+  EXPECT_EQ(first_status->payload["hostCapabilities"]["haptics"]["reason"],
+            "device_bridge_missing");
 
   engine.SetForegroundState(false);
   auto latest_status = std::find_if(
@@ -1097,13 +1164,16 @@ TEST_F(MobileEngineTest, ReportDeviceStatusEmitsSnapshotAndTracksForeground) {
   EXPECT_FALSE(latest_status->payload["hostWebSearchEnabled"]);
   EXPECT_TRUE(latest_status->payload["hostWebFetchEnabled"]);
   EXPECT_FALSE(latest_status->payload["hostHapticsEnabled"]);
+  EXPECT_EQ(latest_status->payload["hostCapabilities"]["capture"]["reason"],
+            "background_gated");
+  EXPECT_EQ(latest_status->payload["hostCapabilities"]["camera"]["reason"],
+            "background_gated");
 }
 
 TEST_F(MobileEngineTest, PushPcm16UsesAsrProviderForFinalTurn) {
   ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
                                       logger_);
-  engine.SetTextProvider(
-      std::make_shared<FakeTextProvider>("speech reply"));
+  engine.SetTextProvider(std::make_shared<FakeTextProvider>("speech reply"));
   engine.SetAsrProvider(std::make_shared<FakeAsrProvider>());
 
   std::vector<ravbot::mobile::MobileEvent> events;
@@ -1118,11 +1188,11 @@ TEST_F(MobileEngineTest, PushPcm16UsesAsrProviderForFinalTurn) {
   ASSERT_EQ(history.size(), 2u);
   EXPECT_EQ(history[0].content[0].text, "ni hao ravbot");
   EXPECT_EQ(history[1].content[0].text, "speech reply");
-  auto asr_final = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventMobileAsrFinal;
-      });
+  auto asr_final =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventMobileAsrFinal;
+                   });
   ASSERT_NE(asr_final, events.end());
   EXPECT_EQ(asr_final->payload["sessionKey"], "agent:main:speech");
   EXPECT_EQ(asr_final->payload["segmentIndex"], 1);
@@ -1144,8 +1214,8 @@ TEST_F(MobileEngineTest, FlushAudioTurnFinalizesBufferedSpeechTurn) {
   });
 
   int16_t samples[4] = {1, 2, 3, 4};
-  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-flush", samples, 4, 16000,
-                               false));
+  ASSERT_TRUE(
+      engine.PushPcm16("agent:main:speech-flush", samples, 4, 16000, false));
   ASSERT_TRUE(engine.FlushAudioTurn("agent:main:speech-flush"));
 
   auto history = engine.session_manager().GetHistory("agent:main:speech-flush");
@@ -1161,11 +1231,11 @@ TEST_F(MobileEngineTest, FlushAudioTurnFinalizesBufferedSpeechTurn) {
   EXPECT_EQ(asr_partial->payload["sessionKey"], "agent:main:speech-flush");
   EXPECT_EQ(asr_partial->payload["endReason"], "streaming");
 
-  auto asr_final = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventMobileAsrFinal;
-      });
+  auto asr_final =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventMobileAsrFinal;
+                   });
   ASSERT_NE(asr_final, events.end());
   EXPECT_EQ(asr_final->payload["sessionKey"], "agent:main:speech-flush");
   EXPECT_EQ(asr_final->payload["segmentIndex"], 1);
@@ -1187,10 +1257,10 @@ TEST_F(MobileEngineTest, FlushAudioTurnAndInterruptStayScopedPerSession) {
   });
 
   int16_t samples[4] = {1, 2, 3, 4};
-  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-a", samples, 4, 16000,
-                               false));
-  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-b", samples, 4, 16000,
-                               false));
+  ASSERT_TRUE(
+      engine.PushPcm16("agent:main:speech-a", samples, 4, 16000, false));
+  ASSERT_TRUE(
+      engine.PushPcm16("agent:main:speech-b", samples, 4, 16000, false));
 
   engine.InterruptGeneration("agent:main:speech-b");
   ASSERT_TRUE(engine.FlushAudioTurn("agent:main:speech-a"));
@@ -1241,14 +1311,14 @@ TEST_F(MobileEngineTest, StartSessionClearsPendingAudioForSameSession) {
   });
 
   int16_t samples[4] = {1, 2, 3, 4};
-  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-reset", samples, 4, 16000,
-                               false));
+  ASSERT_TRUE(
+      engine.PushPcm16("agent:main:speech-reset", samples, 4, 16000, false));
 
   ASSERT_EQ(engine.StartSession("agent:main:speech-reset"),
             "agent:main:speech-reset");
   EXPECT_FALSE(engine.FlushAudioTurn("agent:main:speech-reset"));
-  ASSERT_TRUE(engine.PushPcm16("agent:main:speech-reset", samples, 4, 16000,
-                               true));
+  ASSERT_TRUE(
+      engine.PushPcm16("agent:main:speech-reset", samples, 4, 16000, true));
 
   ASSERT_EQ(asr_provider->reset_sessions.size(), 1u);
   EXPECT_EQ(asr_provider->reset_sessions[0], "agent:main:speech-reset");
@@ -1272,10 +1342,9 @@ TEST_F(MobileEngineTest, PushCameraFrameRequiresForegroundWhenConfigured) {
   engine.SetVisionProvider(vision);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ravbot::mobile::CameraFrame frame;
   frame.width = 320;
@@ -1289,11 +1358,11 @@ TEST_F(MobileEngineTest, PushCameraFrameRequiresForegroundWhenConfigured) {
   engine.SetForegroundState(true);
   ASSERT_TRUE(engine.PushCameraFrame("agent:main:vision", frame));
   ASSERT_FALSE(events.empty());
-  auto it = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventMobileVisionObservation;
-      });
+  auto it = std::find_if(events.begin(), events.end(),
+                         [](const ravbot::mobile::MobileEvent& event) {
+                           return event.name ==
+                                  ravbot::mobile::kEventMobileVisionObservation;
+                         });
   ASSERT_NE(it, events.end());
   EXPECT_EQ(it->payload["sessionKey"], "agent:main:vision");
   EXPECT_EQ(vision->last_width, 320);
@@ -1379,24 +1448,22 @@ TEST_F(MobileEngineTest, StartSessionEmitsRuntimeStatusWithResolvedModelPaths) {
   auto config = MakeConfig();
   config.mobile.models.llm_model = "Qwen3.5-0.8B-Q4_K_M.gguf";
   config.mobile.models.vlm_model = "SmolVLM-500M-Instruct-Q8_0.gguf";
-  config.mobile.models.mmproj_model =
-      "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf";
+  config.mobile.models.mmproj_model = "mmproj-SmolVLM-500M-Instruct-Q8_0.gguf";
   ravbot::mobile::MobileEngine engine(config, test_dir_, test_dir_, logger_);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_EQ(engine.StartSession("agent:main:runtime-status"),
             "agent:main:runtime-status");
 
-  auto it = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventMobileRuntimeStatus;
-      });
+  auto it = std::find_if(events.begin(), events.end(),
+                         [](const ravbot::mobile::MobileEvent& event) {
+                           return event.name ==
+                                  ravbot::mobile::kEventMobileRuntimeStatus;
+                         });
   ASSERT_NE(it, events.end());
   EXPECT_EQ(it->payload["provider"], "llama_cpp_mobile");
   EXPECT_EQ(it->payload["speechProvider"], "sherpa_onnx_mobile");
@@ -1470,18 +1537,21 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_FALSE(speech_only_status->payload["webSearchReady"].get<bool>());
   EXPECT_FALSE(speech_only_status->payload["webFetchReady"].get<bool>());
   EXPECT_FALSE(speech_only_status->payload["vibrationReady"].get<bool>());
-  EXPECT_FALSE(json_array_contains_string(speech_only_status->payload["availableTools"],
-                                          "web_search"));
-  EXPECT_FALSE(json_array_contains_string(speech_only_status->payload["availableTools"],
-                                          "web_fetch"));
-  EXPECT_FALSE(json_array_contains_string(speech_only_status->payload["availableTools"],
-                                          "vibrate"));
-  EXPECT_EQ(speech_only_status->payload["toolAvailability"]["web_search"]["reason"],
-            "web_search_unsupported");
-  EXPECT_EQ(speech_only_status->payload["toolAvailability"]["web_fetch"]["reason"],
-            "web_fetch_unsupported");
-  EXPECT_EQ(speech_only_status->payload["toolAvailability"]["vibrate"]["reason"],
-            "vibration_unsupported");
+  EXPECT_FALSE(json_array_contains_string(
+      speech_only_status->payload["availableTools"], "web_search"));
+  EXPECT_FALSE(json_array_contains_string(
+      speech_only_status->payload["availableTools"], "web_fetch"));
+  EXPECT_FALSE(json_array_contains_string(
+      speech_only_status->payload["availableTools"], "vibrate"));
+  EXPECT_EQ(
+      speech_only_status->payload["toolAvailability"]["web_search"]["reason"],
+      "web_search_unsupported");
+  EXPECT_EQ(
+      speech_only_status->payload["toolAvailability"]["web_fetch"]["reason"],
+      "web_fetch_unsupported");
+  EXPECT_EQ(
+      speech_only_status->payload["toolAvailability"]["vibrate"]["reason"],
+      "vibration_unsupported");
 
   ravbot::mobile::MobileEngine full_bridge_engine(MakeConfig(), test_dir_,
                                                   test_dir_, logger_);
@@ -1511,18 +1581,21 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_TRUE(full_bridge_status->payload["webSearchReady"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["webFetchReady"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["vibrationReady"].get<bool>());
-  EXPECT_TRUE(json_array_contains_string(full_bridge_status->payload["availableTools"],
-                                         "web_search"));
-  EXPECT_TRUE(json_array_contains_string(full_bridge_status->payload["availableTools"],
-                                         "web_fetch"));
-  EXPECT_TRUE(json_array_contains_string(full_bridge_status->payload["availableTools"],
-                                         "vibrate"));
-  EXPECT_EQ(full_bridge_status->payload["toolAvailability"]["web_search"]["available"],
+  EXPECT_TRUE(json_array_contains_string(
+      full_bridge_status->payload["availableTools"], "web_search"));
+  EXPECT_TRUE(json_array_contains_string(
+      full_bridge_status->payload["availableTools"], "web_fetch"));
+  EXPECT_TRUE(json_array_contains_string(
+      full_bridge_status->payload["availableTools"], "vibrate"));
+  EXPECT_EQ(full_bridge_status
+                ->payload["toolAvailability"]["web_search"]["available"],
             true);
-  EXPECT_EQ(full_bridge_status->payload["toolAvailability"]["web_fetch"]["available"],
-            true);
-  EXPECT_EQ(full_bridge_status->payload["toolAvailability"]["vibrate"]["available"],
-            true);
+  EXPECT_EQ(
+      full_bridge_status->payload["toolAvailability"]["web_fetch"]["available"],
+      true);
+  EXPECT_EQ(
+      full_bridge_status->payload["toolAvailability"]["vibrate"]["available"],
+      true);
 }
 
 TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
@@ -1576,10 +1649,9 @@ TEST_F(MobileEngineTest, ReportTtsPlaybackStateEmitsEventAndAvatarState) {
                                       logger_);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.ReportTtsPlaybackState("agent:main:tts", "speaking"));
   ASSERT_TRUE(engine.ReportTtsPlaybackState("agent:main:tts", "completed"));
@@ -1609,10 +1681,9 @@ TEST_F(MobileEngineTest, SendTextTurnStreamsAssistantDeltaChunks) {
   engine.SetTextProvider(provider);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:stream", "stream please"));
 
@@ -1657,10 +1728,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:tooling", status));
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:tooling", "How is the device?"));
 
@@ -1670,8 +1740,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
             names.end());
   EXPECT_NE(std::find(names.begin(), names.end(), "camera_snapshot"),
             names.end());
-  EXPECT_NE(std::find(names.begin(), names.end(), "memory_list"),
-            names.end());
+  EXPECT_NE(std::find(names.begin(), names.end(), "memory_list"), names.end());
   EXPECT_NE(std::find(names.begin(), names.end(), "memory_search"),
             names.end());
   EXPECT_NE(std::find(names.begin(), names.end(), "memory_delete"),
@@ -1700,34 +1769,44 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"vibrationReady\": false"),
             std::string::npos);
-  EXPECT_NE(history[2].content[0].content.find(
-                "\"hostWebSearchEnabled\": false"),
+  EXPECT_NE(
+      history[2].content[0].content.find("\"hostWebSearchEnabled\": false"),
+      std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"hostWebFetchEnabled\": true"),
             std::string::npos);
-  EXPECT_NE(history[2].content[0].content.find(
-                "\"hostWebFetchEnabled\": true"),
+  EXPECT_NE(history[2].content[0].content.find("\"hostHapticsEnabled\": false"),
             std::string::npos);
-  EXPECT_NE(history[2].content[0].content.find(
-                "\"hostHapticsEnabled\": false"),
-            std::string::npos);
+  const auto device_tool_result =
+      nlohmann::json::parse(history[2].content[0].content);
+  EXPECT_TRUE(device_tool_result.contains("hostCapabilities"));
+  EXPECT_TRUE(device_tool_result["hostCapabilities"]["capture"]["ready"]);
+  EXPECT_TRUE(device_tool_result["hostCapabilities"]["microphone"]["ready"]);
+  EXPECT_TRUE(device_tool_result["hostCapabilities"]["camera"]["ready"]);
+  EXPECT_EQ(device_tool_result["hostCapabilities"]["webSearch"]["reason"],
+            "device_bridge_missing");
+  EXPECT_EQ(device_tool_result["hostCapabilities"]["webFetch"]["reason"],
+            "device_bridge_missing");
+  EXPECT_EQ(device_tool_result["hostCapabilities"]["haptics"]["reason"],
+            "device_bridge_missing");
   EXPECT_EQ(history[3].role, "assistant");
   EXPECT_EQ(history[3].content[0].text,
             "Device status received. Service is running and speaker is "
             "speaking.");
 
-  auto tool_start = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolStart;
-      });
+  auto tool_start =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolStart;
+                   });
   ASSERT_NE(tool_start, events.end());
   EXPECT_EQ(tool_start->payload["sessionKey"], "agent:main:tooling");
   EXPECT_EQ(tool_start->payload["name"], "device_status");
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult;
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult;
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["sessionKey"], "agent:main:tooling");
   EXPECT_EQ(tool_result->payload["status"], "ok");
@@ -1746,15 +1825,60 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"speakerStatus\": \"speaking\""),
             std::string::npos);
+  const auto device_event_result =
+      nlohmann::json::parse(tool_result->payload["result"].get<std::string>());
+  EXPECT_TRUE(device_event_result["hostCapabilities"]["capture"]["ready"]);
+  EXPECT_EQ(device_event_result["hostCapabilities"]["webSearch"]["reason"],
+            "device_bridge_missing");
+  EXPECT_EQ(device_event_result["hostCapabilities"]["haptics"]["reason"],
+            "device_bridge_missing");
 
-  auto assistant_final = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventAssistantFinal;
-      });
+  auto assistant_final =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventAssistantFinal;
+                   });
   ASSERT_NE(assistant_final, events.end());
   EXPECT_EQ(assistant_final->payload["sessionKey"], "agent:main:tooling");
   EXPECT_EQ(assistant_final->payload["finishReason"], "stop");
+}
+
+TEST_F(MobileEngineTest,
+       DeviceStatusCapabilitiesRespectHostTogglesWhenBridgePresent) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  engine.SetDeviceBridge(std::make_shared<FakeDeviceBridge>());
+  auto provider = std::make_shared<FakeToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+
+  ravbot::mobile::DeviceStatusSnapshot status;
+  status.service_running = true;
+  status.capture_requested = true;
+  status.permissions_granted = true;
+  status.host_web_search_enabled = false;
+  status.host_web_fetch_enabled = true;
+  status.host_haptics_enabled = false;
+  status.microphone_status = "running";
+  status.camera_status = "running";
+  status.speaker_status = "idle";
+  ASSERT_TRUE(
+      engine.ReportDeviceStatus("agent:main:tooling-host-toggles", status));
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:tooling-host-toggles",
+                                  "How is the device right now?"));
+
+  auto history =
+      engine.session_manager().GetHistory("agent:main:tooling-host-toggles");
+  ASSERT_EQ(history.size(), 4u);
+  const auto device_tool_result =
+      nlohmann::json::parse(history[2].content[0].content);
+  EXPECT_EQ(device_tool_result["hostCapabilities"]["webSearch"]["reason"],
+            "host_toggle_off");
+  EXPECT_FALSE(device_tool_result["hostCapabilities"]["webSearch"]["ready"]);
+  EXPECT_TRUE(device_tool_result["hostCapabilities"]["webFetch"]["ready"]);
+  EXPECT_EQ(device_tool_result["hostCapabilities"]["haptics"]["reason"],
+            "host_toggle_off");
+  EXPECT_FALSE(device_tool_result["hostCapabilities"]["haptics"]["ready"]);
 }
 
 TEST_F(MobileEngineTest, DeviceStatusToolRoundTripUsesCurrentSessionSnapshot) {
@@ -1770,8 +1894,8 @@ TEST_F(MobileEngineTest, DeviceStatusToolRoundTripUsesCurrentSessionSnapshot) {
   session_a_status.microphone_status = "running";
   session_a_status.camera_status = "running";
   session_a_status.speaker_status = "idle";
-  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:device-a",
-                                        session_a_status));
+  ASSERT_TRUE(
+      engine.ReportDeviceStatus("agent:main:device-a", session_a_status));
 
   ravbot::mobile::DeviceStatusSnapshot session_b_status;
   session_b_status.service_running = true;
@@ -1780,19 +1904,20 @@ TEST_F(MobileEngineTest, DeviceStatusToolRoundTripUsesCurrentSessionSnapshot) {
   session_b_status.microphone_status = "running";
   session_b_status.camera_status = "running";
   session_b_status.speaker_status = "speaking";
-  ASSERT_TRUE(engine.ReportDeviceStatus("agent:main:device-b",
-                                        session_b_status));
-
   ASSERT_TRUE(
-      engine.SendTextTurn("agent:main:device-a", "How is the device right now?"));
+      engine.ReportDeviceStatus("agent:main:device-b", session_b_status));
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:device-a",
+                                  "How is the device right now?"));
 
   auto history = engine.session_manager().GetHistory("agent:main:device-a");
   ASSERT_EQ(history.size(), 4u);
   EXPECT_EQ(history[1].content[0].name, "device_status");
   EXPECT_NE(history[2].content[0].content.find("\"speakerStatus\": \"idle\""),
             std::string::npos);
-  EXPECT_EQ(history[2].content[0].content.find("\"speakerStatus\": \"speaking\""),
-            std::string::npos);
+  EXPECT_EQ(
+      history[2].content[0].content.find("\"speakerStatus\": \"speaking\""),
+      std::string::npos);
 }
 
 TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
@@ -1820,10 +1945,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   ASSERT_TRUE(engine.PushCameraFrame("agent:main:camera-tool", frame));
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(
       engine.SendTextTurn("agent:main:camera-tool", "What do you see now?"));
@@ -1841,10 +1965,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   EXPECT_EQ(history[1].content[0].name, "camera_snapshot");
   EXPECT_EQ(history[2].role, "user");
   EXPECT_EQ(history[2].content[0].type, "tool_result");
-  EXPECT_NE(history[2].content[0].content.find("\"summary\": \"desk with phone\""),
-            std::string::npos);
-  EXPECT_NE(history[2].content[0].content.find("\"capturedWhileForeground\": true"),
-            std::string::npos);
+  EXPECT_NE(
+      history[2].content[0].content.find("\"summary\": \"desk with phone\""),
+      std::string::npos);
+  EXPECT_NE(
+      history[2].content[0].content.find("\"capturedWhileForeground\": true"),
+      std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"stale\": true"),
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"ageMs\":"),
@@ -1859,6 +1985,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"captureRequested\": true"),
             std::string::npos);
+  const auto camera_tool_result =
+      nlohmann::json::parse(history[2].content[0].content);
+  EXPECT_TRUE(camera_tool_result["hostCapabilities"]["capture"]["ready"]);
+  EXPECT_TRUE(camera_tool_result["hostCapabilities"]["camera"]["ready"]);
+  EXPECT_EQ(camera_tool_result["hostCapabilities"]["webSearch"]["reason"],
+            "device_bridge_missing");
   EXPECT_EQ(history[3].role, "assistant");
   EXPECT_EQ(history[3].content[0].text,
             "Latest camera observation shows a desk with phone.");
@@ -1878,9 +2010,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"capturedWhileForeground\": true"),
             std::string::npos);
-  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
-                "\"stale\": true"),
-            std::string::npos);
+  EXPECT_NE(
+      tool_result->payload["result"].get<std::string>().find("\"stale\": true"),
+      std::string::npos);
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"visionProvider\": \"fake_vision_provider\""),
             std::string::npos);
@@ -1898,8 +2030,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
 TEST_F(MobileEngineTest, CameraSnapshotStaysScopedToCurrentSession) {
   ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
                                       logger_);
-  auto provider =
-      std::make_shared<FakeMissingCameraToolCallingTextProvider>();
+  auto provider = std::make_shared<FakeMissingCameraToolCallingTextProvider>();
   auto vision = std::make_shared<FakeVisionProvider>();
   engine.SetTextProvider(provider);
   engine.SetVisionProvider(vision);
@@ -1952,15 +2083,21 @@ TEST_F(MobileEngineTest, CameraSnapshotReportsBackgroundGatedReason) {
   EXPECT_EQ(history[1].content[0].name, "camera_snapshot");
   EXPECT_NE(history[2].content[0].content.find("\"available\": false"),
             std::string::npos);
-  EXPECT_NE(history[2].content[0].content.find(
-                "\"reason\": \"background_gated\""),
-            std::string::npos);
+  EXPECT_NE(
+      history[2].content[0].content.find("\"reason\": \"background_gated\""),
+      std::string::npos);
   EXPECT_NE(history[2].content[0].content.find(
                 "\"visionProvider\": \"placeholder_mobile_vision\""),
             std::string::npos);
-  EXPECT_NE(history[2].content[0].content.find(
-                "\"visionProviderPlaceholder\": true"),
-            std::string::npos);
+  EXPECT_NE(
+      history[2].content[0].content.find("\"visionProviderPlaceholder\": true"),
+      std::string::npos);
+  const auto camera_tool_result =
+      nlohmann::json::parse(history[2].content[0].content);
+  EXPECT_EQ(camera_tool_result["hostCapabilities"]["capture"]["reason"],
+            "background_gated");
+  EXPECT_EQ(camera_tool_result["hostCapabilities"]["camera"]["reason"],
+            "background_gated");
   EXPECT_EQ(history[3].content[0].text,
             "Camera snapshot unavailable because background_gated.");
 }
@@ -1968,8 +2105,7 @@ TEST_F(MobileEngineTest, CameraSnapshotReportsBackgroundGatedReason) {
 TEST_F(MobileEngineTest, StartSessionClearsVolatileCameraStateForSameSession) {
   ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
                                       logger_);
-  auto provider =
-      std::make_shared<FakeMissingCameraToolCallingTextProvider>();
+  auto provider = std::make_shared<FakeMissingCameraToolCallingTextProvider>();
   auto vision = std::make_shared<FakeVisionProvider>();
   engine.SetTextProvider(provider);
   engine.SetVisionProvider(vision);
@@ -2002,8 +2138,9 @@ TEST_F(MobileEngineTest, StartSessionClearsVolatileCameraStateForSameSession) {
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"reason\": \"no_frame_yet\""),
             std::string::npos);
-  EXPECT_NE(history[2].content[0].content.find("\"deviceStatusAvailable\": false"),
-            std::string::npos);
+  EXPECT_NE(
+      history[2].content[0].content.find("\"deviceStatusAvailable\": false"),
+      std::string::npos);
   EXPECT_EQ(history[3].content[0].text,
             "No camera snapshot is available for this session.");
 }
@@ -2015,10 +2152,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryWriteToolRoundTrip) {
   engine.SetTextProvider(provider);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:memory-write",
                                   "Write this into mobile memory."));
@@ -2030,12 +2166,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryWriteToolRoundTrip) {
   const std::string content(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(content, "remember the dragonfruit");
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "memory_write";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "memory_write";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
@@ -2058,27 +2194,27 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesMemorySearchToolRoundTrip) {
   }
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:memory-search",
                                   "Search mobile memory for dragonfruit."));
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "memory_search";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "memory_search";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "dragonfruit project status"),
             std::string::npos);
 
-  auto history = engine.session_manager().GetHistory("agent:main:memory-search");
+  auto history =
+      engine.session_manager().GetHistory("agent:main:memory-search");
   ASSERT_EQ(history.size(), 4u);
   EXPECT_EQ(history[1].content[0].name, "memory_search");
   EXPECT_EQ(history[3].content[0].text,
@@ -2103,20 +2239,19 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryListToolRoundTrip) {
   }
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:memory-list",
                                   "List the mobile memory files."));
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "memory_list";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "memory_list";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   const auto result = tool_result->payload["result"].get<std::string>();
@@ -2145,21 +2280,20 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryDeleteToolRoundTrip) {
   ASSERT_TRUE(std::filesystem::exists(memory_file));
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:memory-delete",
                                   "Delete the obsolete note."));
 
   EXPECT_FALSE(std::filesystem::exists(memory_file));
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "memory_delete";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "memory_delete";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
@@ -2180,10 +2314,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesTimeToolRoundTrip) {
   engine.SetTextProvider(provider);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(
       engine.SendTextTurn("agent:main:time", "What time is it on device?"));
@@ -2192,12 +2325,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesTimeToolRoundTrip) {
   const auto names = tool_names(provider->requests.front());
   EXPECT_NE(std::find(names.begin(), names.end(), "time"), names.end());
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "time";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "time";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   const auto result = tool_result->payload["result"].get<std::string>();
@@ -2220,10 +2353,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   engine.SetTextProvider(provider);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:runtime-tool",
                                   "What runtime capabilities are ready?"));
@@ -2233,12 +2365,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   EXPECT_NE(std::find(names.begin(), names.end(), "runtime_status"),
             names.end());
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "runtime_status";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "runtime_status";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   const auto result = tool_result->payload["result"].get<std::string>();
@@ -2255,8 +2387,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   auto history = engine.session_manager().GetHistory("agent:main:runtime-tool");
   ASSERT_EQ(history.size(), 4u);
   EXPECT_EQ(history[1].content[0].name, "runtime_status");
-  EXPECT_EQ(history[3].content[0].text,
-            "Runtime readiness snapshot received.");
+  EXPECT_EQ(history[3].content[0].text, "Runtime readiness snapshot received.");
 }
 
 TEST_F(MobileEngineTest, SendTextTurnExecutesVibrateToolRoundTrip) {
@@ -2268,10 +2399,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesVibrateToolRoundTrip) {
   engine.SetTextProvider(provider);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(
       engine.SendTextTurn("agent:main:vibrate", "Trigger device haptics."));
@@ -2282,12 +2412,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesVibrateToolRoundTrip) {
   ASSERT_EQ(bridge->vibration_calls.size(), 1u);
   EXPECT_EQ(bridge->vibration_calls.front(), "agent:main:vibrate:180");
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "vibrate";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "vibrate";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
@@ -2301,8 +2431,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesVibrateToolRoundTrip) {
 }
 
 TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {
-  ravbot::mobile::MobileEngine without_bridge(MakeConfig(), test_dir_, test_dir_,
-                                              logger_);
+  ravbot::mobile::MobileEngine without_bridge(MakeConfig(), test_dir_,
+                                              test_dir_, logger_);
   auto plain_provider =
       std::make_shared<FakeTextProvider>("reply without bridge");
   without_bridge.SetTextProvider(plain_provider);
@@ -2314,8 +2444,8 @@ TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {
   EXPECT_EQ(std::find(without_names.begin(), without_names.end(), "web_fetch"),
             without_names.end());
 
-  ravbot::mobile::MobileEngine with_speech_only_bridge(
-      MakeConfig(), test_dir_, test_dir_, logger_);
+  ravbot::mobile::MobileEngine with_speech_only_bridge(MakeConfig(), test_dir_,
+                                                       test_dir_, logger_);
   auto speech_only_bridge = std::make_shared<FakeSpeechOnlyDeviceBridge>();
   auto speech_only_provider =
       std::make_shared<FakeTextProvider>("reply with speech-only bridge");
@@ -2357,10 +2487,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebSearchToolThroughDeviceBridge) {
   engine.SetDeviceBridge(bridge);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:web-search",
                                   "Search the web for RavBot Android."));
@@ -2375,12 +2504,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebSearchToolThroughDeviceBridge) {
             "ravbot android mvp");
   EXPECT_EQ(std::get<2>(bridge->web_search_calls.front()), 3);
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "web_search";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "web_search";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
@@ -2406,10 +2535,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebFetchToolThroughDeviceBridge) {
   engine.SetDeviceBridge(bridge);
 
   std::vector<ravbot::mobile::MobileEvent> events;
-  engine.SubscribeEvents(
-      [&events](const ravbot::mobile::MobileEvent& event) {
-        events.push_back(event);
-      });
+  engine.SubscribeEvents([&events](const ravbot::mobile::MobileEvent& event) {
+    events.push_back(event);
+  });
 
   ASSERT_TRUE(engine.SendTextTurn("agent:main:web-fetch",
                                   "Fetch the RavBot Android page."));
@@ -2424,12 +2552,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebFetchToolThroughDeviceBridge) {
             "https://example.com/ravbot-android");
   EXPECT_EQ(std::get<2>(bridge->web_fetch_calls.front()), 4096);
 
-  auto tool_result = std::find_if(
-      events.begin(), events.end(),
-      [](const ravbot::mobile::MobileEvent& event) {
-        return event.name == ravbot::mobile::kEventToolResult &&
-               event.payload.value("name", "") == "web_fetch";
-      });
+  auto tool_result =
+      std::find_if(events.begin(), events.end(),
+                   [](const ravbot::mobile::MobileEvent& event) {
+                     return event.name == ravbot::mobile::kEventToolResult &&
+                            event.payload.value("name", "") == "web_fetch";
+                   });
   ASSERT_NE(tool_result, events.end());
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(

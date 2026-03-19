@@ -1658,6 +1658,33 @@ internal fun describeToolAvailability(payload: String): String {
       .getOrDefault("No per-tool availability diagnostics emitted yet.")
 }
 
+internal fun describeHostCapabilities(payload: String): String? {
+  return runCatching {
+        val json = JSONObject(payload)
+        val capabilities = json.optJSONObject("hostCapabilities") ?: return null
+        val blocked =
+            capabilities.keys().asSequence().toList().sorted().mapNotNull { capabilityName ->
+              val entry = capabilities.optJSONObject(capabilityName) ?: return@mapNotNull null
+              val ready =
+                  if (entry.has("ready")) {
+                    entry.optBoolean("ready")
+                  } else {
+                    null
+                  }
+              if (ready == true) {
+                null
+              } else {
+                val reason =
+                    entry.optString("reason").takeIf { value -> value.isNotBlank() }
+                        ?: "not_ready"
+                "$capabilityName ($reason)"
+              }
+            }
+        blocked.takeIf { it.isNotEmpty() }?.joinToString(", ")
+      }
+      .getOrNull()
+}
+
 private fun parseJsonInt(payload: String, field: String): Int? {
   return runCatching {
         val json = JSONObject(payload)
@@ -1709,7 +1736,7 @@ private fun describeAsrStats(payload: String): String {
   }
 }
 
-private fun describeDeviceStatus(payload: String): String {
+internal fun describeDeviceStatus(payload: String): String {
   val foreground = parseJsonBoolean(payload, "foreground")
   val serviceRunning = parseJsonBoolean(payload, "serviceRunning")
   val captureRequested = parseJsonBoolean(payload, "captureRequested")
@@ -1732,6 +1759,7 @@ private fun describeDeviceStatus(payload: String): String {
   microphoneStatus?.let { parts += "mic $it" }
   cameraStatus?.let { parts += "cam $it" }
   speakerStatus?.let { parts += "speaker $it" }
+  describeHostCapabilities(payload)?.let { parts += "blocked $it" }
 
   return if (parts.isEmpty()) {
     "No native device status published yet."

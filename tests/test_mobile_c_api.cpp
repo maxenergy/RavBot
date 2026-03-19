@@ -8,10 +8,11 @@
 #include <utility>
 #include <vector>
 
-#include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
 #include "ravbot/mobile/mobile_c_api.h"
+
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -20,11 +21,10 @@ bool json_array_contains_string(const nlohmann::json& array,
   if (!array.is_array()) {
     return false;
   }
-  return std::any_of(array.begin(), array.end(),
-                     [&value](const nlohmann::json& entry) {
-                       return entry.is_string() &&
-                              entry.get<std::string>() == value;
-                     });
+  return std::any_of(
+      array.begin(), array.end(), [&value](const nlohmann::json& entry) {
+        return entry.is_string() && entry.get<std::string>() == value;
+      });
 }
 
 struct CapturedEvent {
@@ -43,8 +43,7 @@ struct EventSink {
   std::vector<std::string> web_fetch_requests;
 };
 
-void capture_event(const char* event_name,
-                   const char* payload_json,
+void capture_event(const char* event_name, const char* payload_json,
                    void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   ASSERT_NE(sink, nullptr);
@@ -62,8 +61,7 @@ void capture_event(const char* event_name,
       {event_name != nullptr ? event_name : "", std::move(payload)});
 }
 
-void capture_avatar_state(const char* session_key,
-                          const char* state,
+void capture_avatar_state(const char* session_key, const char* state,
                           void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   ASSERT_NE(sink, nullptr);
@@ -73,8 +71,7 @@ void capture_avatar_state(const char* session_key,
       (state != nullptr ? state : ""));
 }
 
-void capture_speech_request(const char* session_key,
-                            const char* text,
+void capture_speech_request(const char* session_key, const char* text,
                             void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   ASSERT_NE(sink, nullptr);
@@ -92,8 +89,7 @@ void capture_speech_interrupt(const char* session_key, void* user_data) {
                                                                    : "");
 }
 
-void capture_vibrate(const char* session_key,
-                     int duration_ms,
+void capture_vibrate(const char* session_key, int duration_ms,
                      void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   ASSERT_NE(sink, nullptr);
@@ -103,10 +99,8 @@ void capture_vibrate(const char* session_key,
       std::to_string(duration_ms));
 }
 
-const char* capture_web_search(const char* session_key,
-                               const char* query,
-                               int /*count*/,
-                               const char* /*freshness*/,
+const char* capture_web_search(const char* session_key, const char* query,
+                               int /*count*/, const char* /*freshness*/,
                                void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   if (sink == nullptr) {
@@ -119,10 +113,8 @@ const char* capture_web_search(const char* session_key,
   return R"({"sessionKey":"agent:main:web-search-only","results":[{"title":"RavBot","url":"https://example.com"}]})";
 }
 
-const char* capture_web_fetch(const char* session_key,
-                              const char* url,
-                              int /*max_chars*/,
-                              void* user_data) {
+const char* capture_web_fetch(const char* session_key, const char* url,
+                              int /*max_chars*/, void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   if (sink == nullptr) {
     return nullptr;
@@ -142,7 +134,9 @@ class MobileCApiTest : public ::testing::Test {
     std::filesystem::create_directories(test_dir_);
   }
 
-  void TearDown() override { std::filesystem::remove_all(test_dir_); }
+  void TearDown() override {
+    std::filesystem::remove_all(test_dir_);
+  }
 
   std::string MakeConfigJson() const {
     nlohmann::json config = {
@@ -157,9 +151,8 @@ class MobileCApiTest : public ::testing::Test {
 };
 
 TEST_F(MobileCApiTest, InitEngineRejectsInvalidJson) {
-  ravbot_mobile_engine_t* engine =
-      ravbot_mobile_init_engine("{", test_dir_.c_str(), test_dir_.c_str(),
-                                "info");
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      "{", test_dir_.c_str(), test_dir_.c_str(), "info");
   EXPECT_EQ(engine, nullptr);
 }
 
@@ -265,9 +258,9 @@ TEST_F(MobileCApiTest, CameraFrameEmitsVisionObservationByDefault) {
       ravbot_mobile_start_session(engine, "agent:main:camera", "Camera path"));
 
   const uint8_t frame_bytes[] = {0, 1, 2, 3};
-  EXPECT_TRUE(ravbot_mobile_push_camera_frame(
-      engine, "agent:main:camera", frame_bytes, sizeof(frame_bytes), 2, 2,
-      "rgba8888", 42));
+  EXPECT_TRUE(ravbot_mobile_push_camera_frame(engine, "agent:main:camera",
+                                              frame_bytes, sizeof(frame_bytes),
+                                              2, 2, "rgba8888", 42));
 
   ravbot_mobile_unsubscribe_events(engine, subscription_id);
   ravbot_mobile_free_engine(engine);
@@ -294,8 +287,8 @@ TEST_F(MobileCApiTest, ReportTtsStateEmitsPlaybackUpdate) {
       ravbot_mobile_subscribe_events(engine, capture_event, &sink);
   ASSERT_NE(subscription_id, 0u);
 
-  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:tts",
-                                          "Playback state"));
+  EXPECT_TRUE(
+      ravbot_mobile_start_session(engine, "agent:main:tts", "Playback state"));
   EXPECT_TRUE(
       ravbot_mobile_report_tts_state(engine, "agent:main:tts", "speaking"));
 
@@ -325,8 +318,8 @@ TEST_F(MobileCApiTest, ReportDeviceStatusEmitsNativeSnapshot) {
   ASSERT_NE(subscription_id, 0u);
 
   EXPECT_TRUE(ravbot_mobile_report_device_status(
-      engine, "agent:main:device-status", true, true, true, false, true,
-      false, "running", "running", "speaking"));
+      engine, "agent:main:device-status", true, true, true, false, true, false,
+      "running", "running", "speaking"));
 
   ravbot_mobile_unsubscribe_events(engine, subscription_id);
   ravbot_mobile_free_engine(engine);
@@ -346,6 +339,12 @@ TEST_F(MobileCApiTest, ReportDeviceStatusEmitsNativeSnapshot) {
       EXPECT_EQ(event.payload["microphoneStatus"], "running");
       EXPECT_EQ(event.payload["cameraStatus"], "running");
       EXPECT_EQ(event.payload["speakerStatus"], "speaking");
+      EXPECT_TRUE(event.payload.contains("hostCapabilities"));
+      EXPECT_TRUE(event.payload["hostCapabilities"]["capture"]["ready"]);
+      EXPECT_EQ(event.payload["hostCapabilities"]["webSearch"]["reason"],
+                "device_bridge_missing");
+      EXPECT_EQ(event.payload["hostCapabilities"]["haptics"]["reason"],
+                "device_bridge_missing");
     }
   }
 
@@ -410,10 +409,10 @@ TEST_F(MobileCApiTest, DeviceCallbacksReceiveAvatarAndSpeechRequests) {
   callbacks.on_speech_interrupt = capture_speech_interrupt;
   ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, &callbacks, &sink));
 
-  EXPECT_TRUE(
-      ravbot_mobile_start_session(engine, "agent:main:device", "Device bridge"));
-  EXPECT_TRUE(
-      ravbot_mobile_send_text_turn(engine, "agent:main:device", "hello device"));
+  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:device",
+                                          "Device bridge"));
+  EXPECT_TRUE(ravbot_mobile_send_text_turn(engine, "agent:main:device",
+                                           "hello device"));
   ravbot_mobile_interrupt_generation(engine, "agent:main:device");
 
   ravbot_mobile_free_engine(engine);
@@ -445,8 +444,8 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsMissingWebDeviceCallbacks) {
       ravbot_mobile_subscribe_events(engine, capture_event, &sink);
   ASSERT_NE(subscription_id, 0u);
 
-  EXPECT_TRUE(ravbot_mobile_start_session(
-      engine, "agent:main:device-runtime", "Device runtime status"));
+  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:device-runtime",
+                                          "Device runtime status"));
 
   ravbot_mobile_unsubscribe_events(engine, subscription_id);
   ravbot_mobile_free_engine(engine);
@@ -482,8 +481,8 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsPartialWebDeviceCallbacks) {
     uint64_t subscription_id =
         ravbot_mobile_subscribe_events(engine, capture_event, &sink);
     ASSERT_NE(subscription_id, 0u);
-    EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:web-search-only",
-                                            "Web search only"));
+    EXPECT_TRUE(ravbot_mobile_start_session(
+        engine, "agent:main:web-search-only", "Web search only"));
 
     ravbot_mobile_unsubscribe_events(engine, subscription_id);
     ravbot_mobile_free_engine(engine);

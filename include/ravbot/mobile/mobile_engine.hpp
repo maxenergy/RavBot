@@ -32,10 +32,8 @@ class MobileAsrProvider {
   virtual ~MobileAsrProvider() = default;
 
   virtual AsrUpdate PushPcm16(const std::string& session_key,
-                              const int16_t* samples,
-                              size_t sample_count,
-                              int sample_rate_hz,
-                              bool end_of_turn) = 0;
+                              const int16_t* samples, size_t sample_count,
+                              int sample_rate_hz, bool end_of_turn) = 0;
   virtual AsrUpdate Flush(const std::string& session_key) = 0;
   virtual void Interrupt(const std::string& session_key) = 0;
   virtual void ResetSession(const std::string& session_key) = 0;
@@ -45,18 +43,20 @@ class MobileVisionProvider {
  public:
   virtual ~MobileVisionProvider() = default;
 
-  virtual std::optional<std::string> ObserveFrame(
-      const CameraFrame& frame) = 0;
-  virtual std::string ProviderName() const { return "unknown_mobile_vision"; }
-  virtual bool IsPlaceholder() const { return false; }
+  virtual std::optional<std::string> ObserveFrame(const CameraFrame& frame) = 0;
+  virtual std::string ProviderName() const {
+    return "unknown_mobile_vision";
+  }
+  virtual bool IsPlaceholder() const {
+    return false;
+  }
 };
 
 class MobileEngine {
  public:
   using EventCallback = std::function<void(const MobileEvent&)>;
 
-  MobileEngine(RavBotConfig config,
-               const std::filesystem::path& state_dir,
+  MobileEngine(RavBotConfig config, const std::filesystem::path& state_dir,
                const std::filesystem::path& models_dir,
                std::shared_ptr<spdlog::logger> logger);
 
@@ -71,11 +71,8 @@ class MobileEngine {
   std::string StartSession(const std::string& session_key,
                            const std::string& display_name = "");
   bool SendTextTurn(const std::string& session_key, const std::string& text);
-  bool PushPcm16(const std::string& session_key,
-                 const int16_t* samples,
-                 size_t sample_count,
-                 int sample_rate_hz,
-                 bool end_of_turn);
+  bool PushPcm16(const std::string& session_key, const int16_t* samples,
+                 size_t sample_count, int sample_rate_hz, bool end_of_turn);
   bool FlushAudioTurn(const std::string& session_key);
   bool PushCameraFrame(const std::string& session_key,
                        const CameraFrame& frame);
@@ -88,8 +85,12 @@ class MobileEngine {
   void SetForegroundState(bool foreground);
   bool IsForeground() const;
 
-  const RavBotConfig& config() const { return config_; }
-  SessionManager& session_manager() { return session_manager_; }
+  const RavBotConfig& config() const {
+    return config_;
+  }
+  SessionManager& session_manager() {
+    return session_manager_;
+  }
 
  private:
   struct VisionSamplingState {
@@ -100,44 +101,48 @@ class MobileEngine {
   void Emit(const std::string& event_name, const nlohmann::json& payload) const;
   nlohmann::json BuildRuntimeStatusPayload() const;
   void EmitRuntimeStatus() const;
+  nlohmann::json
+  BuildDeviceStatusEventPayload(const std::string& session_key,
+                                const DeviceStatusSnapshot& status) const;
   void ResetSessionRuntimeState(const std::string& session_key);
   void SetAvatarState(AvatarState state, const std::string& session_key = "");
   bool ShouldProcessVisionFrame(const std::string& session_key,
                                 const CameraFrame& frame);
-  std::optional<double> EstimateFrameSceneSignature(
-      const CameraFrame& frame) const;
-  bool HandleAsrUpdate(const std::string& session_key,
-                       const AsrUpdate& update,
+  std::optional<double>
+  EstimateFrameSceneSignature(const CameraFrame& frame) const;
+  bool HandleAsrUpdate(const std::string& session_key, const AsrUpdate& update,
                        int sample_rate_hz);
   std::vector<nlohmann::json> BuildToolSchemas() const;
   std::string ExecuteToolCall(const std::string& session_key,
                               const ToolCall& tool_call) const;
-  std::string BuildDeviceStatusToolResult(
-      const std::string& session_key) const;
+  std::string BuildDeviceStatusToolResult(const std::string& session_key) const;
   std::string BuildRuntimeStatusToolResult() const;
+  nlohmann::json
+  BuildHostCapabilitiesPayload(const std::string& session_key) const;
   std::string BuildVibrateToolResult(const std::string& session_key,
                                      const nlohmann::json& arguments) const;
-  std::string BuildCameraSnapshotToolResult(
-      const std::string& session_key) const;
+  std::string
+  BuildCameraSnapshotToolResult(const std::string& session_key) const;
   std::string BuildTimeToolResult() const;
   std::string BuildWebSearchToolResult(const std::string& session_key,
                                        const nlohmann::json& arguments) const;
   std::string BuildWebFetchToolResult(const std::string& session_key,
                                       const nlohmann::json& arguments) const;
   std::string BuildMemoryListToolResult(const nlohmann::json& arguments) const;
-  std::string BuildMemorySearchToolResult(const nlohmann::json& arguments) const;
+  std::string
+  BuildMemorySearchToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryGetToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryWriteToolResult(const nlohmann::json& arguments) const;
-  std::string BuildMemoryDeleteToolResult(
-      const nlohmann::json& arguments) const;
+  std::string
+  BuildMemoryDeleteToolResult(const nlohmann::json& arguments) const;
   std::filesystem::path WorkspaceRoot() const;
-  std::filesystem::path ResolveWorkspacePath(
-      const std::string& relative_path) const;
+  std::filesystem::path
+  ResolveWorkspacePath(const std::string& relative_path) const;
   std::shared_ptr<DeviceCapabilityBridge> CopyDeviceBridge() const;
   bool HandleUserTextTurn(const std::string& session_key,
-                          const std::string& text,
-                          bool emit_asr_final);
-  std::vector<Message> BuildRequestMessages(const std::string& session_key) const;
+                          const std::string& text, bool emit_asr_final);
+  std::vector<Message>
+  BuildRequestMessages(const std::string& session_key) const;
   std::string NextSubscriptionId();
 
   RavBotConfig config_;

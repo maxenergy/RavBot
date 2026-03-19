@@ -28,6 +28,13 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   snapshot and the current `mobile.runtime_status` readiness payload, so the
   local model can inspect provider/backend/web/haptics capability state
   directly
+- `device_status` and `camera_snapshot` now also include structured
+  `hostCapabilities` diagnostics with per-capability `ready/enabled/active`
+  flags plus concrete reasons such as `permissions_missing`,
+  `background_gated`, `device_bridge_missing`, and `host_toggle_off`
+- `mobile.device_status` event payloads now carry the same `hostCapabilities`
+  block, and the Android host surfaces blocked capability reasons in its
+  native device status summary
 - A dedicated `runtime_status` tool now exposes that readiness payload on its
   own for local-model tool calls
 - Android host haptics are now bridged into native readiness, exposed as a

@@ -6,13 +6,13 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <ctime>
 #include <cstdint>
+#include <ctime>
 #include <fstream>
 #include <iomanip>
 #include <limits>
-#include <unordered_set>
 #include <sstream>
+#include <unordered_set>
 #include <utility>
 
 #include "ravbot/mobile/speech_pipeline.hpp"
@@ -53,6 +53,23 @@ nlohmann::json make_tool_availability(bool available,
   nlohmann::json payload = {{"available", available}};
   if (!reason.empty()) {
     payload["reason"] = reason;
+  }
+  return payload;
+}
+
+nlohmann::json make_capability_payload(bool supported, bool enabled, bool ready,
+                                       bool active,
+                                       const std::string& reason = {},
+                                       const std::string& detail = {}) {
+  nlohmann::json payload = {{"supported", supported},
+                            {"enabled", enabled},
+                            {"ready", ready},
+                            {"active", active}};
+  if (!reason.empty()) {
+    payload["reason"] = reason;
+  }
+  if (!detail.empty()) {
+    payload["detail"] = detail;
   }
   return payload;
 }
@@ -109,9 +126,9 @@ int64_t camera_snapshot_stale_after_ms(const RavBotConfig& config) {
   return std::max<int64_t>(5000, min_interval_ms);
 }
 
-nlohmann::json make_workspace_entry_json(
-    const std::filesystem::path& workspace,
-    const std::filesystem::path& full_path) {
+nlohmann::json
+make_workspace_entry_json(const std::filesystem::path& workspace,
+                          const std::filesystem::path& full_path) {
   std::error_code ec;
   const auto relative = std::filesystem::relative(full_path, workspace, ec);
   const std::string relative_path =
@@ -135,12 +152,10 @@ class PlaceholderMobileVisionProvider : public MobileVisionProvider {
       std::shared_ptr<spdlog::logger> logger)
       : logger_(std::move(logger)) {}
 
-  std::optional<std::string> ObserveFrame(
-      const CameraFrame& frame) override {
+  std::optional<std::string> ObserveFrame(const CameraFrame& frame) override {
     if (logger_) {
-      logger_->debug(
-          "PlaceholderMobileVisionProvider accepted {}x{} {} frame",
-          frame.width, frame.height, frame.format);
+      logger_->debug("PlaceholderMobileVisionProvider accepted {}x{} {} frame",
+                     frame.width, frame.height, frame.format);
     }
     std::ostringstream stream;
     stream << "camera frame " << frame.width << "x" << frame.height << " "
@@ -152,16 +167,18 @@ class PlaceholderMobileVisionProvider : public MobileVisionProvider {
     return "placeholder_mobile_vision";
   }
 
-  bool IsPlaceholder() const override { return true; }
+  bool IsPlaceholder() const override {
+    return true;
+  }
 
  private:
   std::shared_ptr<spdlog::logger> logger_;
 };
 
-std::shared_ptr<LLMProvider> make_default_text_provider(
-    const RavBotConfig& config,
-    const std::filesystem::path& models_dir,
-    const std::shared_ptr<spdlog::logger>& logger) {
+std::shared_ptr<LLMProvider>
+make_default_text_provider(const RavBotConfig& config,
+                           const std::filesystem::path& models_dir,
+                           const std::shared_ptr<spdlog::logger>& logger) {
   if (!config.mobile.runtime.enabled || config.mobile.runtime.mode != "local") {
     return nullptr;
   }
@@ -201,8 +218,8 @@ MobileEngine::MobileEngine(RavBotConfig config,
   }
   text_provider_ = make_default_text_provider(config_, models_dir_, logger_);
   if (config_.mobile.runtime.enabled) {
-    speech_pipeline_ = std::make_shared<SpeechPipeline>(
-        config_.mobile.models, models_dir_, logger_);
+    speech_pipeline_ = std::make_shared<SpeechPipeline>(config_.mobile.models,
+                                                        models_dir_, logger_);
     asr_provider_ = speech_pipeline_;
     if (config_.mobile.vision.enabled) {
       vision_provider_ =
@@ -239,18 +256,17 @@ std::string MobileEngine::SubscribeEvents(EventCallback callback) {
   subscribers_[id] = std::move(callback);
   lock.unlock();
   EmitRuntimeStatus();
-  std::vector<std::pair<std::string, nlohmann::json>> device_status_payloads;
+  std::vector<std::pair<std::string, DeviceStatusSnapshot>> device_statuses;
   {
     std::shared_lock<std::shared_mutex> state_lock(state_mutex_);
-    device_status_payloads.reserve(device_statuses_.size());
+    device_statuses.reserve(device_statuses_.size());
     for (const auto& [session_key, status] : device_statuses_) {
-      device_status_payloads.push_back(
-          {session_key, with_session_key(session_key, status.ToJson())});
+      device_statuses.push_back({session_key, status});
     }
   }
-  for (const auto& [session_key, payload] : device_status_payloads) {
-    (void)session_key;
-    Emit(kEventMobileDeviceStatus, payload);
+  for (const auto& [session_key, status] : device_statuses) {
+    Emit(kEventMobileDeviceStatus,
+         BuildDeviceStatusEventPayload(session_key, status));
   }
   return id;
 }
@@ -262,7 +278,8 @@ void MobileEngine::UnsubscribeEvents(const std::string& subscription_id) {
 
 std::string MobileEngine::StartSession(const std::string& session_key,
                                        const std::string& display_name) {
-  auto handle = session_manager_.GetOrCreate(session_key, display_name, "mobile");
+  auto handle =
+      session_manager_.GetOrCreate(session_key, display_name, "mobile");
   ResetSessionRuntimeState(handle.session_key);
   EmitRuntimeStatus();
   AvatarState initial_state = AvatarState::kIdle;
@@ -281,18 +298,15 @@ bool MobileEngine::SendTextTurn(const std::string& session_key,
 }
 
 bool MobileEngine::PushPcm16(const std::string& session_key,
-                             const int16_t* samples,
-                             size_t sample_count,
-                             int sample_rate_hz,
-                             bool end_of_turn) {
+                             const int16_t* samples, size_t sample_count,
+                             int sample_rate_hz, bool end_of_turn) {
   if (!samples || sample_count == 0 || !asr_provider_) {
     return false;
   }
 
   SetAvatarState(AvatarState::kListen, session_key);
-  AsrUpdate update =
-      asr_provider_->PushPcm16(session_key, samples, sample_count,
-                               sample_rate_hz, end_of_turn);
+  AsrUpdate update = asr_provider_->PushPcm16(
+      session_key, samples, sample_count, sample_rate_hz, end_of_turn);
   return HandleAsrUpdate(session_key, update, sample_rate_hz);
 }
 
@@ -315,9 +329,8 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
   if (!vision_provider_ || !config_.mobile.vision.enabled) {
     return false;
   }
-  const bool foreground_only =
-      config_.mobile.runtime.foreground_only ||
-      config_.mobile.vision.foreground_only;
+  const bool foreground_only = config_.mobile.runtime.foreground_only ||
+                               config_.mobile.vision.foreground_only;
   if (foreground_only && !IsForeground()) {
     return false;
   }
@@ -332,8 +345,7 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
   const bool captured_while_foreground = IsForeground();
 
   session_manager_.AppendCustomMessage(
-      session_key, "mobile_vision_observation",
-      nlohmann::json::array(),
+      session_key, "mobile_vision_observation", nlohmann::json::array(),
       nlohmann::json::object(),
       {{"summary", *summary},
        {"width", frame.width},
@@ -355,13 +367,12 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
 
   SetAvatarState(AvatarState::kWatch, session_key);
   Emit(kEventMobileVisionObservation,
-       with_session_key(
-           session_key,
-           {{"summary", *summary},
-            {"width", frame.width},
-            {"height", frame.height},
-            {"timestampMs", frame.timestamp_ms},
-            {"capturedWhileForeground", captured_while_foreground}}));
+       with_session_key(session_key, {{"summary", *summary},
+                                      {"width", frame.width},
+                                      {"height", frame.height},
+                                      {"timestampMs", frame.timestamp_ms},
+                                      {"capturedWhileForeground",
+                                       captured_while_foreground}}));
   SetAvatarState(AvatarState::kIdle, session_key);
   return true;
 }
@@ -384,8 +395,7 @@ bool MobileEngine::ReportTtsPlaybackState(const std::string& session_key,
     return false;
   }
 
-  Emit(kEventMobileTtsState,
-       with_session_key(session_key, {{"state", state}}));
+  Emit(kEventMobileTtsState, with_session_key(session_key, {{"state", state}}));
   if (state == "speaking") {
     SetAvatarState(AvatarState::kSpeak, session_key);
   } else if (state == "completed" || state == "interrupted") {
@@ -401,33 +411,34 @@ bool MobileEngine::ReportDeviceStatus(const std::string& session_key,
   if (session_key.empty()) {
     return false;
   }
-  nlohmann::json payload;
+  DeviceStatusSnapshot stored_status;
   {
     std::unique_lock<std::shared_mutex> lock(state_mutex_);
     status.foreground = foreground_;
     auto& session_status = device_statuses_[session_key];
     session_status = std::move(status);
-    payload = with_session_key(session_key, session_status.ToJson());
+    stored_status = session_status;
   }
 
-  Emit(kEventMobileDeviceStatus, payload);
+  Emit(kEventMobileDeviceStatus,
+       BuildDeviceStatusEventPayload(session_key, stored_status));
   return true;
 }
 
 void MobileEngine::SetForegroundState(bool foreground) {
-  std::vector<std::pair<std::string, nlohmann::json>> device_status_payloads;
-  std::unique_lock<std::shared_mutex> lock(state_mutex_);
-  foreground_ = foreground;
-  device_status_payloads.reserve(device_statuses_.size());
-  for (auto& [session_key, status] : device_statuses_) {
-    status.foreground = foreground_;
-    device_status_payloads.push_back(
-        {session_key, with_session_key(session_key, status.ToJson())});
+  std::vector<std::pair<std::string, DeviceStatusSnapshot>> device_statuses;
+  {
+    std::unique_lock<std::shared_mutex> lock(state_mutex_);
+    foreground_ = foreground;
+    device_statuses.reserve(device_statuses_.size());
+    for (auto& [session_key, status] : device_statuses_) {
+      status.foreground = foreground_;
+      device_statuses.push_back({session_key, status});
+    }
   }
-  lock.unlock();
-  for (const auto& [session_key, payload] : device_status_payloads) {
-    (void)session_key;
-    Emit(kEventMobileDeviceStatus, payload);
+  for (const auto& [session_key, status] : device_statuses) {
+    Emit(kEventMobileDeviceStatus,
+         BuildDeviceStatusEventPayload(session_key, status));
   }
 }
 
@@ -453,13 +464,12 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
   const bool web_search_ready =
       bridge != nullptr && bridge->SupportsWebSearch();
   const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
-  const bool vibration_ready =
-      bridge != nullptr && bridge->SupportsVibration();
+  const bool vibration_ready = bridge != nullptr && bridge->SupportsVibration();
   const bool vision_provider_placeholder =
       vision_provider_ != nullptr && vision_provider_->IsPlaceholder();
-  const bool vision_provider_ready =
-      config_.mobile.vision.enabled && vision_provider_ != nullptr &&
-      !vision_provider_placeholder;
+  const bool vision_provider_ready = config_.mobile.vision.enabled &&
+                                     vision_provider_ != nullptr &&
+                                     !vision_provider_placeholder;
   const std::string vision_provider =
       vision_provider_ ? vision_provider_->ProviderName() : "not_configured";
   const auto tool_schemas = BuildToolSchemas();
@@ -504,24 +514,22 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
             : make_tool_availability(false, "vibration_unsupported");
   }
 
-  nlohmann::json payload = {{"modelsDir", models_dir_.string()},
-                            {"sttModel", config_.mobile.models.stt_model},
-                            {"ttsVoice", config_.mobile.models.tts_voice},
-                            {"visionEnabled", config_.mobile.vision.enabled},
-                            {"visionProviderReady", vision_provider_ready},
-                            {"visionProvider", vision_provider},
-                            {"visionProviderPlaceholder",
-                             vision_provider_placeholder},
-                            {"continuousVision",
-                             config_.mobile.runtime.continuous_vision},
-                            {"deviceBridgeAttached", device_bridge_attached},
-                            {"webSearchReady", web_search_ready},
-                            {"webFetchReady", web_fetch_ready},
-                            {"vibrationReady", vibration_ready},
-                            {"availableTools", std::move(available_tools)},
-                            {"availableToolCount", tool_schemas.size()},
-                            {"toolAvailability",
-                             std::move(tool_availability)}};
+  nlohmann::json payload = {
+      {"modelsDir", models_dir_.string()},
+      {"sttModel", config_.mobile.models.stt_model},
+      {"ttsVoice", config_.mobile.models.tts_voice},
+      {"visionEnabled", config_.mobile.vision.enabled},
+      {"visionProviderReady", vision_provider_ready},
+      {"visionProvider", vision_provider},
+      {"visionProviderPlaceholder", vision_provider_placeholder},
+      {"continuousVision", config_.mobile.runtime.continuous_vision},
+      {"deviceBridgeAttached", device_bridge_attached},
+      {"webSearchReady", web_search_ready},
+      {"webFetchReady", web_fetch_ready},
+      {"vibrationReady", vibration_ready},
+      {"availableTools", std::move(available_tools)},
+      {"availableToolCount", tool_schemas.size()},
+      {"toolAvailability", std::move(tool_availability)}};
   if (!config_.mobile.vision.enabled) {
     payload["visionDetail"] =
         "Continuous vision is disabled in the mobile runtime configuration.";
@@ -529,7 +537,8 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
     payload["visionDetail"] = "No mobile vision provider is configured.";
   } else if (vision_provider_placeholder) {
     payload["visionDetail"] =
-        "Using placeholder mobile vision provider until a real VLM backend is linked.";
+        "Using placeholder mobile vision provider until a real VLM backend is "
+        "linked.";
   } else {
     payload["visionDetail"] = "Mobile vision provider is configured.";
   }
@@ -560,6 +569,13 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
 
 void MobileEngine::EmitRuntimeStatus() const {
   Emit(kEventMobileRuntimeStatus, BuildRuntimeStatusPayload());
+}
+
+nlohmann::json MobileEngine::BuildDeviceStatusEventPayload(
+    const std::string& session_key, const DeviceStatusSnapshot& status) const {
+  nlohmann::json payload = with_session_key(session_key, status.ToJson());
+  payload["hostCapabilities"] = BuildHostCapabilitiesPayload(session_key);
+  return payload;
 }
 
 void MobileEngine::ResetSessionRuntimeState(const std::string& session_key) {
@@ -627,8 +643,8 @@ bool MobileEngine::ShouldProcessVisionFrame(const std::string& session_key,
   return true;
 }
 
-std::optional<double> MobileEngine::EstimateFrameSceneSignature(
-    const CameraFrame& frame) const {
+std::optional<double>
+MobileEngine::EstimateFrameSceneSignature(const CameraFrame& frame) const {
   if (frame.data.empty()) {
     return std::nullopt;
   }
@@ -637,9 +653,9 @@ std::optional<double> MobileEngine::EstimateFrameSceneSignature(
   if (frame.width > 0 && frame.height > 0 &&
       (frame.format == "YUV420_LUMA" || frame.format == "yuv420_luma" ||
        frame.format == "NV21" || frame.format == "nv21")) {
-    sample_limit = std::min(
-        sample_limit,
-        static_cast<size_t>(frame.width) * static_cast<size_t>(frame.height));
+    sample_limit =
+        std::min(sample_limit, static_cast<size_t>(frame.width) *
+                                   static_cast<size_t>(frame.height));
   }
 
   if (sample_limit == 0) {
@@ -656,8 +672,7 @@ std::optional<double> MobileEngine::EstimateFrameSceneSignature(
   if (count == 0) {
     return std::nullopt;
   }
-  return static_cast<double>(total) /
-         (255.0 * static_cast<double>(count));
+  return static_cast<double>(total) / (255.0 * static_cast<double>(count));
 }
 
 bool MobileEngine::HandleAsrUpdate(const std::string& session_key,
@@ -670,15 +685,13 @@ bool MobileEngine::HandleAsrUpdate(const std::string& session_key,
   const int effective_sample_rate =
       update.sample_rate_hz > 0 ? update.sample_rate_hz : sample_rate_hz;
   Emit(update.is_final ? kEventMobileAsrFinal : kEventMobileAsrPartial,
-       with_session_key(
-           session_key,
-           {{"text", update.text},
-            {"sampleRateHz", effective_sample_rate},
-            {"segmentIndex", update.segment_index},
-            {"durationMs", update.duration_ms},
-            {"averageLevel", update.average_level},
-            {"peakLevel", update.peak_level},
-            {"endReason", update.end_reason}}));
+       with_session_key(session_key, {{"text", update.text},
+                                      {"sampleRateHz", effective_sample_rate},
+                                      {"segmentIndex", update.segment_index},
+                                      {"durationMs", update.duration_ms},
+                                      {"averageLevel", update.average_level},
+                                      {"peakLevel", update.peak_level},
+                                      {"endReason", update.end_reason}}));
   if (!update.is_final) {
     return true;
   }
@@ -691,20 +704,20 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
   const bool web_search_ready =
       bridge != nullptr && bridge->SupportsWebSearch();
   const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
-  const bool vibration_ready =
-      bridge != nullptr && bridge->SupportsVibration();
-  std::vector<nlohmann::json> tools = {nlohmann::json{
-      {"type", "function"},
-      {"function",
-       {{"name", kDeviceStatusToolName},
-        {"description",
-         "Get the current Android host device status including foreground "
-         "state, service state, capture state, permissions, microphone, "
-         "camera, and speaker status."},
-        {"parameters",
-         {{"type", "object"},
-          {"properties", nlohmann::json::object()},
-          {"additionalProperties", false}}}}}},
+  const bool vibration_ready = bridge != nullptr && bridge->SupportsVibration();
+  std::vector<nlohmann::json> tools = {
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
+           {{"name", kDeviceStatusToolName},
+            {"description",
+             "Get the current Android host device status including foreground "
+             "state, service state, capture state, permissions, microphone, "
+             "camera, and speaker status."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties", nlohmann::json::object()},
+              {"additionalProperties", false}}}}}},
       nlohmann::json{
           {"type", "function"},
           {"function",
@@ -725,7 +738,7 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
              "metadata captured by the Android host."},
             {"parameters",
              {{"type", "object"},
-             {"properties", nlohmann::json::object()},
+              {"properties", nlohmann::json::object()},
               {"additionalProperties", false}}}}}},
       nlohmann::json{
           {"type", "function"},
@@ -759,106 +772,104 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
   }
   tools.insert(
       tools.end(),
-      {
-      nlohmann::json{
-          {"type", "function"},
-          {"function",
-           {{"name", kMemoryListToolName},
-            {"description",
-             "List files and directories in the mobile memory workspace or "
-             "under a specific subdirectory."},
-            {"parameters",
-             {{"type", "object"},
-              {"properties",
-               {{"path",
-                 {{"type", "string"},
-                  {"description",
-                   "Optional subdirectory inside the mobile memory "
-                   "workspace. Empty means the workspace root."}}},
-                {"recursive",
-                 {{"type", "boolean"},
-                  {"description",
-                   "Whether to recursively include nested directories."}}},
-                {"maxEntries",
-                 {{"type", "integer"},
-                  {"minimum", 1},
-                  {"maximum", 500},
-                  {"description",
-                   "Maximum number of entries to return."}}}}},
-              {"additionalProperties", false}}}}}},
-      nlohmann::json{
-          {"type", "function"},
-          {"function",
-           {{"name", kMemorySearchToolName},
-            {"description",
-             "Search the mobile workspace memory files stored on device."},
-            {"parameters",
-             {{"type", "object"},
-              {"properties",
-               {{"query",
-                 {{"type", "string"},
-                  {"description", "Search query for mobile memory."}}},
-                {"maxResults",
-                 {{"type", "integer"},
-                  {"description", "Maximum number of matches to return."}}}}},
-              {"required", {"query"}},
-              {"additionalProperties", false}}}}}},
-      nlohmann::json{
-          {"type", "function"},
-          {"function",
-           {{"name", kMemoryGetToolName},
-            {"description",
-             "Read a specific file from the mobile workspace memory."},
-            {"parameters",
-             {{"type", "object"},
-              {"properties",
-               {{"path",
-                 {{"type", "string"},
-                  {"description", "Relative path inside mobile workspace."}}}}},
-              {"required", {"path"}},
-              {"additionalProperties", false}}}}}},
-      nlohmann::json{
-          {"type", "function"},
-          {"function",
-           {{"name", kMemoryWriteToolName},
-            {"description",
-             "Write or append content to a file in the mobile workspace "
-             "memory."},
-            {"parameters",
-             {{"type", "object"},
-              {"properties",
-               {{"path",
-                 {{"type", "string"},
-                  {"description", "Relative path inside mobile workspace."}}},
-                {"content",
-                 {{"type", "string"},
-                  {"description", "Content to write."}}},
-                {"mode",
-                 {{"type", "string"},
-                  {"enum", {"overwrite", "append"}},
-                  {"description", "Write mode."}}}}},
-              {"required", {"path", "content"}},
-              {"additionalProperties", false}}}}}},
-      nlohmann::json{
-          {"type", "function"},
-          {"function",
-           {{"name", kMemoryDeleteToolName},
-            {"description",
-             "Delete a file or directory from the mobile memory workspace."},
-            {"parameters",
-             {{"type", "object"},
-              {"properties",
-               {{"path",
-                 {{"type", "string"},
-                  {"description",
-                   "Relative file or directory path inside the mobile memory "
-                   "workspace."}}},
-                {"recursive",
-                 {{"type", "boolean"},
-                  {"description",
-                   "Required when deleting a non-empty directory."}}}}},
-              {"required", {"path"}},
-              {"additionalProperties", false}}}}}}});
+      {nlohmann::json{
+           {"type", "function"},
+           {"function",
+            {{"name", kMemoryListToolName},
+             {"description",
+              "List files and directories in the mobile memory workspace or "
+              "under a specific subdirectory."},
+             {"parameters",
+              {{"type", "object"},
+               {"properties",
+                {{"path",
+                  {{"type", "string"},
+                   {"description",
+                    "Optional subdirectory inside the mobile memory "
+                    "workspace. Empty means the workspace root."}}},
+                 {"recursive",
+                  {{"type", "boolean"},
+                   {"description",
+                    "Whether to recursively include nested directories."}}},
+                 {"maxEntries",
+                  {{"type", "integer"},
+                   {"minimum", 1},
+                   {"maximum", 500},
+                   {"description", "Maximum number of entries to return."}}}}},
+               {"additionalProperties", false}}}}}},
+       nlohmann::json{
+           {"type", "function"},
+           {"function",
+            {{"name", kMemorySearchToolName},
+             {"description",
+              "Search the mobile workspace memory files stored on device."},
+             {"parameters",
+              {{"type", "object"},
+               {"properties",
+                {{"query",
+                  {{"type", "string"},
+                   {"description", "Search query for mobile memory."}}},
+                 {"maxResults",
+                  {{"type", "integer"},
+                   {"description", "Maximum number of matches to return."}}}}},
+               {"required", {"query"}},
+               {"additionalProperties", false}}}}}},
+       nlohmann::json{
+           {"type", "function"},
+           {"function",
+            {{"name", kMemoryGetToolName},
+             {"description",
+              "Read a specific file from the mobile workspace memory."},
+             {"parameters",
+              {{"type", "object"},
+               {"properties",
+                {{"path",
+                  {{"type", "string"},
+                   {"description",
+                    "Relative path inside mobile workspace."}}}}},
+               {"required", {"path"}},
+               {"additionalProperties", false}}}}}},
+       nlohmann::json{
+           {"type", "function"},
+           {"function",
+            {{"name", kMemoryWriteToolName},
+             {"description",
+              "Write or append content to a file in the mobile workspace "
+              "memory."},
+             {"parameters",
+              {{"type", "object"},
+               {"properties",
+                {{"path",
+                  {{"type", "string"},
+                   {"description", "Relative path inside mobile workspace."}}},
+                 {"content",
+                  {{"type", "string"}, {"description", "Content to write."}}},
+                 {"mode",
+                  {{"type", "string"},
+                   {"enum", {"overwrite", "append"}},
+                   {"description", "Write mode."}}}}},
+               {"required", {"path", "content"}},
+               {"additionalProperties", false}}}}}},
+       nlohmann::json{
+           {"type", "function"},
+           {"function",
+            {{"name", kMemoryDeleteToolName},
+             {"description",
+              "Delete a file or directory from the mobile memory workspace."},
+             {"parameters",
+              {{"type", "object"},
+               {"properties",
+                {{"path",
+                  {{"type", "string"},
+                   {"description",
+                    "Relative file or directory path inside the mobile memory "
+                    "workspace."}}},
+                 {"recursive",
+                  {{"type", "boolean"},
+                   {"description",
+                    "Required when deleting a non-empty directory."}}}}},
+               {"required", {"path"}},
+               {"additionalProperties", false}}}}}}});
   if (web_search_ready) {
     tools.push_back(nlohmann::json{
         {"type", "function"},
@@ -870,9 +881,7 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
           {"parameters",
            {{"type", "object"},
             {"properties",
-             {{"query",
-               {{"type", "string"},
-                {"description", "Search query."}}},
+             {{"query", {{"type", "string"}, {"description", "Search query."}}},
               {"count",
                {{"type", "integer"},
                 {"minimum", 1},
@@ -910,6 +919,298 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
   return tools;
 }
 
+nlohmann::json MobileEngine::BuildHostCapabilitiesPayload(
+    const std::string& session_key) const {
+  const auto bridge = CopyDeviceBridge();
+  DeviceStatusSnapshot status;
+  bool has_device_status = false;
+  bool foreground = true;
+  {
+    std::shared_lock<std::shared_mutex> lock(state_mutex_);
+    foreground = foreground_;
+    const auto it = device_statuses_.find(session_key);
+    if (it != device_statuses_.end()) {
+      status = it->second;
+      has_device_status = true;
+    } else {
+      status.foreground = foreground_;
+    }
+  }
+
+  const bool foreground_only = config_.mobile.runtime.foreground_only ||
+                               config_.mobile.vision.foreground_only;
+  const bool background_gated = foreground_only && !foreground;
+
+  auto unpublished = [](const std::string& detail) {
+    return std::pair<std::string, std::string>("status_unpublished", detail);
+  };
+
+  auto capture_reason = [&]() {
+    if (!has_device_status) {
+      return unpublished(
+          "Host has not published a live device status snapshot for this "
+          "session yet.");
+    }
+    if (background_gated) {
+      return std::pair<std::string, std::string>(
+          "background_gated",
+          "Foreground-only mobile capture is gated while the host app is "
+          "backgrounded.");
+    }
+    if (!status.permissions_granted) {
+      return std::pair<std::string, std::string>(
+          "permissions_missing",
+          "Camera and microphone runtime permissions are not granted on the "
+          "host device.");
+    }
+    if (!status.service_running) {
+      return std::pair<std::string, std::string>(
+          "service_stopped",
+          "The Android foreground runtime service is not running.");
+    }
+    if (!status.capture_requested) {
+      return std::pair<std::string, std::string>(
+          "capture_not_requested",
+          "The host has not requested live camera and microphone capture for "
+          "this mobile session.");
+    }
+    if (status.microphone_status != "running" &&
+        status.camera_status != "running") {
+      return std::pair<std::string, std::string>(
+          "sensors_not_running",
+          "The host capture pipeline is requested but neither microphone nor "
+          "camera is currently running.");
+    }
+    return std::pair<std::string, std::string>("", "");
+  };
+
+  auto microphone_reason = [&]() {
+    if (!has_device_status) {
+      return unpublished(
+          "Host has not published microphone status for this session yet.");
+    }
+    if (background_gated) {
+      return std::pair<std::string, std::string>(
+          "background_gated",
+          "Foreground-only microphone capture is gated while the host app is "
+          "backgrounded.");
+    }
+    if (!status.permissions_granted) {
+      return std::pair<std::string, std::string>(
+          "permissions_missing",
+          "Microphone permission is not granted on the host device.");
+    }
+    if (!status.service_running) {
+      return std::pair<std::string, std::string>(
+          "service_stopped",
+          "The Android foreground runtime service is not running.");
+    }
+    if (!status.capture_requested) {
+      return std::pair<std::string, std::string>(
+          "capture_not_requested",
+          "The host has not requested live capture for this mobile session.");
+    }
+    if (status.microphone_status == "error") {
+      return std::pair<std::string, std::string>(
+          "microphone_error",
+          "The Android microphone capture pipeline reported an error state.");
+    }
+    if (status.microphone_status != "running") {
+      return std::pair<std::string, std::string>(
+          "microphone_not_running",
+          "The Android microphone capture pipeline is not currently running.");
+    }
+    return std::pair<std::string, std::string>("", "");
+  };
+
+  auto camera_reason = [&]() {
+    if (!config_.mobile.vision.enabled) {
+      return std::pair<std::string, std::string>(
+          "vision_disabled",
+          "Continuous vision is disabled in the mobile runtime "
+          "configuration.");
+    }
+    if (!has_device_status) {
+      return unpublished(
+          "Host has not published camera status for this session yet.");
+    }
+    if (background_gated) {
+      return std::pair<std::string, std::string>(
+          "background_gated",
+          "Foreground-only camera capture is gated while the host app is "
+          "backgrounded.");
+    }
+    if (!status.permissions_granted) {
+      return std::pair<std::string, std::string>(
+          "permissions_missing",
+          "Camera permission is not granted on the host device.");
+    }
+    if (!status.service_running) {
+      return std::pair<std::string, std::string>(
+          "service_stopped",
+          "The Android foreground runtime service is not running.");
+    }
+    if (!status.capture_requested) {
+      return std::pair<std::string, std::string>(
+          "capture_not_requested",
+          "The host has not requested camera capture for this mobile "
+          "session.");
+    }
+    if (status.camera_status == "error") {
+      return std::pair<std::string, std::string>(
+          "camera_error",
+          "The Android camera capture pipeline reported an error state.");
+    }
+    if (status.camera_status != "running") {
+      return std::pair<std::string, std::string>(
+          "camera_not_running",
+          "The Android camera capture pipeline is not currently running.");
+    }
+    return std::pair<std::string, std::string>("", "");
+  };
+
+  auto speaker_reason = [&]() {
+    if (!has_device_status) {
+      return unpublished(
+          "Host has not published speaker status for this session yet.");
+    }
+    if (status.speaker_status == "error") {
+      return std::pair<std::string, std::string>(
+          "speaker_error",
+          "The Android speech playback pipeline reported an error state.");
+    }
+    return std::pair<std::string, std::string>("", "");
+  };
+
+  auto web_search_reason = [&]() {
+    if (!bridge) {
+      return std::pair<std::string, std::string>(
+          "device_bridge_missing",
+          "No Android device bridge is attached to serve host-backed web "
+          "search requests.");
+    }
+    if (!bridge->SupportsWebSearch()) {
+      return std::pair<std::string, std::string>(
+          "web_search_unsupported",
+          "The attached Android device bridge does not support host-backed "
+          "web search.");
+    }
+    if (!has_device_status) {
+      return unpublished(
+          "Host has not published web search toggle state for this session "
+          "yet.");
+    }
+    if (!status.host_web_search_enabled) {
+      return std::pair<std::string, std::string>(
+          "host_toggle_off",
+          "Host-backed web search is disabled by the Android host toggle.");
+    }
+    return std::pair<std::string, std::string>("", "");
+  };
+
+  auto web_fetch_reason = [&]() {
+    if (!bridge) {
+      return std::pair<std::string, std::string>(
+          "device_bridge_missing",
+          "No Android device bridge is attached to serve host-backed web "
+          "fetch requests.");
+    }
+    if (!bridge->SupportsWebFetch()) {
+      return std::pair<std::string, std::string>(
+          "web_fetch_unsupported",
+          "The attached Android device bridge does not support host-backed "
+          "web fetch.");
+    }
+    if (!has_device_status) {
+      return unpublished(
+          "Host has not published web fetch toggle state for this session "
+          "yet.");
+    }
+    if (!status.host_web_fetch_enabled) {
+      return std::pair<std::string, std::string>(
+          "host_toggle_off",
+          "Host-backed web fetch is disabled by the Android host toggle.");
+    }
+    return std::pair<std::string, std::string>("", "");
+  };
+
+  auto haptics_reason = [&]() {
+    if (!bridge) {
+      return std::pair<std::string, std::string>(
+          "device_bridge_missing",
+          "No Android device bridge is attached to serve haptic requests.");
+    }
+    if (!bridge->SupportsVibration()) {
+      return std::pair<std::string, std::string>(
+          "vibration_unsupported",
+          "The attached Android device bridge does not support vibration.");
+    }
+    if (!has_device_status) {
+      return unpublished(
+          "Host has not published haptics toggle state for this session "
+          "yet.");
+    }
+    if (!status.host_haptics_enabled) {
+      return std::pair<std::string, std::string>(
+          "host_toggle_off",
+          "Host haptics are disabled by the Android host toggle.");
+    }
+    return std::pair<std::string, std::string>("", "");
+  };
+
+  const auto capture_state = capture_reason();
+  const auto microphone_state = microphone_reason();
+  const auto camera_state = camera_reason();
+  const auto speaker_state = speaker_reason();
+  const auto web_search_state = web_search_reason();
+  const auto web_fetch_state = web_fetch_reason();
+  const auto haptics_state = haptics_reason();
+
+  return {
+      {"statusPublished", has_device_status},
+      {"foregroundOnly", foreground_only},
+      {"capture",
+       make_capability_payload(
+           true, has_device_status && status.capture_requested,
+           capture_state.first.empty(),
+           has_device_status && (status.microphone_status == "running" ||
+                                 status.camera_status == "running"),
+           capture_state.first, capture_state.second)},
+      {"microphone",
+       make_capability_payload(
+           true, has_device_status && status.capture_requested,
+           microphone_state.first.empty(),
+           has_device_status && status.microphone_status == "running",
+           microphone_state.first, microphone_state.second)},
+      {"camera", make_capability_payload(
+                     config_.mobile.vision.enabled,
+                     config_.mobile.vision.enabled && has_device_status &&
+                         status.capture_requested,
+                     camera_state.first.empty(),
+                     has_device_status && status.camera_status == "running",
+                     camera_state.first, camera_state.second)},
+      {"speaker", make_capability_payload(
+                      true, true, speaker_state.first.empty(),
+                      has_device_status && status.speaker_status == "speaking",
+                      speaker_state.first, speaker_state.second)},
+      {"webSearch", make_capability_payload(
+                        bridge != nullptr && bridge->SupportsWebSearch(),
+                        has_device_status && status.host_web_search_enabled,
+                        web_search_state.first.empty(), false,
+                        web_search_state.first, web_search_state.second)},
+      {"webFetch", make_capability_payload(
+                       bridge != nullptr && bridge->SupportsWebFetch(),
+                       has_device_status && status.host_web_fetch_enabled,
+                       web_fetch_state.first.empty(), false,
+                       web_fetch_state.first, web_fetch_state.second)},
+      {"haptics",
+       make_capability_payload(bridge != nullptr && bridge->SupportsVibration(),
+                               has_device_status && status.host_haptics_enabled,
+                               haptics_state.first.empty(), false,
+                               haptics_state.first, haptics_state.second)},
+  };
+}
+
 std::string MobileEngine::BuildDeviceStatusToolResult(
     const std::string& session_key) const {
   nlohmann::json result;
@@ -929,6 +1230,7 @@ std::string MobileEngine::BuildDeviceStatusToolResult(
           "session yet.";
     }
   }
+  result["hostCapabilities"] = BuildHostCapabilitiesPayload(session_key);
   result["runtimeStatus"] = BuildRuntimeStatusPayload();
   return result.dump(2);
 }
@@ -937,9 +1239,9 @@ std::string MobileEngine::BuildRuntimeStatusToolResult() const {
   return BuildRuntimeStatusPayload().dump(2);
 }
 
-std::string MobileEngine::BuildVibrateToolResult(
-    const std::string& session_key,
-    const nlohmann::json& arguments) const {
+std::string
+MobileEngine::BuildVibrateToolResult(const std::string& session_key,
+                                     const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
   if (!bridge) {
     throw std::runtime_error("vibrate requires a device bridge");
@@ -975,9 +1277,8 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
     const auto status_it = device_statuses_.find(session_key);
     const bool has_device_status = status_it != device_statuses_.end();
     const bool has_snapshot = it != last_vision_observations_.end();
-    const bool foreground_only =
-        config_.mobile.runtime.foreground_only ||
-        config_.mobile.vision.foreground_only;
+    const bool foreground_only = config_.mobile.runtime.foreground_only ||
+                                 config_.mobile.vision.foreground_only;
     const bool background_gated = foreground_only && !foreground_;
     result["available"] = has_snapshot;
     if (has_snapshot) {
@@ -997,8 +1298,9 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
           "No camera observation has been captured in this session yet.";
       if (!config_.mobile.vision.enabled) {
         reason = "vision_disabled";
-        detail = "Continuous vision is disabled in the mobile runtime "
-                 "configuration.";
+        detail =
+            "Continuous vision is disabled in the mobile runtime "
+            "configuration.";
       } else if (background_gated) {
         reason = "background_gated";
         detail =
@@ -1032,6 +1334,7 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
       result["deviceStatus"] = status_it->second.ToJson();
     }
   }
+  result["hostCapabilities"] = BuildHostCapabilitiesPayload(session_key);
   return result.dump(2);
 }
 
@@ -1059,25 +1362,25 @@ std::string MobileEngine::BuildTimeToolResult() const {
                 << (absolute_minutes / 60) << ":" << std::setw(2)
                 << (absolute_minutes % 60);
 
-  return nlohmann::json{
-      {"epochMs", epoch_ms},
-      {"utc", format_tm(utc) + "Z"},
-      {"local", format_tm(local)},
-      {"utcOffsetMinutes", offset_minutes},
-      {"utcOffset", offset_stream.str()},
-      {"timezoneName", format_timezone_name(local)}}
+  return nlohmann::json{{"epochMs", epoch_ms},
+                        {"utc", format_tm(utc) + "Z"},
+                        {"local", format_tm(local)},
+                        {"utcOffsetMinutes", offset_minutes},
+                        {"utcOffset", offset_stream.str()},
+                        {"timezoneName", format_timezone_name(local)}}
       .dump(2);
 }
 
-std::string MobileEngine::BuildWebSearchToolResult(
-    const std::string& session_key,
-    const nlohmann::json& arguments) const {
+std::string
+MobileEngine::BuildWebSearchToolResult(const std::string& session_key,
+                                       const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
   if (bridge == nullptr) {
     throw std::runtime_error("web_search requires a device bridge");
   }
   if (!bridge->SupportsWebSearch()) {
-    throw std::runtime_error("web_search is not supported by the device bridge");
+    throw std::runtime_error(
+        "web_search is not supported by the device bridge");
   }
   const std::string query = arguments.value("query", "");
   const int count = arguments.value("count", 5);
@@ -1088,9 +1391,9 @@ std::string MobileEngine::BuildWebSearchToolResult(
   return bridge->WebSearch(session_key, query, count, freshness);
 }
 
-std::string MobileEngine::BuildWebFetchToolResult(
-    const std::string& session_key,
-    const nlohmann::json& arguments) const {
+std::string
+MobileEngine::BuildWebFetchToolResult(const std::string& session_key,
+                                      const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
   if (bridge == nullptr) {
     throw std::runtime_error("web_fetch requires a device bridge");
@@ -1110,8 +1413,8 @@ std::filesystem::path MobileEngine::WorkspaceRoot() const {
   return state_dir_ / "workspace";
 }
 
-std::filesystem::path MobileEngine::ResolveWorkspacePath(
-    const std::string& relative_path) const {
+std::filesystem::path
+MobileEngine::ResolveWorkspacePath(const std::string& relative_path) const {
   if (relative_path.empty()) {
     throw std::runtime_error("path is required");
   }
@@ -1122,9 +1425,8 @@ std::filesystem::path MobileEngine::ResolveWorkspacePath(
 
   const std::string workspace_str = workspace.generic_string();
   const std::string resolved_str = resolved.generic_string();
-  const bool inside_workspace =
-      resolved_str == workspace_str ||
-      resolved_str.rfind(workspace_str + "/", 0) == 0;
+  const bool inside_workspace = resolved_str == workspace_str ||
+                                resolved_str.rfind(workspace_str + "/", 0) == 0;
   if (!inside_workspace) {
     throw std::runtime_error("Access denied: path outside mobile workspace");
   }
@@ -1136,8 +1438,8 @@ std::shared_ptr<DeviceCapabilityBridge> MobileEngine::CopyDeviceBridge() const {
   return device_bridge_;
 }
 
-std::string MobileEngine::BuildMemoryListToolResult(
-    const nlohmann::json& arguments) const {
+std::string
+MobileEngine::BuildMemoryListToolResult(const nlohmann::json& arguments) const {
   const std::string relative_path = arguments.value("path", "");
   const bool recursive = arguments.value("recursive", false);
   const size_t max_entries =
@@ -1224,8 +1526,8 @@ std::string MobileEngine::BuildMemorySearchToolResult(
       .dump(2);
 }
 
-std::string MobileEngine::BuildMemoryGetToolResult(
-    const nlohmann::json& arguments) const {
+std::string
+MobileEngine::BuildMemoryGetToolResult(const nlohmann::json& arguments) const {
   const std::string relative_path = arguments.value("path", "");
   const std::filesystem::path full_path = ResolveWorkspacePath(relative_path);
   if (!std::filesystem::exists(full_path)) {
@@ -1236,8 +1538,9 @@ std::string MobileEngine::BuildMemoryGetToolResult(
   if (!file) {
     throw std::runtime_error("Cannot read: " + relative_path);
   }
-  return nlohmann::json{{"path", relative_path},
-                        {"content", std::string(std::istreambuf_iterator<char>(file), {})}}
+  return nlohmann::json{
+      {"path", relative_path},
+      {"content", std::string(std::istreambuf_iterator<char>(file), {})}}
       .dump(2);
 }
 
@@ -1373,8 +1676,7 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
   session_manager_.GetOrCreate(session_key, "", "mobile");
   session_manager_.AppendMessage(session_key, "user", text);
   if (emit_asr_final) {
-    Emit(kEventMobileAsrFinal,
-         with_session_key(session_key, {{"text", text}}));
+    Emit(kEventMobileAsrFinal, with_session_key(session_key, {{"text", text}}));
   }
 
   SetAvatarState(AvatarState::kThink, session_key);
@@ -1422,7 +1724,8 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
               }
             });
 
-        if (streamed_tool_calls.empty() && round_finish_reason != "tool_calls") {
+        if (streamed_tool_calls.empty() &&
+            round_finish_reason != "tool_calls") {
           response_text = round_response_text;
           finish_reason = round_finish_reason;
           for (const auto& chunk : delta_chunks) {
@@ -1454,34 +1757,29 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
         tool_result_message.role = "user";
         for (const auto& tool_call : streamed_tool_calls) {
           Emit(kEventToolStart,
-               with_session_key(
-                   session_key,
-                   {{"id", tool_call.id},
-                    {"name", tool_call.name},
-                    {"arguments", tool_call.arguments}}));
+               with_session_key(session_key,
+                                {{"id", tool_call.id},
+                                 {"name", tool_call.name},
+                                 {"arguments", tool_call.arguments}}));
 
           try {
             const std::string result = ExecuteToolCall(session_key, tool_call);
             tool_result_message.content.push_back(
                 ContentBlock::MakeToolResult(tool_call.id, result));
             Emit(kEventToolResult,
-                 with_session_key(
-                     session_key,
-                     {{"id", tool_call.id},
-                      {"name", tool_call.name},
-                      {"status", "ok"},
-                      {"result", result}}));
+                 with_session_key(session_key, {{"id", tool_call.id},
+                                                {"name", tool_call.name},
+                                                {"status", "ok"},
+                                                {"result", result}}));
           } catch (const std::exception& e) {
             const std::string error = e.what();
             tool_result_message.content.push_back(
                 ContentBlock::MakeToolResult(tool_call.id, error));
             Emit(kEventToolResult,
-                 with_session_key(
-                     session_key,
-                     {{"id", tool_call.id},
-                      {"name", tool_call.name},
-                      {"status", "error"},
-                      {"error", error}}));
+                 with_session_key(session_key, {{"id", tool_call.id},
+                                                {"name", tool_call.name},
+                                                {"status", "error"},
+                                                {"error", error}}));
           }
         }
 
@@ -1517,9 +1815,8 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
 
   session_manager_.AppendMessage(session_key, "assistant", response_text);
   Emit(kEventAssistantFinal,
-       with_session_key(session_key,
-                        {{"text", response_text},
-                         {"finishReason", finish_reason}}));
+       with_session_key(session_key, {{"text", response_text},
+                                      {"finishReason", finish_reason}}));
 
   if (!response_text.empty()) {
     SetAvatarState(AvatarState::kSpeak, session_key);
@@ -1537,8 +1834,8 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
   return true;
 }
 
-std::vector<Message> MobileEngine::BuildRequestMessages(
-    const std::string& session_key) const {
+std::vector<Message>
+MobileEngine::BuildRequestMessages(const std::string& session_key) const {
   std::vector<Message> messages;
   for (const auto& entry : session_manager_.GetHistory(session_key)) {
     Message message;
