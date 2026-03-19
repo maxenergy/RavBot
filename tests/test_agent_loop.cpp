@@ -1020,6 +1020,31 @@ TEST_F(AgentLoopTest, BriefContinuationPromptsSuppressDuplicateNotice) {
   }
 }
 
+TEST_F(AgentLoopTest, ShortContextualDecisionRepliesSuppressDuplicateNotice) {
+  auto embedding_manager = CreateEmbeddingManager();
+  agent_loop_->SetEmbeddingManager(embedding_manager);
+  mock_provider_->response_text = "ok";
+
+  const std::string prompt = u8"先研究有没有更好的方案再操作。";
+  const std::string session_key = "dup-decision-reply";
+  const std::string metadata =
+      std::string("{\"role\":\"user\",\"session\":\"") + session_key + "\"}";
+  ASSERT_TRUE(
+      embedding_manager->IndexText("seed-decision-reply", prompt, metadata));
+
+  agent_loop_->ProcessMessage(prompt, {}, "System.", session_key);
+  const auto& sent = mock_provider_->last_request.messages;
+
+  bool has_duplicate_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("very similar message") != std::string::npos) {
+      has_duplicate_notice = true;
+    }
+  }
+  EXPECT_FALSE(has_duplicate_notice);
+}
+
 TEST_F(AgentLoopTest,
        FollowUpCollapsesCompletedToolTurnToQuestionAndFinalAnswer) {
   mock_provider_->response_text = "ok";
