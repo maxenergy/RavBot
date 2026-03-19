@@ -100,6 +100,7 @@ class MobileEngine {
   std::vector<nlohmann::json> BuildToolSchemas() const;
   std::string ExecuteToolCall(const ToolCall& tool_call) const;
   std::string BuildDeviceStatusToolResult() const;
+  std::string BuildRuntimeStatusToolResult() const;
   std::string BuildCameraSnapshotToolResult() const;
   std::string BuildTimeToolResult() const;
   std::string BuildWebSearchToolResult(const nlohmann::json& arguments) const;

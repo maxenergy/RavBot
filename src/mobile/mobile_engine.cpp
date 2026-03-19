@@ -23,6 +23,7 @@ namespace ravbot::mobile {
 namespace {
 
 constexpr char kDeviceStatusToolName[] = "device_status";
+constexpr char kRuntimeStatusToolName[] = "runtime_status";
 constexpr char kCameraSnapshotToolName[] = "camera_snapshot";
 constexpr char kTimeToolName[] = "time";
 constexpr char kWebSearchToolName[] = "web_search";
@@ -554,6 +555,17 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
       nlohmann::json{
           {"type", "function"},
           {"function",
+           {{"name", kRuntimeStatusToolName},
+            {"description",
+             "Get the current local runtime readiness for models, speech "
+             "pipeline, and host web bridge capabilities."},
+            {"parameters",
+             {{"type", "object"},
+              {"properties", nlohmann::json::object()},
+              {"additionalProperties", false}}}}}},
+      nlohmann::json{
+          {"type", "function"},
+          {"function",
            {{"name", kCameraSnapshotToolName},
             {"description",
              "Get the latest on-device camera observation summary and frame "
@@ -740,6 +752,10 @@ std::string MobileEngine::BuildDeviceStatusToolResult() const {
   }
   result["runtimeStatus"] = BuildRuntimeStatusPayload();
   return result.dump(2);
+}
+
+std::string MobileEngine::BuildRuntimeStatusToolResult() const {
+  return BuildRuntimeStatusPayload().dump(2);
 }
 
 std::string MobileEngine::BuildCameraSnapshotToolResult() const {
@@ -1049,6 +1065,9 @@ std::string MobileEngine::BuildMemoryDeleteToolResult(
 std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
   if (tool_call.name == kDeviceStatusToolName) {
     return BuildDeviceStatusToolResult();
+  }
+  if (tool_call.name == kRuntimeStatusToolName) {
+    return BuildRuntimeStatusToolResult();
   }
   if (tool_call.name == kCameraSnapshotToolName) {
     return BuildCameraSnapshotToolResult();

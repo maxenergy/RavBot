@@ -21,12 +21,15 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - `device_status` tool results now include both the last published host
   snapshot and the current `mobile.runtime_status` readiness payload, so the
   local model can inspect provider/backend/web capability state directly
+- A dedicated `runtime_status` tool now exposes that readiness payload on its
+  own for local-model tool calls
 - Native `modelsDir` resolution for relative mobile model paths
 - `mobile.runtime_status` diagnostics for provider/backend/model readiness
 - Compose status cards for live `assistant_delta`/`assistant_final` streaming
   state and mobile tool activity
 - A first native `mobile_safe` tool path: local models can call
-  `device_status` and `camera_snapshot`, receive the latest host/device
+  `device_status`, `runtime_status`, and `camera_snapshot`, receive the latest
+  host/device
   snapshots, use host-backed `web_search` / `web_fetch`, plus `time` and
   `memory_list` / `memory_search` / `memory_get` / `memory_write` /
   `memory_delete` against the mobile workspace, and continue generation with

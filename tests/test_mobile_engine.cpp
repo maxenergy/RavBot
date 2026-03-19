@@ -397,6 +397,54 @@ class FakeTimeToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
+class FakeRuntimeStatusToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("\"deviceBridgeAttached\"") !=
+              std::string::npos &&
+          last.content.front().content.find("\"webSearchReady\"") !=
+              std::string::npos) {
+        response.content = "Runtime readiness snapshot received.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_runtime_status";
+    tool_call.name = "runtime_status";
+    tool_call.arguments = nlohmann::json::object();
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override {
+    return "fake-runtime-tool";
+  }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-runtime-tool-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
 class FakeWebSearchToolCallingTextProvider : public ravbot::LLMProvider {
  public:
   ravbot::ChatCompletionResponse ChatCompletion(
@@ -1521,6 +1569,49 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesTimeToolRoundTrip) {
   ASSERT_EQ(history.size(), 4u);
   EXPECT_EQ(history[1].content[0].name, "time");
   EXPECT_EQ(history[3].content[0].text, "Device time snapshot received.");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  engine.SetDeviceBridge(std::make_shared<FakeDeviceBridge>());
+  auto provider = std::make_shared<FakeRuntimeStatusToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents(
+      [&events](const ravbot::mobile::MobileEvent& event) {
+        events.push_back(event);
+      });
+
+  ASSERT_TRUE(engine.SendTextTurn("agent:main:runtime-tool",
+                                  "What runtime capabilities are ready?"));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  const auto names = tool_names(provider->requests.front());
+  EXPECT_NE(std::find(names.begin(), names.end(), "runtime_status"),
+            names.end());
+
+  auto tool_result = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventToolResult &&
+               event.payload.value("name", "") == "runtime_status";
+      });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  const auto result = tool_result->payload["result"].get<std::string>();
+  EXPECT_NE(result.find("\"deviceBridgeAttached\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"webSearchReady\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"webFetchReady\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"provider\": \"fake-runtime-tool\""),
+            std::string::npos);
+
+  auto history = engine.session_manager().GetHistory("agent:main:runtime-tool");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "runtime_status");
+  EXPECT_EQ(history[3].content[0].text,
+            "Runtime readiness snapshot received.");
 }
 
 TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {
