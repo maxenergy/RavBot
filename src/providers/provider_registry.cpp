@@ -191,6 +191,7 @@ void ProviderRegistry::LoadFromConfig(const nlohmann::json& providers_json) {
     if (entry.api_key_env.empty()) {
       entry.api_key_env = val.value("api_key_env", std::string{});
     }
+    entry.api = val.value("api", std::string{});
     entry.timeout = val.value("timeout", 30);
     if (val.contains("extra")) {
       entry.extra = val["extra"];
@@ -231,26 +232,28 @@ ModelRef ProviderRegistry::ResolveModel(
 
 std::shared_ptr<LLMProvider> ProviderRegistry::GetProvider(
     const std::string& provider_id) {
-  // Return cached instance if available
   auto it = instances_.find(provider_id);
   if (it != instances_.end()) return it->second;
 
-  // Find factory
-  auto fit = factories_.find(provider_id);
-  if (fit == factories_.end()) {
-    logger_->error("No factory registered for provider: {}", provider_id);
-    return nullptr;
-  }
-
-  // Find entry
   auto eit = entries_.find(provider_id);
   if (eit == entries_.end()) {
-    // Create minimal entry with env-based defaults
     ProviderEntry entry;
     entry.id = provider_id;
     entry.api_key = resolve_api_key(entry);
     entries_[provider_id] = entry;
     eit = entries_.find(provider_id);
+  }
+
+  std::string factory_id = ResolveFactoryId(provider_id, &eit->second);
+  if (factory_id.empty()) {
+    logger_->error("No factory registered for provider: {}", provider_id);
+    return nullptr;
+  }
+
+  auto fit = factories_.find(factory_id);
+  if (fit == factories_.end()) {
+    logger_->error("No factory registered for provider: {}", factory_id);
+    return nullptr;
   }
 
   auto provider = fit->second(eit->second, logger_);
@@ -260,24 +263,28 @@ std::shared_ptr<LLMProvider> ProviderRegistry::GetProvider(
 
 std::shared_ptr<LLMProvider> ProviderRegistry::GetProviderForModel(
     const ModelRef& ref) {
-  const auto* model = FindModelDefinition(ref);
-  if (!HasModelScopedOverride(model)) {
-    return GetProvider(ref.provider);
-  }
-
-  auto fit = factories_.find(ref.provider);
-  if (fit == factories_.end()) {
-    logger_->error("No factory registered for provider: {}", ref.provider);
-    return nullptr;
-  }
-
-  const std::string instance_key = ref.to_string();
+  const std::string instance_key =
+      HasModelScopedOverride(FindModelDefinition(ref)) ? ref.to_string()
+                                                       : ref.provider;
   auto it = instances_.find(instance_key);
   if (it != instances_.end()) {
     return it->second;
   }
 
-  auto provider = fit->second(BuildEffectiveEntryForModel(ref), logger_);
+  ProviderEntry entry = BuildEffectiveEntryForModel(ref);
+  std::string factory_id = ResolveFactoryId(ref.provider, &entry);
+  if (factory_id.empty()) {
+    logger_->error("No factory registered for provider: {}", ref.provider);
+    return nullptr;
+  }
+
+  auto fit = factories_.find(factory_id);
+  if (fit == factories_.end()) {
+    logger_->error("No factory registered for provider: {}", factory_id);
+    return nullptr;
+  }
+
+  auto provider = fit->second(entry, logger_);
   instances_[instance_key] = provider;
   return provider;
 }
@@ -285,26 +292,24 @@ std::shared_ptr<LLMProvider> ProviderRegistry::GetProviderForModel(
 std::shared_ptr<LLMProvider> ProviderRegistry::GetProviderForModelWithKey(
     const ModelRef& ref,
     const std::string& api_key) {
-  auto fit = factories_.find(ref.provider);
-  if (fit == factories_.end()) {
+  ProviderEntry entry = BuildEffectiveEntryForModel(ref, &api_key);
+  std::string factory_id = ResolveFactoryId(ref.provider, &entry);
+  if (factory_id.empty()) {
     logger_->error("No factory for provider: {}", ref.provider);
     return nullptr;
   }
 
-  ProviderEntry entry = BuildEffectiveEntryForModel(ref, &api_key);
+  auto fit = factories_.find(factory_id);
+  if (fit == factories_.end()) {
+    logger_->error("No factory for provider: {}", factory_id);
+    return nullptr;
+  }
   return fit->second(entry, logger_);
 }
 
 std::shared_ptr<LLMProvider> ProviderRegistry::GetProviderWithKey(
     const std::string& provider_id,
     const std::string& api_key) {
-  auto fit = factories_.find(provider_id);
-  if (fit == factories_.end()) {
-    logger_->error("No factory for provider: {}", provider_id);
-    return nullptr;
-  }
-
-  // Build a temporary entry with the given API key
   ProviderEntry entry;
   auto eit = entries_.find(provider_id);
   if (eit != entries_.end()) {
@@ -313,6 +318,18 @@ std::shared_ptr<LLMProvider> ProviderRegistry::GetProviderWithKey(
     entry.id = provider_id;
   }
   entry.api_key = api_key;
+
+  std::string factory_id = ResolveFactoryId(provider_id, &entry);
+  if (factory_id.empty()) {
+    logger_->error("No factory for provider: {}", provider_id);
+    return nullptr;
+  }
+
+  auto fit = factories_.find(factory_id);
+  if (fit == factories_.end()) {
+    logger_->error("No factory for provider: {}", factory_id);
+    return nullptr;
+  }
 
   return fit->second(entry, logger_);
 }
@@ -442,6 +459,29 @@ std::string ProviderRegistry::resolve_api_key(
   env_name = upper_id + "_KEY";
   val = std::getenv(env_name.c_str());
   if (val) return val;
+
+  return "";
+}
+
+std::string ProviderRegistry::ResolveFactoryId(
+    const std::string& provider_id,
+    const ProviderEntry* entry) const {
+  if (factories_.count(provider_id) > 0) {
+    return provider_id;
+  }
+  if (entry == nullptr) {
+    return "";
+  }
+
+  if (entry->api == "openai-completions") {
+    return "openai";
+  }
+  if (entry->api == "anthropic-messages") {
+    return "anthropic";
+  }
+  if (entry->api == "google-generativeai") {
+    return "google";
+  }
 
   return "";
 }

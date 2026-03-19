@@ -137,6 +137,8 @@ class ProviderRegistry {
 
   // Resolve API key from entry (direct value or env var)
   std::string resolve_api_key(const ProviderEntry& entry) const;
+  std::string ResolveFactoryId(const std::string& provider_id,
+                               const ProviderEntry* entry) const;
 
   const ModelDefinition* FindModelDefinition(const ModelRef& ref) const;
   bool HasModelScopedOverride(const ModelDefinition* model) const;

@@ -162,6 +162,46 @@ TEST(ProviderRegistryTest, GetProviderForModel) {
   ASSERT_NE(provider, nullptr);
 }
 
+TEST(ProviderRegistryTest, CustomProviderIdUsesApiFactoryFromConfig) {
+  auto reg = std::make_unique<ProviderRegistry>(make_logger("providers"));
+  reg->RegisterBuiltinFactories();
+
+  nlohmann::json config = {
+      {"bailian",
+       {{"apiKey", "sk-sp-test"},
+        {"baseUrl", "https://coding.dashscope.aliyuncs.com/v1"},
+        {"api", "openai-completions"},
+        {"timeout", 120}}},
+  };
+  reg->LoadFromConfig(config);
+
+  auto provider = reg->GetProvider("bailian");
+  ASSERT_NE(provider, nullptr);
+  EXPECT_EQ(provider->GetProviderName(), "openai");
+}
+
+TEST(ProviderRegistryTest, CustomModelProviderUsesApiFactoryFallback) {
+  auto reg = std::make_unique<ProviderRegistry>(make_logger("providers"));
+  reg->RegisterBuiltinFactories();
+
+  ProviderConfig provider_config;
+  provider_config.api_key = "sk-sp-test";
+  provider_config.base_url = "https://coding.dashscope.aliyuncs.com/v1";
+  provider_config.api = "openai-completions";
+
+  ModelDefinition model;
+  model.id = "qwen3.5-plus";
+  model.name = "Qwen 3.5 Plus";
+  provider_config.models.push_back(model);
+
+  reg->LoadModelProviders({{"bailian", provider_config}});
+
+  auto provider = reg->GetProviderForModel(
+      ModelRef::parse("bailian/qwen3.5-plus"));
+  ASSERT_NE(provider, nullptr);
+  EXPECT_EQ(provider->GetProviderName(), "openai");
+}
+
 TEST(ProviderRegistryTest, NullForUnknownProvider) {
   auto reg = std::make_unique<ProviderRegistry>(make_logger("providers"));
   auto provider = reg->GetProvider("nonexistent");
