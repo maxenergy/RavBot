@@ -126,6 +126,9 @@ TEST_F(MobileCApiTest, SendTextTurnEmitsAssistantFinalEvent) {
       saw_runtime = true;
       EXPECT_EQ(event.payload["modelsDir"], test_dir_.string());
       EXPECT_EQ(event.payload["speechProvider"], "sherpa_onnx_mobile");
+      EXPECT_FALSE(event.payload["deviceBridgeAttached"].get<bool>());
+      EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
+      EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
       EXPECT_TRUE(event.payload.contains("detail"));
       EXPECT_TRUE(event.payload.contains("speechDetail"));
     }
@@ -326,6 +329,43 @@ TEST_F(MobileCApiTest, DeviceCallbacksReceiveAvatarAndSpeechRequests) {
   EXPECT_FALSE(sink.avatar_states.empty());
   EXPECT_FALSE(sink.speech_requests.empty());
   EXPECT_GT(sink.speech_interrupt_count, 0);
+}
+
+TEST_F(MobileCApiTest, RuntimeStatusReflectsMissingWebDeviceCallbacks) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  ravbot_mobile_device_callbacks_t callbacks{};
+  callbacks.on_avatar_state = capture_avatar_state;
+  callbacks.on_speech_request = capture_speech_request;
+  callbacks.on_speech_interrupt = capture_speech_interrupt;
+  ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, &callbacks, &sink));
+
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  EXPECT_TRUE(ravbot_mobile_start_session(
+      engine, "agent:main:device-runtime", "Device runtime status"));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  bool saw_runtime = false;
+  for (const auto& event : sink.events) {
+    if (event.name != "mobile.runtime_status") {
+      continue;
+    }
+    saw_runtime = true;
+    EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
+    EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
+    EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
+  }
+
+  EXPECT_TRUE(saw_runtime);
 }
 
 }  // namespace

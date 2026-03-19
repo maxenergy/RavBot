@@ -34,6 +34,9 @@ class HostSnapshotStoreTest {
             runtimeProvider = "llama.cpp",
             runtimeDetail = "backend linked",
             runtimeModelsDir = "/data/user/0/com.ravbot.android/files/ravbot-models",
+            runtimeDeviceBridgeStatus = "ready",
+            runtimeWebSearchStatus = "ready",
+            runtimeWebFetchStatus = "disabled",
             runtimeTextStatus = "ready",
             runtimeVisionStatus = "ready",
             runtimeVulkanStatus = "requested + enabled",
@@ -59,6 +62,9 @@ class HostSnapshotStoreTest {
 
     assertEquals("android-mvp", cleared.sessionId)
     assertEquals("What can you see and hear right now?", cleared.promptText)
+    assertEquals("unknown", cleared.runtimeDeviceBridgeStatus)
+    assertEquals("unknown", cleared.runtimeWebSearchStatus)
+    assertEquals("unknown", cleared.runtimeWebFetchStatus)
     assertFalse(cleared.shouldRestoreRuntime())
   }
 }
