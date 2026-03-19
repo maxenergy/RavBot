@@ -475,6 +475,7 @@ AnthropicProvider::MakeApiRequest(const std::string& json_payload) const {
 CurlSlist AnthropicProvider::CreateHeaders() const {
   CurlSlist headers;
   headers.append("Content-Type: application/json");
+  headers.append("User-Agent: RavBot/1.0");
 
   std::string api_key_header = "x-api-key: " + api_key_;
   headers.append(api_key_header.c_str());

@@ -7,6 +7,32 @@
 
 using namespace ravbot;
 
+class FakeQwenProvider : public QwenProvider {
+ public:
+  FakeQwenProvider(const std::string& response,
+                   std::shared_ptr<spdlog::logger> logger)
+      : QwenProvider("test-api-key",
+                     "https://dashscope.aliyuncs.com/compatible-mode/v1", 30,
+                     logger),
+        response_(response) {}
+
+  const std::string& last_payload() const { return last_payload_; }
+  bool last_stream() const { return last_stream_; }
+
+ protected:
+  std::string MakeApiRequest(const std::string& payload,
+                             bool stream) const override {
+    last_payload_ = payload;
+    last_stream_ = stream;
+    return response_;
+  }
+
+ private:
+  std::string response_;
+  mutable std::string last_payload_;
+  mutable bool last_stream_ = false;
+};
+
 class QwenProviderTest : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -253,4 +279,119 @@ TEST_F(QwenProviderTest, ChineseSupport) {
 
     EXPECT_EQ(request.messages.size(), 1);
     EXPECT_FALSE(request.messages[0].text().empty());
+}
+
+TEST_F(QwenProviderTest, ToolCallArgumentsStringParsesToJsonObject) {
+    nlohmann::json response = {
+        {"choices", nlohmann::json::array({
+            {
+                {"finish_reason", "tool_calls"},
+                {"message", {
+                    {"role", "assistant"},
+                    {"content", ""},
+                    {"tool_calls", nlohmann::json::array({
+                        {
+                            {"id", "call_1"},
+                            {"type", "function"},
+                            {"function", {
+                                {"name", "memory_get"},
+                                {"arguments", "{\"path\":\"MEMORY.md\"}"}
+                            }}
+                        }
+                    })}
+                }}
+            }
+        })}
+    };
+
+    FakeQwenProvider provider(response.dump(), logger_);
+
+    ChatCompletionRequest request;
+    request.model = "qwen3.5-plus";
+    Message user_msg;
+    user_msg.role = "user";
+    user_msg.content.push_back(ContentBlock::MakeText("请继续"));
+    request.messages.push_back(user_msg);
+
+    auto result = provider.ChatCompletion(request);
+    ASSERT_EQ(result.tool_calls.size(), 1u);
+    EXPECT_EQ(result.tool_calls[0].name, "memory_get");
+    ASSERT_TRUE(result.tool_calls[0].arguments.is_object());
+    EXPECT_EQ(result.tool_calls[0].arguments.value("path", ""), "MEMORY.md");
+}
+
+TEST_F(QwenProviderTest, SerializesToolMessagesToOpenAICompatibleFormat) {
+    nlohmann::json response = {
+        {"choices", nlohmann::json::array({
+            {
+                {"finish_reason", "stop"},
+                {"message", {
+                    {"role", "assistant"},
+                    {"content", "done"}
+                }}
+            }
+        })}
+    };
+
+    FakeQwenProvider provider(response.dump(), logger_);
+
+    ChatCompletionRequest request;
+    request.model = "qwen3.5-plus";
+
+    Message user_msg;
+    user_msg.role = "user";
+    user_msg.content.push_back(ContentBlock::MakeText("读一下 MEMORY.md"));
+    request.messages.push_back(user_msg);
+
+    Message assistant_tool;
+    assistant_tool.role = "assistant";
+    assistant_tool.content.push_back(ContentBlock::MakeToolUse(
+        "call_123", "memory_get", nlohmann::json{{"path", "MEMORY.md"}}));
+    request.messages.push_back(assistant_tool);
+
+    Message tool_result;
+    tool_result.role = "user";
+    tool_result.content.push_back(
+        ContentBlock::MakeToolResult("call_123", "# Memory"));
+    request.messages.push_back(tool_result);
+
+    request.tools.push_back({
+        {"type", "function"},
+        {"function", {
+            {"name", "memory_get"},
+            {"parameters", {
+                {"type", "object"},
+                {"properties", {
+                    {"path", {{"type", "string"}}}
+                }}
+            }}
+        }}
+    });
+
+    auto result = provider.ChatCompletion(request);
+    EXPECT_EQ(result.content, "done");
+
+    auto payload = nlohmann::json::parse(provider.last_payload());
+    ASSERT_TRUE(payload.contains("messages"));
+    ASSERT_TRUE(payload["messages"].is_array());
+    ASSERT_EQ(payload["messages"].size(), 3u);
+
+    const auto& assistant_wire = payload["messages"][1];
+    EXPECT_EQ(assistant_wire.value("role", ""), "assistant");
+    ASSERT_TRUE(assistant_wire.contains("tool_calls"));
+    ASSERT_TRUE(assistant_wire["tool_calls"].is_array());
+    ASSERT_EQ(assistant_wire["tool_calls"].size(), 1u);
+    EXPECT_EQ(assistant_wire["tool_calls"][0].value("id", ""), "call_123");
+    EXPECT_EQ(
+        assistant_wire["tool_calls"][0]["function"].value("name", ""),
+        "memory_get");
+    EXPECT_EQ(
+        assistant_wire["tool_calls"][0]["function"].value("arguments", ""),
+        "{\"path\":\"MEMORY.md\"}");
+
+    const auto& tool_wire = payload["messages"][2];
+    EXPECT_EQ(tool_wire.value("role", ""), "tool");
+    EXPECT_EQ(tool_wire.value("tool_call_id", ""), "call_123");
+    EXPECT_EQ(tool_wire.value("content", ""), "# Memory");
+    EXPECT_EQ(payload.value("tool_choice", ""), "auto");
 }

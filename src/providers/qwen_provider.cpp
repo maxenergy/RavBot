@@ -21,6 +21,74 @@ struct PendingToolCall {
   std::string arguments;
 };
 
+nlohmann::json serialize_messages_to_qwen(
+    const std::vector<Message>& messages) {
+  nlohmann::json arr = nlohmann::json::array();
+
+  for (const auto& msg : messages) {
+    bool has_tool_use = false;
+    bool has_tool_result = false;
+    for (const auto& block : msg.content) {
+      if (block.type == "tool_use") {
+        has_tool_use = true;
+      }
+      if (block.type == "tool_result") {
+        has_tool_result = true;
+      }
+    }
+
+    if (has_tool_result) {
+      for (const auto& block : msg.content) {
+        if (block.type != "tool_result") {
+          continue;
+        }
+        arr.push_back({
+            {"role", "tool"},
+            {"tool_call_id", block.tool_use_id},
+            {"content", block.content},
+        });
+      }
+      continue;
+    }
+
+    if (has_tool_use) {
+      nlohmann::json message = {{"role", "assistant"}};
+      std::string text_content = msg.text();
+      if (!text_content.empty()) {
+        message["content"] = text_content;
+      } else {
+        message["content"] = nullptr;
+      }
+
+      nlohmann::json tool_calls = nlohmann::json::array();
+      for (const auto& block : msg.content) {
+        if (block.type != "tool_use") {
+          continue;
+        }
+        tool_calls.push_back({
+            {"id", block.id},
+            {"type", "function"},
+            {"function",
+             {
+                 {"name", block.name},
+                 {"arguments", block.input.dump()},
+             }},
+        });
+      }
+      message["tool_calls"] = tool_calls;
+      arr.push_back(message);
+      continue;
+    }
+
+    arr.push_back({
+        {"role", msg.role},
+        {"content", msg.text()},
+    });
+  }
+
+  return arr;
+}
+
 std::string trim_copy(std::string value) {
   size_t start = 0;
   while (start < value.size() &&
@@ -52,7 +120,19 @@ ParseQwenJsonResponse(const nlohmann::json& response_json) {
         ToolCall tool_call;
         tool_call.id = tc.value("id", "");
         tool_call.name = tc["function"]["name"].get<std::string>();
-        tool_call.arguments = tc["function"]["arguments"];
+        if (tc["function"].contains("arguments")) {
+          const auto& arguments = tc["function"]["arguments"];
+          if (arguments.is_string()) {
+            tool_call.arguments =
+                nlohmann::json::parse(arguments.get<std::string>(), nullptr,
+                                      false);
+            if (tool_call.arguments.is_discarded()) {
+              tool_call.arguments = nlohmann::json::object();
+            }
+          } else {
+            tool_call.arguments = arguments;
+          }
+        }
         response.tool_calls.push_back(tool_call);
       }
       response.finish_reason = "tool_calls";
@@ -240,6 +320,8 @@ std::string QwenProvider::MakeApiRequest(const std::string& json_payload,
   curl_easy_setopt(curl.get(), CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl.get(), CURLOPT_POST, 1L);
   curl_easy_setopt(curl.get(), CURLOPT_POSTFIELDS, json_payload.c_str());
+  curl_easy_setopt(curl.get(), CURLOPT_POSTFIELDSIZE_LARGE,
+                   static_cast<curl_off_t>(json_payload.size()));
   curl_easy_setopt(curl.get(), CURLOPT_TIMEOUT, timeout_);
 
   auto headers = CreateHeaders();
@@ -275,6 +357,8 @@ std::string QwenProvider::MakeApiRequest(const std::string& json_payload,
 CurlSlist QwenProvider::CreateHeaders() const {
   CurlSlist headers;
   headers.append("Content-Type: application/json");
+  headers.append("Expect:");
+  headers.append("User-Agent: RavBot/1.0");
   headers.append(("Authorization: Bearer " + api_key_).c_str());
   return headers;
 }
@@ -284,14 +368,9 @@ QwenProvider::ChatCompletion(const ChatCompletionRequest& request) {
   try {
     // Build OpenAI-compatible request
     nlohmann::json req = {{"model", request.model},
-                          {"messages", nlohmann::json::array()},
+                          {"messages", serialize_messages_to_qwen(
+                                           request.messages)},
                           {"stream", false}};
-
-    // Convert messages
-    for (const auto& msg : request.messages) {
-      nlohmann::json message = {{"role", msg.role}, {"content", msg.text()}};
-      req["messages"].push_back(message);
-    }
 
     // Add optional parameters
     if (request.temperature > 0) {
@@ -304,6 +383,9 @@ QwenProvider::ChatCompletion(const ChatCompletionRequest& request) {
     // Add tools if present
     if (!request.tools.empty()) {
       req["tools"] = request.tools;
+      if (request.tool_choice_auto) {
+        req["tool_choice"] = "auto";
+      }
     }
 
     std::string json_payload = req.dump();
@@ -327,14 +409,9 @@ void QwenProvider::ChatCompletionStream(
   try {
     // Build request with stream=true
     nlohmann::json req = {{"model", request.model},
-                          {"messages", nlohmann::json::array()},
+                          {"messages", serialize_messages_to_qwen(
+                                           request.messages)},
                           {"stream", true}};
-
-    // Convert messages
-    for (const auto& msg : request.messages) {
-      nlohmann::json message = {{"role", msg.role}, {"content", msg.text()}};
-      req["messages"].push_back(message);
-    }
 
     // Add optional parameters
     if (request.temperature > 0) {
@@ -347,6 +424,9 @@ void QwenProvider::ChatCompletionStream(
     // Add tools if present
     if (!request.tools.empty()) {
       req["tools"] = request.tools;
+      if (request.tool_choice_auto) {
+        req["tool_choice"] = "auto";
+      }
     }
 
     std::string json_payload = req.dump();

@@ -196,8 +196,11 @@ std::string OpenAIProvider::MakeApiRequest(
 
     std::string url = base_url_ + "/chat/completions";
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.get());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_payload.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE,
+                     static_cast<curl_off_t>(json_payload.size()));
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &read_buffer);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
@@ -248,6 +251,8 @@ std::string OpenAIProvider::MakeApiRequest(
 CurlSlist OpenAIProvider::CreateHeaders() const {
     CurlSlist headers;
     headers.append("Content-Type: application/json");
+    headers.append("Expect:");
+    headers.append("User-Agent: RavBot/1.0");
 
     std::string auth_header = "Authorization: Bearer " + api_key_;
     headers.append(auth_header.c_str());
@@ -412,8 +417,11 @@ void OpenAIProvider::ChatCompletionStream(const ChatCompletionRequest& request,
 
     std::string url = base_url_ + "/chat/completions";
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.get());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_payload.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE,
+                     static_cast<curl_off_t>(json_payload.size()));
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StreamWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream_ctx);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCallback);
