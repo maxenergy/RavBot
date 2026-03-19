@@ -837,7 +837,7 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
     const auto it = last_vision_observations_.find(session_key);
     const bool has_snapshot = it != last_vision_observations_.end();
     result["available"] = has_snapshot;
-  if (has_snapshot) {
+    if (has_snapshot) {
       result["observation"] = it->second;
       const int64_t timestamp_ms = it->second.value("timestampMs", 0LL);
       if (timestamp_ms > 0) {
@@ -863,6 +863,10 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
         result["foregroundOnly"].get<bool>() && !foreground_;
     result["sampleFps"] = config_.mobile.vision.sample_fps;
     result["staleAfterMs"] = stale_after_ms;
+    result["deviceStatusAvailable"] = has_device_status_;
+    if (has_device_status_) {
+      result["deviceStatus"] = device_status_.ToJson();
+    }
   }
   return result.dump(2);
 }

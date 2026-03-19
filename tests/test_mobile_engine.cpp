@@ -1433,6 +1433,14 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   auto vision = std::make_shared<FakeVisionProvider>();
   engine.SetTextProvider(provider);
   engine.SetVisionProvider(vision);
+  ravbot::mobile::DeviceStatusSnapshot status;
+  status.service_running = true;
+  status.capture_requested = true;
+  status.permissions_granted = true;
+  status.camera_status = "running";
+  status.microphone_status = "running";
+  status.speaker_status = "idle";
+  ASSERT_TRUE(engine.ReportDeviceStatus(status));
 
   ravbot::mobile::CameraFrame frame;
   frame.width = 320;
@@ -1472,6 +1480,10 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"ageMs\":"),
             std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"cameraStatus\": \"running\""),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"captureRequested\": true"),
+            std::string::npos);
   EXPECT_EQ(history[3].role, "assistant");
   EXPECT_EQ(history[3].content[0].text,
             "Latest camera observation shows a desk with phone.");
@@ -1492,6 +1504,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
             std::string::npos);
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"stale\": true"),
+            std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"deviceStatusAvailable\": true"),
+            std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"cameraStatus\": \"running\""),
             std::string::npos);
 }
 
