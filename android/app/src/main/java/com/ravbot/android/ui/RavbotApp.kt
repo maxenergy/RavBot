@@ -645,6 +645,7 @@ private fun RavbotHostScreen() {
       permissionsGranted,
       hostWebSearchEnabled,
       hostWebFetchEnabled,
+      hostHapticsEnabled,
   ) {
     if (!nativeReady) {
       return@LaunchedEffect
