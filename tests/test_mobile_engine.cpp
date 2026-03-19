@@ -707,18 +707,24 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   bool SupportsWebFetch() const override { return true; }
   bool SupportsVibration() const override { return true; }
 
-  void SetAvatarState(ravbot::mobile::AvatarState state) override {
-    avatar_states.push_back(ravbot::mobile::AvatarStateToString(state));
+  void SetAvatarState(const std::string& session_key,
+                      ravbot::mobile::AvatarState state) override {
+    avatar_states.push_back(session_key + ":" +
+                            ravbot::mobile::AvatarStateToString(state));
   }
 
-  void RequestSpeechPlayback(const std::string& text) override {
-    speech_requests.push_back(text);
+  void RequestSpeechPlayback(const std::string& session_key,
+                             const std::string& text) override {
+    speech_requests.push_back(session_key + ":" + text);
   }
 
-  void InterruptSpeechPlayback() override { speech_interrupts += 1; }
+  void InterruptSpeechPlayback(const std::string& session_key) override {
+    last_interrupt_session = session_key;
+    speech_interrupts += 1;
+  }
 
-  void Vibrate(int duration_ms) override {
-    vibration_calls.push_back(duration_ms);
+  void Vibrate(const std::string& session_key, int duration_ms) override {
+    vibration_calls.push_back(session_key + ":" + std::to_string(duration_ms));
   }
 
   std::string WebSearch(const std::string& query,
@@ -751,7 +757,8 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   std::vector<std::string> avatar_states;
   std::vector<std::string> speech_requests;
   int speech_interrupts = 0;
-  std::vector<int> vibration_calls;
+  std::string last_interrupt_session;
+  std::vector<std::string> vibration_calls;
   std::vector<std::tuple<std::string, int, std::string>> web_search_calls;
   std::vector<std::pair<std::string, int>> web_fetch_calls;
 };
@@ -764,9 +771,11 @@ class FakeSpeechOnlyDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge
   bool SupportsWebSearch() const override { return false; }
   bool SupportsWebFetch() const override { return false; }
 
-  void SetAvatarState(ravbot::mobile::AvatarState /*state*/) override {}
-  void RequestSpeechPlayback(const std::string& /*text*/) override {}
-  void InterruptSpeechPlayback() override {}
+  void SetAvatarState(const std::string& /*session_key*/,
+                      ravbot::mobile::AvatarState /*state*/) override {}
+  void RequestSpeechPlayback(const std::string& /*session_key*/,
+                             const std::string& /*text*/) override {}
+  void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
   std::string WebSearch(const std::string& /*query*/,
                         int /*count*/,
                         const std::string& /*freshness*/) override {
@@ -786,9 +795,11 @@ class FakeWebSearchOnlyDeviceBridge
   bool SupportsWebSearch() const override { return true; }
   bool SupportsWebFetch() const override { return false; }
 
-  void SetAvatarState(ravbot::mobile::AvatarState /*state*/) override {}
-  void RequestSpeechPlayback(const std::string& /*text*/) override {}
-  void InterruptSpeechPlayback() override {}
+  void SetAvatarState(const std::string& /*session_key*/,
+                      ravbot::mobile::AvatarState /*state*/) override {}
+  void RequestSpeechPlayback(const std::string& /*session_key*/,
+                             const std::string& /*text*/) override {}
+  void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
   std::string WebSearch(const std::string& /*query*/,
                         int /*count*/,
                         const std::string& /*freshness*/) override {
@@ -808,9 +819,11 @@ class FakeWebFetchOnlyDeviceBridge
   bool SupportsWebSearch() const override { return false; }
   bool SupportsWebFetch() const override { return true; }
 
-  void SetAvatarState(ravbot::mobile::AvatarState /*state*/) override {}
-  void RequestSpeechPlayback(const std::string& /*text*/) override {}
-  void InterruptSpeechPlayback() override {}
+  void SetAvatarState(const std::string& /*session_key*/,
+                      ravbot::mobile::AvatarState /*state*/) override {}
+  void RequestSpeechPlayback(const std::string& /*session_key*/,
+                             const std::string& /*text*/) override {}
+  void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
   std::string WebSearch(const std::string& /*query*/,
                         int /*count*/,
                         const std::string& /*freshness*/) override {
@@ -1961,7 +1974,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesVibrateToolRoundTrip) {
   const auto names = tool_names(provider->requests.front());
   EXPECT_NE(std::find(names.begin(), names.end(), "vibrate"), names.end());
   ASSERT_EQ(bridge->vibration_calls.size(), 1u);
-  EXPECT_EQ(bridge->vibration_calls.front(), 180);
+  EXPECT_EQ(bridge->vibration_calls.front(), "agent:main:vibrate:180");
 
   auto tool_result = std::find_if(
       events.begin(), events.end(),

@@ -97,7 +97,7 @@ class MobileEngine {
   void Emit(const std::string& event_name, const nlohmann::json& payload) const;
   nlohmann::json BuildRuntimeStatusPayload() const;
   void EmitRuntimeStatus() const;
-  void SetAvatarState(AvatarState state);
+  void SetAvatarState(AvatarState state, const std::string& session_key = "");
   bool ShouldProcessVisionFrame(const std::string& session_key,
                                 const CameraFrame& frame);
   std::optional<double> EstimateFrameSceneSignature(
@@ -110,7 +110,8 @@ class MobileEngine {
                               const ToolCall& tool_call) const;
   std::string BuildDeviceStatusToolResult() const;
   std::string BuildRuntimeStatusToolResult() const;
-  std::string BuildVibrateToolResult(const nlohmann::json& arguments) const;
+  std::string BuildVibrateToolResult(const std::string& session_key,
+                                     const nlohmann::json& arguments) const;
   std::string BuildCameraSnapshotToolResult(
       const std::string& session_key) const;
   std::string BuildTimeToolResult() const;

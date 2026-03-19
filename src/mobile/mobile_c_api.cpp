@@ -40,33 +40,37 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
     return callbacks_.on_vibrate != nullptr;
   }
 
-  void SetAvatarState(AvatarState state) override {
+  void SetAvatarState(const std::string& session_key,
+                      AvatarState state) override {
     if (callbacks_.on_avatar_state == nullptr) {
       return;
     }
     const std::string state_name = AvatarStateToString(state);
-    callbacks_.on_avatar_state(state_name.c_str(), user_data_);
+    callbacks_.on_avatar_state(session_key.c_str(), state_name.c_str(),
+                               user_data_);
   }
 
-  void RequestSpeechPlayback(const std::string& text) override {
+  void RequestSpeechPlayback(const std::string& session_key,
+                             const std::string& text) override {
     if (callbacks_.on_speech_request == nullptr) {
       return;
     }
-    callbacks_.on_speech_request(text.c_str(), user_data_);
+    callbacks_.on_speech_request(session_key.c_str(), text.c_str(),
+                                 user_data_);
   }
 
-  void InterruptSpeechPlayback() override {
+  void InterruptSpeechPlayback(const std::string& session_key) override {
     if (callbacks_.on_speech_interrupt == nullptr) {
       return;
     }
-    callbacks_.on_speech_interrupt(user_data_);
+    callbacks_.on_speech_interrupt(session_key.c_str(), user_data_);
   }
 
-  void Vibrate(int duration_ms) override {
+  void Vibrate(const std::string& session_key, int duration_ms) override {
     if (callbacks_.on_vibrate == nullptr) {
       return;
     }
-    callbacks_.on_vibrate(duration_ms, user_data_);
+    callbacks_.on_vibrate(session_key.c_str(), duration_ms, user_data_);
   }
 
   std::string WebSearch(const std::string& query,

@@ -139,25 +139,44 @@ void OnMobileEvent(const char* event_name,
   ForwardEventToJava(engine, event_name, payload_json);
 }
 
-void OnDeviceAvatarState(const char* state, void* user_data) {
+void OnDeviceAvatarState(const char* session_key,
+                         const char* state,
+                         void* user_data) {
   nlohmann::json payload = {{"state", state != nullptr ? state : "idle"}};
+  if (session_key != nullptr && *session_key != '\0') {
+    payload["sessionKey"] = session_key;
+  }
   auto* engine = static_cast<EngineHandle*>(user_data);
   ForwardEventToJava(engine, "device.avatar_state", payload.dump().c_str());
 }
 
-void OnDeviceSpeechRequest(const char* text, void* user_data) {
+void OnDeviceSpeechRequest(const char* session_key,
+                           const char* text,
+                           void* user_data) {
   nlohmann::json payload = {{"text", text != nullptr ? text : ""}};
+  if (session_key != nullptr && *session_key != '\0') {
+    payload["sessionKey"] = session_key;
+  }
   auto* engine = static_cast<EngineHandle*>(user_data);
   ForwardEventToJava(engine, "device.speech_request", payload.dump().c_str());
 }
 
-void OnDeviceSpeechInterrupt(void* user_data) {
+void OnDeviceSpeechInterrupt(const char* session_key, void* user_data) {
   auto* engine = static_cast<EngineHandle*>(user_data);
-  ForwardEventToJava(engine, "device.speech_interrupt", "{}");
+  nlohmann::json payload = nlohmann::json::object();
+  if (session_key != nullptr && *session_key != '\0') {
+    payload["sessionKey"] = session_key;
+  }
+  ForwardEventToJava(engine, "device.speech_interrupt", payload.dump().c_str());
 }
 
-void OnDeviceVibrate(int duration_ms, void* user_data) {
+void OnDeviceVibrate(const char* session_key,
+                     int duration_ms,
+                     void* user_data) {
   nlohmann::json payload = {{"durationMs", duration_ms}};
+  if (session_key != nullptr && *session_key != '\0') {
+    payload["sessionKey"] = session_key;
+  }
   auto* engine = static_cast<EngineHandle*>(user_data);
   ForwardEventToJava(engine, "device.vibrate", payload.dump().c_str());
 }

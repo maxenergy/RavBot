@@ -24,8 +24,8 @@ struct EventSink {
   std::vector<CapturedEvent> events;
   std::vector<std::string> avatar_states;
   std::vector<std::string> speech_requests;
-  int speech_interrupt_count = 0;
-  std::vector<int> vibration_requests;
+  std::vector<std::string> speech_interrupt_sessions;
+  std::vector<std::string> vibration_requests;
 };
 
 void capture_event(const char* event_name,
@@ -47,32 +47,45 @@ void capture_event(const char* event_name,
       {event_name != nullptr ? event_name : "", std::move(payload)});
 }
 
-void capture_avatar_state(const char* state, void* user_data) {
+void capture_avatar_state(const char* session_key,
+                          const char* state,
+                          void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   ASSERT_NE(sink, nullptr);
   std::lock_guard<std::mutex> lock(sink->mutex);
-  sink->avatar_states.push_back(state != nullptr ? state : "");
+  sink->avatar_states.push_back(
+      std::string(session_key != nullptr ? session_key : "") + ":" +
+      (state != nullptr ? state : ""));
 }
 
-void capture_speech_request(const char* text, void* user_data) {
+void capture_speech_request(const char* session_key,
+                            const char* text,
+                            void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   ASSERT_NE(sink, nullptr);
   std::lock_guard<std::mutex> lock(sink->mutex);
-  sink->speech_requests.push_back(text != nullptr ? text : "");
+  sink->speech_requests.push_back(
+      std::string(session_key != nullptr ? session_key : "") + ":" +
+      (text != nullptr ? text : ""));
 }
 
-void capture_speech_interrupt(void* user_data) {
+void capture_speech_interrupt(const char* session_key, void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   ASSERT_NE(sink, nullptr);
   std::lock_guard<std::mutex> lock(sink->mutex);
-  sink->speech_interrupt_count += 1;
+  sink->speech_interrupt_sessions.push_back(session_key != nullptr ? session_key
+                                                                   : "");
 }
 
-void capture_vibrate(int duration_ms, void* user_data) {
+void capture_vibrate(const char* session_key,
+                     int duration_ms,
+                     void* user_data) {
   auto* sink = static_cast<EventSink*>(user_data);
   ASSERT_NE(sink, nullptr);
   std::lock_guard<std::mutex> lock(sink->mutex);
-  sink->vibration_requests.push_back(duration_ms);
+  sink->vibration_requests.push_back(
+      std::string(session_key != nullptr ? session_key : "") + ":" +
+      std::to_string(duration_ms));
 }
 
 const char* capture_web_search(const char* /*query*/,
@@ -359,7 +372,12 @@ TEST_F(MobileCApiTest, DeviceCallbacksReceiveAvatarAndSpeechRequests) {
 
   EXPECT_FALSE(sink.avatar_states.empty());
   EXPECT_FALSE(sink.speech_requests.empty());
-  EXPECT_GT(sink.speech_interrupt_count, 0);
+  EXPECT_EQ(sink.avatar_states.front(), "agent:main:device:idle");
+  EXPECT_FALSE(sink.speech_interrupt_sessions.empty());
+  EXPECT_EQ(sink.speech_requests.front().rfind("agent:main:device:", 0), 0u);
+  EXPECT_GT(sink.speech_requests.front().size(),
+            std::string("agent:main:device:").size());
+  EXPECT_EQ(sink.speech_interrupt_sessions.front(), "agent:main:device");
 }
 
 TEST_F(MobileCApiTest, RuntimeStatusReflectsMissingWebDeviceCallbacks) {

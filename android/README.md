@@ -46,6 +46,8 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   suppress another session's first observation
 - Session-bound mobile events now carry `sessionKey`, and the Android host
   ignores stale event traffic from older sessions when a new session is active
+- Host bridge events such as `device.avatar_state`, `device.speech_request`,
+  `device.speech_interrupt`, and `device.vibrate` now also carry `sessionKey`
 - `camera_snapshot` also carries the latest published `deviceStatus`, so the
   local model can tell whether the camera is currently running or whether it
   is looking at an older observation

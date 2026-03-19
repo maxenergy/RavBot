@@ -258,7 +258,7 @@ std::string MobileEngine::StartSession(const std::string& session_key,
   } catch (const std::exception&) {
     initial_state = AvatarState::kIdle;
   }
-  SetAvatarState(initial_state);
+  SetAvatarState(initial_state, session_key);
   return handle.session_key;
 }
 
@@ -276,7 +276,7 @@ bool MobileEngine::PushPcm16(const std::string& session_key,
     return false;
   }
 
-  SetAvatarState(AvatarState::kListen);
+  SetAvatarState(AvatarState::kListen, session_key);
   AsrUpdate update =
       asr_provider_->PushPcm16(samples, sample_count, sample_rate_hz,
                                end_of_turn);
@@ -288,10 +288,10 @@ bool MobileEngine::FlushAudioTurn(const std::string& session_key) {
     return false;
   }
 
-  SetAvatarState(AvatarState::kListen);
+  SetAvatarState(AvatarState::kListen, session_key);
   AsrUpdate update = asr_provider_->Flush();
   if (update.text.empty()) {
-    SetAvatarState(AvatarState::kIdle);
+    SetAvatarState(AvatarState::kIdle, session_key);
     return false;
   }
   return HandleAsrUpdate(session_key, update, config_.mobile.audio.sample_rate);
@@ -340,7 +340,7 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
         {"capturedWhileForeground", captured_while_foreground}};
   }
 
-  SetAvatarState(AvatarState::kWatch);
+  SetAvatarState(AvatarState::kWatch, session_key);
   Emit(kEventMobileVisionObservation,
        with_session_key(
            session_key,
@@ -349,7 +349,7 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
             {"height", frame.height},
             {"timestampMs", frame.timestamp_ms},
             {"capturedWhileForeground", captured_while_foreground}}));
-  SetAvatarState(AvatarState::kIdle);
+  SetAvatarState(AvatarState::kIdle, session_key);
   return true;
 }
 
@@ -358,11 +358,11 @@ void MobileEngine::InterruptGeneration(const std::string& session_key) {
     asr_provider_->Interrupt();
   }
   if (auto bridge = CopyDeviceBridge(); bridge) {
-    bridge->InterruptSpeechPlayback();
+    bridge->InterruptSpeechPlayback(session_key);
   }
   Emit(kEventMobileTtsState,
        with_session_key(session_key, {{"state", "interrupted"}}));
-  SetAvatarState(AvatarState::kIdle);
+  SetAvatarState(AvatarState::kIdle, session_key);
 }
 
 bool MobileEngine::ReportTtsPlaybackState(const std::string& session_key,
@@ -374,11 +374,11 @@ bool MobileEngine::ReportTtsPlaybackState(const std::string& session_key,
   Emit(kEventMobileTtsState,
        with_session_key(session_key, {{"state", state}}));
   if (state == "speaking") {
-    SetAvatarState(AvatarState::kSpeak);
+    SetAvatarState(AvatarState::kSpeak, session_key);
   } else if (state == "completed" || state == "interrupted") {
-    SetAvatarState(AvatarState::kIdle);
+    SetAvatarState(AvatarState::kIdle, session_key);
   } else if (state == "error") {
-    SetAvatarState(AvatarState::kError);
+    SetAvatarState(AvatarState::kError, session_key);
   }
   return true;
 }
@@ -474,15 +474,17 @@ void MobileEngine::EmitRuntimeStatus() const {
   Emit(kEventMobileRuntimeStatus, BuildRuntimeStatusPayload());
 }
 
-void MobileEngine::SetAvatarState(AvatarState state) {
+void MobileEngine::SetAvatarState(AvatarState state,
+                                  const std::string& session_key) {
   {
     std::unique_lock<std::shared_mutex> lock(state_mutex_);
     avatar_state_ = state;
   }
   if (auto bridge = CopyDeviceBridge(); bridge) {
-    bridge->SetAvatarState(state);
+    bridge->SetAvatarState(session_key, state);
   }
-  Emit(kEventMobileAvatarState, make_avatar_payload(state));
+  Emit(kEventMobileAvatarState,
+       with_session_key(session_key, make_avatar_payload(state)));
 }
 
 bool MobileEngine::ShouldProcessVisionFrame(const std::string& session_key,
@@ -827,6 +829,7 @@ std::string MobileEngine::BuildRuntimeStatusToolResult() const {
 }
 
 std::string MobileEngine::BuildVibrateToolResult(
+    const std::string& session_key,
     const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
   if (!bridge) {
@@ -844,7 +847,7 @@ std::string MobileEngine::BuildVibrateToolResult(
     throw std::runtime_error("durationMs must be between 10 and 5000");
   }
 
-  bridge->Vibrate(duration_ms);
+  bridge->Vibrate(session_key, duration_ms);
   return nlohmann::json{{"ok", true}, {"durationMs", duration_ms}}.dump(2);
 }
 
@@ -1215,7 +1218,7 @@ std::string MobileEngine::ExecuteToolCall(const std::string& session_key,
     return BuildRuntimeStatusToolResult();
   }
   if (tool_call.name == kVibrateToolName) {
-    return BuildVibrateToolResult(tool_call.arguments);
+    return BuildVibrateToolResult(session_key, tool_call.arguments);
   }
   if (tool_call.name == kCameraSnapshotToolName) {
     return BuildCameraSnapshotToolResult(session_key);
@@ -1261,7 +1264,7 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
          with_session_key(session_key, {{"text", text}}));
   }
 
-  SetAvatarState(AvatarState::kThink);
+  SetAvatarState(AvatarState::kThink, session_key);
 
   std::string response_text;
   std::string finish_reason = "stop";
@@ -1406,17 +1409,18 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
                          {"finishReason", finish_reason}}));
 
   if (!response_text.empty()) {
-    SetAvatarState(AvatarState::kSpeak);
+    SetAvatarState(AvatarState::kSpeak, session_key);
     Emit(kEventMobileTtsState,
          with_session_key(session_key,
                           {{"state", "requested"}, {"text", response_text}}));
     if (auto bridge = CopyDeviceBridge(); bridge) {
-      bridge->RequestSpeechPlayback(response_text);
+      bridge->RequestSpeechPlayback(session_key, response_text);
     }
   }
 
   SetAvatarState(finish_reason == "error" ? AvatarState::kError
-                                          : AvatarState::kIdle);
+                                          : AvatarState::kIdle,
+                 session_key);
   return true;
 }
 

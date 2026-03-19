@@ -18,13 +18,20 @@ typedef void (*ravbot_mobile_event_callback)(
     const char* payload_json,
     void* user_data);
 typedef void (*ravbot_mobile_avatar_state_callback)(
+    const char* session_key,
     const char* state,
     void* user_data);
 typedef void (*ravbot_mobile_speech_request_callback)(
+    const char* session_key,
     const char* text,
     void* user_data);
-typedef void (*ravbot_mobile_speech_interrupt_callback)(void* user_data);
-typedef void (*ravbot_mobile_vibrate_callback)(int duration_ms, void* user_data);
+typedef void (*ravbot_mobile_speech_interrupt_callback)(
+    const char* session_key,
+    void* user_data);
+typedef void (*ravbot_mobile_vibrate_callback)(
+    const char* session_key,
+    int duration_ms,
+    void* user_data);
 typedef const char* (*ravbot_mobile_web_search_callback)(
     const char* query,
     int count,

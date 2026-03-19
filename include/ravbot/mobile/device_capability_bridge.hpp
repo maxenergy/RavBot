@@ -20,10 +20,15 @@ class DeviceCapabilityBridge {
   virtual bool SupportsWebFetch() const = 0;
   virtual bool SupportsVibration() const { return false; }
 
-  virtual void SetAvatarState(AvatarState state) = 0;
-  virtual void RequestSpeechPlayback(const std::string& text) = 0;
-  virtual void InterruptSpeechPlayback() = 0;
-  virtual void Vibrate(int duration_ms) { (void)duration_ms; }
+  virtual void SetAvatarState(const std::string& session_key,
+                              AvatarState state) = 0;
+  virtual void RequestSpeechPlayback(const std::string& session_key,
+                                     const std::string& text) = 0;
+  virtual void InterruptSpeechPlayback(const std::string& session_key) = 0;
+  virtual void Vibrate(const std::string& session_key, int duration_ms) {
+    (void)session_key;
+    (void)duration_ms;
+  }
   virtual std::string WebSearch(const std::string& query,
                                 int count,
                                 const std::string& freshness) = 0;
