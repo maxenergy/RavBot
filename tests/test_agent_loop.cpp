@@ -1033,6 +1033,56 @@ TEST_F(AgentLoopTest, BriefContinuationPromptsSuppressDuplicateNotice) {
   }
 }
 
+TEST_F(AgentLoopTest,
+       FollowUpCollapsesCompletedToolTurnToQuestionAndFinalAnswer) {
+  mock_provider_->response_text = "ok";
+
+  ravbot::Message question;
+  question.role = "user";
+  question.content.push_back(
+      ravbot::ContentBlock::MakeText("你的记忆有什么？"));
+
+  ravbot::Message assistant_tool;
+  assistant_tool.role = "assistant";
+  assistant_tool.content.push_back(
+      ravbot::ContentBlock::MakeText("我先读取一下记忆文件。"));
+  assistant_tool.content.push_back(ravbot::ContentBlock::MakeToolUse(
+      "call_mem_1", "memory_get", {{"path", "MEMORY.md"}}));
+
+  ravbot::Message tool_result;
+  tool_result.role = "user";
+  tool_result.content.push_back(ravbot::ContentBlock::MakeToolResult(
+      "call_mem_1", std::string(4000, 'm')));
+
+  ravbot::Message final_answer;
+  final_answer.role = "assistant";
+  final_answer.content.push_back(ravbot::ContentBlock::MakeText(
+      "你好！我的记忆里主要记录了项目更名、工作区路径和一些运行时信息。"));
+
+  std::vector<ravbot::Message> history = {
+      question, assistant_tool, tool_result, final_answer};
+
+  agent_loop_->ProcessMessage("请继续解释刚才的记忆内容", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  ASSERT_EQ(sent.size(), 4u);
+  EXPECT_EQ(sent[0].role, "system");
+  EXPECT_EQ(sent[1].role, "user");
+  EXPECT_EQ(sent[1].text(), "你的记忆有什么？");
+  EXPECT_EQ(sent[2].role, "assistant");
+  EXPECT_EQ(sent[2].text(),
+            "你好！我的记忆里主要记录了项目更名、工作区路径和一些运行时信息。");
+  EXPECT_EQ(sent[3].role, "user");
+  EXPECT_EQ(sent[3].text(), "请继续解释刚才的记忆内容");
+
+  for (const auto& msg : sent) {
+    for (const auto& block : msg.content) {
+      EXPECT_NE(block.type, "tool_use");
+      EXPECT_NE(block.type, "tool_result");
+    }
+  }
+}
+
 TEST_F(AgentLoopTest, RepeatedQuestionsStillAddDuplicateNotice) {
   auto embedding_manager = CreateEmbeddingManager();
   agent_loop_->SetEmbeddingManager(embedding_manager);

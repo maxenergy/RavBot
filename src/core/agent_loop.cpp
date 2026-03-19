@@ -599,11 +599,56 @@ focus_history_on_latest_turn(const std::vector<Message>& history,
     --slice_start;
   }
 
-  if (slice_start == 0) {
-    return history;
+  std::vector<Message> focused(history.begin() + slice_start, history.end());
+
+  auto message_has_tool_use_blocks = [](const Message& msg) {
+    for (const auto& block : msg.content) {
+      if (block.type == "tool_use") {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  auto message_has_only_tool_result_blocks = [](const Message& msg) {
+    if (msg.role != "user" || msg.content.empty()) {
+      return false;
+    }
+    for (const auto& block : msg.content) {
+      if (block.type != "tool_result") {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  bool contains_completed_tool_turn = false;
+  bool ends_with_final_assistant =
+      !focused.empty() && focused.back().role == "assistant" &&
+      !message_has_tool_use_blocks(focused.back());
+  for (size_t i = 0; i < focused.size(); ++i) {
+    if (message_has_only_tool_result_blocks(focused[i])) {
+      contains_completed_tool_turn = true;
+      break;
+    }
   }
 
-  std::vector<Message> focused(history.begin() + slice_start, history.end());
+  if (keep_recent_turn && contains_completed_tool_turn &&
+      ends_with_final_assistant && focused.size() >= 4 &&
+      has_non_tool_result_blocks(focused.front())) {
+    std::vector<Message> collapsed;
+    collapsed.reserve(2);
+    collapsed.push_back(focused.front());
+    collapsed.push_back(focused.back());
+    if (logger) {
+      logger->info(
+          "Context focus: collapsed completed tool turn from {} to {} "
+          "messages for follow-up",
+          focused.size(), collapsed.size());
+    }
+    focused = std::move(collapsed);
+  }
+
   if (logger) {
     logger->info(
         "Context focus: narrowed history from {} to {} messages around recent "
