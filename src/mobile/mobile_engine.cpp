@@ -77,6 +77,21 @@ std::string format_timezone_name(const std::tm& tm) {
   return stream.str();
 }
 
+int64_t now_millis() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
+
+int64_t camera_snapshot_stale_after_ms(const RavBotConfig& config) {
+  if (config.mobile.vision.sample_fps <= 0.0) {
+    return 5000;
+  }
+  const auto min_interval_ms = static_cast<int64_t>(
+      std::ceil((1000.0 / config.mobile.vision.sample_fps) * 3.0));
+  return std::max<int64_t>(5000, min_interval_ms);
+}
+
 nlohmann::json make_workspace_entry_json(
     const std::filesystem::path& workspace,
     const std::filesystem::path& full_path) {
@@ -287,6 +302,7 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
   if (!summary || summary->empty()) {
     return true;
   }
+  const bool captured_while_foreground = IsForeground();
 
   session_manager_.AppendCustomMessage(
       session_key, "mobile_vision_observation",
@@ -296,16 +312,18 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
        {"width", frame.width},
        {"height", frame.height},
        {"format", frame.format},
-       {"timestampMs", frame.timestamp_ms}});
+       {"timestampMs", frame.timestamp_ms},
+       {"capturedWhileForeground", captured_while_foreground}});
 
   {
     std::unique_lock<std::shared_mutex> lock(state_mutex_);
-    last_vision_observation_ = {{"summary", *summary},
-                                {"width", frame.width},
-                                {"height", frame.height},
-                                {"format", frame.format},
-                                {"timestampMs", frame.timestamp_ms}};
-    has_last_vision_observation_ = true;
+    last_vision_observations_[session_key] = {
+        {"summary", *summary},
+        {"width", frame.width},
+        {"height", frame.height},
+        {"format", frame.format},
+        {"timestampMs", frame.timestamp_ms},
+        {"capturedWhileForeground", captured_while_foreground}};
   }
 
   SetAvatarState(AvatarState::kWatch);
@@ -313,7 +331,8 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
        {{"summary", *summary},
         {"width", frame.width},
         {"height", frame.height},
-        {"timestampMs", frame.timestamp_ms}});
+        {"timestampMs", frame.timestamp_ms},
+        {"capturedWhileForeground", captured_while_foreground}});
   SetAvatarState(AvatarState::kIdle);
   return true;
 }
@@ -808,14 +827,30 @@ std::string MobileEngine::BuildVibrateToolResult(
   return nlohmann::json{{"ok", true}, {"durationMs", duration_ms}}.dump(2);
 }
 
-std::string MobileEngine::BuildCameraSnapshotToolResult() const {
+std::string MobileEngine::BuildCameraSnapshotToolResult(
+    const std::string& session_key) const {
   nlohmann::json result;
+  const auto stale_after_ms = camera_snapshot_stale_after_ms(config_);
+  const auto current_time_ms = now_millis();
   {
     std::shared_lock<std::shared_mutex> lock(state_mutex_);
-    result["available"] = has_last_vision_observation_;
-    if (has_last_vision_observation_) {
-      result["observation"] = last_vision_observation_;
+    const auto it = last_vision_observations_.find(session_key);
+    const bool has_snapshot = it != last_vision_observations_.end();
+    result["available"] = has_snapshot;
+  if (has_snapshot) {
+      result["observation"] = it->second;
+      const int64_t timestamp_ms = it->second.value("timestampMs", 0LL);
+      if (timestamp_ms > 0) {
+        const int64_t age_ms =
+            std::max<int64_t>(0, current_time_ms - timestamp_ms);
+        result["ageMs"] = age_ms;
+        result["stale"] = age_ms > stale_after_ms;
+      } else {
+        result["stale"] = false;
+      }
     } else {
+      result["reason"] = config_.mobile.vision.enabled ? "no_frame_yet"
+                                                        : "vision_disabled";
       result["detail"] =
           "No camera observation has been captured in this session yet.";
     }
@@ -823,6 +858,11 @@ std::string MobileEngine::BuildCameraSnapshotToolResult() const {
     result["foregroundOnly"] =
         config_.mobile.runtime.foreground_only ||
         config_.mobile.vision.foreground_only;
+    result["foreground"] = foreground_;
+    result["backgroundGated"] =
+        result["foregroundOnly"].get<bool>() && !foreground_;
+    result["sampleFps"] = config_.mobile.vision.sample_fps;
+    result["staleAfterMs"] = stale_after_ms;
   }
   return result.dump(2);
 }
@@ -1112,7 +1152,8 @@ std::string MobileEngine::BuildMemoryDeleteToolResult(
       .dump(2);
 }
 
-std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
+std::string MobileEngine::ExecuteToolCall(const std::string& session_key,
+                                          const ToolCall& tool_call) const {
   if (tool_call.name == kDeviceStatusToolName) {
     return BuildDeviceStatusToolResult();
   }
@@ -1123,7 +1164,7 @@ std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
     return BuildVibrateToolResult(tool_call.arguments);
   }
   if (tool_call.name == kCameraSnapshotToolName) {
-    return BuildCameraSnapshotToolResult();
+    return BuildCameraSnapshotToolResult(session_key);
   }
   if (tool_call.name == kTimeToolName) {
     return BuildTimeToolResult();
@@ -1246,7 +1287,7 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
                 {"arguments", tool_call.arguments}});
 
           try {
-            const std::string result = ExecuteToolCall(tool_call);
+            const std::string result = ExecuteToolCall(session_key, tool_call);
             tool_result_message.content.push_back(
                 ContentBlock::MakeToolResult(tool_call.id, result));
             Emit(kEventToolResult,

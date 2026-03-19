@@ -38,6 +38,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   `memory_list` / `memory_search` / `memory_get` / `memory_write` /
   `memory_delete` against the mobile workspace, and continue generation with
   the tool results persisted in session history
+- `camera_snapshot` now stays scoped to the active mobile session and reports
+  freshness metadata such as `ageMs`, `stale`, and
+  `capturedWhileForeground`
 - Avatar mouth motion driven by microphone level while listening and by a
   synthetic speaking envelope while Android `TextToSpeech` is active
 - Native `SpeechPipeline` facade for STT/TTS asset readiness and placeholder ASR

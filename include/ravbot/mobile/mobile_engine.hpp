@@ -98,11 +98,13 @@ class MobileEngine {
                        const AsrUpdate& update,
                        int sample_rate_hz);
   std::vector<nlohmann::json> BuildToolSchemas() const;
-  std::string ExecuteToolCall(const ToolCall& tool_call) const;
+  std::string ExecuteToolCall(const std::string& session_key,
+                              const ToolCall& tool_call) const;
   std::string BuildDeviceStatusToolResult() const;
   std::string BuildRuntimeStatusToolResult() const;
   std::string BuildVibrateToolResult(const nlohmann::json& arguments) const;
-  std::string BuildCameraSnapshotToolResult() const;
+  std::string BuildCameraSnapshotToolResult(
+      const std::string& session_key) const;
   std::string BuildTimeToolResult() const;
   std::string BuildWebSearchToolResult(const nlohmann::json& arguments) const;
   std::string BuildWebFetchToolResult(const nlohmann::json& arguments) const;
@@ -138,8 +140,7 @@ class MobileEngine {
   AvatarState avatar_state_ = AvatarState::kIdle;
   DeviceStatusSnapshot device_status_;
   bool has_device_status_ = false;
-  nlohmann::json last_vision_observation_ = nlohmann::json::object();
-  bool has_last_vision_observation_ = false;
+  std::unordered_map<std::string, nlohmann::json> last_vision_observations_;
   int64_t last_vision_timestamp_ms_ = 0;
   std::optional<double> last_vision_scene_signature_;
 

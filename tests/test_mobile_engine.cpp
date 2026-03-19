@@ -172,6 +172,54 @@ class FakeCameraToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
+class FakeMissingCameraToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("\"available\": false") !=
+              std::string::npos &&
+          last.content.front().content.find("\"reason\": \"no_frame_yet\"") !=
+              std::string::npos) {
+        response.content = "No camera snapshot is available for this session.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_camera_snapshot";
+    tool_call.name = "camera_snapshot";
+    tool_call.arguments = nlohmann::json::object();
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override {
+    return "fake-camera-missing-tool";
+  }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-camera-missing-tool-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
 class FakeMemoryWriteToolCallingTextProvider : public ravbot::LLMProvider {
  public:
   ravbot::ChatCompletionResponse ChatCompletion(
@@ -1418,6 +1466,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   EXPECT_EQ(history[2].content[0].type, "tool_result");
   EXPECT_NE(history[2].content[0].content.find("\"summary\": \"desk with phone\""),
             std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"capturedWhileForeground\": true"),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"stale\": true"),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"ageMs\":"),
+            std::string::npos);
   EXPECT_EQ(history[3].role, "assistant");
   EXPECT_EQ(history[3].content[0].text,
             "Latest camera observation shows a desk with phone.");
@@ -1433,6 +1487,44 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"timestampMs\": 4242"),
             std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"capturedWhileForeground\": true"),
+            std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"stale\": true"),
+            std::string::npos);
+}
+
+TEST_F(MobileEngineTest, CameraSnapshotStaysScopedToCurrentSession) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider =
+      std::make_shared<FakeMissingCameraToolCallingTextProvider>();
+  auto vision = std::make_shared<FakeVisionProvider>();
+  engine.SetTextProvider(provider);
+  engine.SetVisionProvider(vision);
+
+  ravbot::mobile::CameraFrame frame;
+  frame.width = 320;
+  frame.height = 240;
+  frame.format = "YUV420_LUMA";
+  frame.timestamp_ms = 4242;
+  frame.data.assign(320 * 240, static_cast<uint8_t>(128));
+  ASSERT_TRUE(engine.PushCameraFrame("agent:main:camera-a", frame));
+
+  ASSERT_TRUE(
+      engine.SendTextTurn("agent:main:camera-b", "What do you see now?"));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  auto history = engine.session_manager().GetHistory("agent:main:camera-b");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "camera_snapshot");
+  EXPECT_NE(history[2].content[0].content.find("\"available\": false"),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"reason\": \"no_frame_yet\""),
+            std::string::npos);
+  EXPECT_EQ(history[3].content[0].text,
+            "No camera snapshot is available for this session.");
 }
 
 TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryWriteToolRoundTrip) {
