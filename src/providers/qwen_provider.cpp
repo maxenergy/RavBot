@@ -89,6 +89,21 @@ nlohmann::json serialize_messages_to_qwen(
   return arr;
 }
 
+void apply_openai_compatible_tool_choice(nlohmann::json& payload,
+                                         const ChatCompletionRequest& request) {
+  if (request.tool_choice_type == "any") {
+    payload["tool_choice"] = "required";
+  } else if (request.tool_choice_type == "tool" &&
+             !request.tool_choice_name.empty()) {
+    payload["tool_choice"] = {
+        {"type", "function"},
+        {"function", {{"name", request.tool_choice_name}}},
+    };
+  } else if (request.tool_choice_auto) {
+    payload["tool_choice"] = "auto";
+  }
+}
+
 std::string trim_copy(std::string value) {
   size_t start = 0;
   while (start < value.size() &&
@@ -383,9 +398,7 @@ QwenProvider::ChatCompletion(const ChatCompletionRequest& request) {
     // Add tools if present
     if (!request.tools.empty()) {
       req["tools"] = request.tools;
-      if (request.tool_choice_auto) {
-        req["tool_choice"] = "auto";
-      }
+      apply_openai_compatible_tool_choice(req, request);
     }
 
     std::string json_payload = req.dump();
@@ -424,9 +437,7 @@ void QwenProvider::ChatCompletionStream(
     // Add tools if present
     if (!request.tools.empty()) {
       req["tools"] = request.tools;
-      if (request.tool_choice_auto) {
-        req["tool_choice"] = "auto";
-      }
+      apply_openai_compatible_tool_choice(req, request);
     }
 
     std::string json_payload = req.dump();

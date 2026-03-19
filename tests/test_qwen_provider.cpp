@@ -395,3 +395,86 @@ TEST_F(QwenProviderTest, SerializesToolMessagesToOpenAICompatibleFormat) {
     EXPECT_EQ(tool_wire.value("content", ""), "# Memory");
     EXPECT_EQ(payload.value("tool_choice", ""), "auto");
 }
+
+TEST_F(QwenProviderTest, SerializesRequiredToolChoiceForAnyMode) {
+    nlohmann::json response = {
+        {"choices", nlohmann::json::array({
+            {
+                {"finish_reason", "stop"},
+                {"message", {
+                    {"role", "assistant"},
+                    {"content", "done"}
+                }}
+            }
+        })}
+    };
+
+    FakeQwenProvider provider(response.dump(), logger_);
+
+    ChatCompletionRequest request;
+    request.model = "qwen3.5-plus";
+    request.tool_choice_type = "any";
+    request.tool_choice_auto = false;
+    request.messages.push_back({"user", "请直接调用工具"});
+    request.tools.push_back({
+        {"type", "function"},
+        {"function", {
+            {"name", "memory_get"},
+            {"parameters", {
+                {"type", "object"},
+                {"properties", {
+                    {"path", {{"type", "string"}}}
+                }}
+            }}
+        }}
+    });
+
+    provider.ChatCompletion(request);
+
+    auto payload = nlohmann::json::parse(provider.last_payload());
+    EXPECT_EQ(payload.value("tool_choice", ""), "required");
+}
+
+TEST_F(QwenProviderTest, SerializesNamedToolChoiceForToolMode) {
+    nlohmann::json response = {
+        {"choices", nlohmann::json::array({
+            {
+                {"finish_reason", "stop"},
+                {"message", {
+                    {"role", "assistant"},
+                    {"content", "done"}
+                }}
+            }
+        })}
+    };
+
+    FakeQwenProvider provider(response.dump(), logger_);
+
+    ChatCompletionRequest request;
+    request.model = "qwen3.5-plus";
+    request.tool_choice_type = "tool";
+    request.tool_choice_auto = false;
+    request.tool_choice_name = "memory_get";
+    request.messages.push_back({"user", "只调用 memory_get"});
+    request.tools.push_back({
+        {"type", "function"},
+        {"function", {
+            {"name", "memory_get"},
+            {"parameters", {
+                {"type", "object"},
+                {"properties", {
+                    {"path", {{"type", "string"}}}
+                }}
+            }}
+        }}
+    });
+
+    provider.ChatCompletion(request);
+
+    auto payload = nlohmann::json::parse(provider.last_payload());
+    ASSERT_TRUE(payload.contains("tool_choice"));
+    ASSERT_TRUE(payload["tool_choice"].is_object());
+    EXPECT_EQ(payload["tool_choice"].value("type", ""), "function");
+    EXPECT_EQ(payload["tool_choice"]["function"].value("name", ""),
+              "memory_get");
+}
