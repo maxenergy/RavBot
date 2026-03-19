@@ -302,8 +302,14 @@ bool ravbot_mobile_set_device_callbacks(
     ravbot_mobile_engine_t* engine,
     const ravbot_mobile_device_callbacks_t* callbacks,
     void* user_data) {
-  if (!engine || !engine->impl || callbacks == nullptr) {
+  if (!engine || !engine->impl) {
     return false;
+  }
+
+  if (callbacks == nullptr) {
+    engine->device_bridge.reset();
+    engine->impl->SetDeviceBridge(nullptr);
+    return true;
   }
 
   engine->device_bridge =

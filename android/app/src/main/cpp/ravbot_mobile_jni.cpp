@@ -376,6 +376,9 @@ void ClearSubscription(JNIEnv* env, EngineHandle* engine) {
     return;
   }
 
+  if (engine->engine != nullptr) {
+    ravbot_mobile_set_device_callbacks(engine->engine, nullptr, nullptr);
+  }
   if (engine->engine != nullptr && engine->subscription_id != 0) {
     ravbot_mobile_unsubscribe_events(engine->engine, engine->subscription_id);
     engine->subscription_id = 0;

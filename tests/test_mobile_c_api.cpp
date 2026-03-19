@@ -585,4 +585,41 @@ TEST_F(MobileCApiTest, SettingDeviceCallbacksEmitsRuntimeStatusUpdate) {
   EXPECT_FALSE(runtime_payloads[1]["vibrationReady"].get<bool>());
 }
 
+TEST_F(MobileCApiTest, ClearingDeviceCallbacksEmitsRuntimeStatusUpdate) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+
+  ravbot_mobile_device_callbacks_t callbacks{};
+  callbacks.on_avatar_state = capture_avatar_state;
+  callbacks.on_web_search = capture_web_search;
+  ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, &callbacks, &sink));
+  ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, nullptr, nullptr));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  std::vector<nlohmann::json> runtime_payloads;
+  for (const auto& event : sink.events) {
+    if (event.name == "mobile.runtime_status") {
+      runtime_payloads.push_back(event.payload);
+    }
+  }
+
+  ASSERT_GE(runtime_payloads.size(), 3u);
+  EXPECT_FALSE(runtime_payloads[0]["deviceBridgeAttached"].get<bool>());
+  EXPECT_TRUE(runtime_payloads[1]["deviceBridgeAttached"].get<bool>());
+  EXPECT_TRUE(runtime_payloads[1]["webSearchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[2]["deviceBridgeAttached"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[2]["webSearchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[2]["webFetchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[2]["vibrationReady"].get<bool>());
+}
+
 }  // namespace
