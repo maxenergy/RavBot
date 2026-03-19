@@ -46,6 +46,11 @@ class MainActivityTest {
   }
 
   @Test
+  fun hostScreenShowsHapticsRuntimeLine() {
+    composeRule.onNodeWithText("Haptics: unknown").assertIsDisplayed()
+  }
+
+  @Test
   fun foregroundServiceStatusIntentCarriesRuntimeSnapshot() {
     val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
@@ -60,6 +65,7 @@ class MainActivityTest {
             assistantStatus = "streaming",
             hostWebSearchEnabled = false,
             hostWebFetchEnabled = true,
+            runtimeHapticsStatus = "ready",
         )
 
     assertEquals(RavbotForegroundService.ACTION_UPDATE_STATUS, intent.action)
@@ -88,6 +94,10 @@ class MainActivityTest {
     assertEquals(
         true,
         intent.getBooleanExtra(RavbotForegroundService.EXTRA_HOST_WEB_FETCH_ENABLED, false),
+    )
+    assertEquals(
+        "ready",
+        intent.getStringExtra(RavbotForegroundService.EXTRA_RUNTIME_HAPTICS_STATUS),
     )
   }
 }

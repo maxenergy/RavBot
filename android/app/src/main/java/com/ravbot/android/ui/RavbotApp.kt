@@ -544,6 +544,7 @@ private fun RavbotHostScreen() {
               assistantStatus = assistantStatus,
               hostWebSearchEnabled = hostWebSearchEnabled,
               hostWebFetchEnabled = hostWebFetchEnabled,
+              runtimeHapticsStatus = runtimeHapticsStatus,
           ),
       )
       serviceRunning = true
@@ -934,6 +935,7 @@ private fun RavbotHostScreen() {
                         assistantStatus = assistantStatus,
                         hostWebSearchEnabled = hostWebSearchEnabled,
                         hostWebFetchEnabled = hostWebFetchEnabled,
+                        runtimeHapticsStatus = runtimeHapticsStatus,
                     ),
                 )
                 serviceRunning = true
@@ -1122,6 +1124,7 @@ private fun RavbotHostScreen() {
             assistantStatus = assistantStatus,
             hostWebSearchEnabled = hostWebSearchEnabled,
             hostWebFetchEnabled = hostWebFetchEnabled,
+            runtimeHapticsStatus = runtimeHapticsStatus,
         ),
     )
   }

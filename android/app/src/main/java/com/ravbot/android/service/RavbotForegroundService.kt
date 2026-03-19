@@ -21,6 +21,7 @@ class RavbotForegroundService : Service() {
   private var assistantStatus = "idle"
   private var hostWebSearchEnabled = true
   private var hostWebFetchEnabled = true
+  private var runtimeHapticsStatus = "unknown"
 
   override fun onBind(intent: Intent?): IBinder? = null
 
@@ -82,7 +83,9 @@ class RavbotForegroundService : Service() {
     val captureLine = if (captureRequested) "capture on" else "capture off"
     val webSearchLine = if (hostWebSearchEnabled) "web search on" else "web search off"
     val webFetchLine = if (hostWebFetchEnabled) "web fetch on" else "web fetch off"
-    return "$sessionLine | $captureLine | $webSearchLine | $webFetchLine"
+    val hapticsLine =
+        if (runtimeHapticsStatus == "ready") "haptics ready" else "haptics $runtimeHapticsStatus"
+    return "$sessionLine | $captureLine | $webSearchLine | $webFetchLine | $hapticsLine"
   }
 
   private fun buildNotificationDetails(): String {
@@ -96,6 +99,7 @@ class RavbotForegroundService : Service() {
             "Assistant: $assistantStatus",
             "Host web search: ${if (hostWebSearchEnabled) "enabled" else "disabled"}",
             "Host web fetch: ${if (hostWebFetchEnabled) "enabled" else "disabled"}",
+            "Haptics: $runtimeHapticsStatus",
         )
         .joinToString("\n")
   }
@@ -143,6 +147,9 @@ class RavbotForegroundService : Service() {
     if (intent.hasExtra(EXTRA_HOST_WEB_FETCH_ENABLED)) {
       hostWebFetchEnabled = intent.getBooleanExtra(EXTRA_HOST_WEB_FETCH_ENABLED, true)
     }
+    intent.getStringExtra(EXTRA_RUNTIME_HAPTICS_STATUS)?.let {
+      runtimeHapticsStatus = it
+    }
   }
 
   private fun ensureNotificationChannel() {
@@ -174,6 +181,7 @@ class RavbotForegroundService : Service() {
     const val EXTRA_ASSISTANT_STATUS = "assistant_status"
     const val EXTRA_HOST_WEB_SEARCH_ENABLED = "host_web_search_enabled"
     const val EXTRA_HOST_WEB_FETCH_ENABLED = "host_web_fetch_enabled"
+    const val EXTRA_RUNTIME_HAPTICS_STATUS = "runtime_haptics_status"
 
     private const val CHANNEL_ID = "ravbot.runtime"
     private const val NOTIFICATION_ID = 1001
@@ -190,6 +198,7 @@ class RavbotForegroundService : Service() {
         assistantStatus: String = "idle",
         hostWebSearchEnabled: Boolean = true,
         hostWebFetchEnabled: Boolean = true,
+        runtimeHapticsStatus: String = "unknown",
     ): Intent {
       return Intent(context, RavbotForegroundService::class.java)
           .setAction(ACTION_START)
@@ -201,6 +210,7 @@ class RavbotForegroundService : Service() {
           .putExtra(EXTRA_ASSISTANT_STATUS, assistantStatus)
           .putExtra(EXTRA_HOST_WEB_SEARCH_ENABLED, hostWebSearchEnabled)
           .putExtra(EXTRA_HOST_WEB_FETCH_ENABLED, hostWebFetchEnabled)
+          .putExtra(EXTRA_RUNTIME_HAPTICS_STATUS, runtimeHapticsStatus)
     }
 
     fun createStopIntent(context: Context): Intent {
@@ -218,6 +228,7 @@ class RavbotForegroundService : Service() {
         assistantStatus: String,
         hostWebSearchEnabled: Boolean,
         hostWebFetchEnabled: Boolean,
+        runtimeHapticsStatus: String,
     ): Intent {
       return Intent(context, RavbotForegroundService::class.java)
           .setAction(ACTION_UPDATE_STATUS)
@@ -229,6 +240,7 @@ class RavbotForegroundService : Service() {
           .putExtra(EXTRA_ASSISTANT_STATUS, assistantStatus)
           .putExtra(EXTRA_HOST_WEB_SEARCH_ENABLED, hostWebSearchEnabled)
           .putExtra(EXTRA_HOST_WEB_FETCH_ENABLED, hostWebFetchEnabled)
+          .putExtra(EXTRA_RUNTIME_HAPTICS_STATUS, runtimeHapticsStatus)
     }
   }
 }
