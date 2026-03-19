@@ -44,6 +44,8 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - Native vision sampling cadence and scene-change throttling are now also
   scoped per mobile session, so one conversation's camera frames do not
   suppress another session's first observation
+- Session-bound mobile events now carry `sessionKey`, and the Android host
+  ignores stale event traffic from older sessions when a new session is active
 - `camera_snapshot` also carries the latest published `deviceStatus`, so the
   local model can tell whether the camera is currently running or whether it
   is looking at an older observation

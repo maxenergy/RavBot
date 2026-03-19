@@ -351,6 +351,12 @@ private fun RavbotHostScreen() {
   DisposableEffect(bridge) {
     bridge.subscribeEvents { event ->
       appendLog(logEntries, event)
+      val eventSessionKey = parseJsonString(event.payload, "sessionKey")
+      val isCurrentSessionEvent =
+          eventSessionKey == null || eventSessionKey.isEmpty() || eventSessionKey == sessionId
+      if (!isCurrentSessionEvent) {
+        return@subscribeEvents
+      }
       parseAvatarState(event)?.let { state ->
         avatarState = state
       }

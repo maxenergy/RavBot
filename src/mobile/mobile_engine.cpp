@@ -40,6 +40,14 @@ nlohmann::json make_avatar_payload(AvatarState state) {
   return {{"state", AvatarStateToString(state)}};
 }
 
+nlohmann::json with_session_key(const std::string& session_key,
+                                nlohmann::json payload) {
+  if (!session_key.empty()) {
+    payload["sessionKey"] = session_key;
+  }
+  return payload;
+}
+
 std::string make_tool_call_id(int round, size_t index) {
   return "mobile_tool_" + std::to_string(round) + "_" +
          std::to_string(index + 1);
@@ -334,35 +342,37 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
 
   SetAvatarState(AvatarState::kWatch);
   Emit(kEventMobileVisionObservation,
-       {{"summary", *summary},
-        {"width", frame.width},
-        {"height", frame.height},
-        {"timestampMs", frame.timestamp_ms},
-        {"capturedWhileForeground", captured_while_foreground}});
+       with_session_key(
+           session_key,
+           {{"summary", *summary},
+            {"width", frame.width},
+            {"height", frame.height},
+            {"timestampMs", frame.timestamp_ms},
+            {"capturedWhileForeground", captured_while_foreground}}));
   SetAvatarState(AvatarState::kIdle);
   return true;
 }
 
 void MobileEngine::InterruptGeneration(const std::string& session_key) {
-  (void)session_key;
   if (asr_provider_) {
     asr_provider_->Interrupt();
   }
   if (auto bridge = CopyDeviceBridge(); bridge) {
     bridge->InterruptSpeechPlayback();
   }
-  Emit(kEventMobileTtsState, {{"state", "interrupted"}});
+  Emit(kEventMobileTtsState,
+       with_session_key(session_key, {{"state", "interrupted"}}));
   SetAvatarState(AvatarState::kIdle);
 }
 
 bool MobileEngine::ReportTtsPlaybackState(const std::string& session_key,
                                           const std::string& state) {
-  (void)session_key;
   if (state.empty()) {
     return false;
   }
 
-  Emit(kEventMobileTtsState, {{"state", state}});
+  Emit(kEventMobileTtsState,
+       with_session_key(session_key, {{"state", state}}));
   if (state == "speaking") {
     SetAvatarState(AvatarState::kSpeak);
   } else if (state == "completed" || state == "interrupted") {
@@ -553,13 +563,15 @@ bool MobileEngine::HandleAsrUpdate(const std::string& session_key,
   const int effective_sample_rate =
       update.sample_rate_hz > 0 ? update.sample_rate_hz : sample_rate_hz;
   Emit(update.is_final ? kEventMobileAsrFinal : kEventMobileAsrPartial,
-       {{"text", update.text},
-        {"sampleRateHz", effective_sample_rate},
-        {"segmentIndex", update.segment_index},
-        {"durationMs", update.duration_ms},
-        {"averageLevel", update.average_level},
-        {"peakLevel", update.peak_level},
-        {"endReason", update.end_reason}});
+       with_session_key(
+           session_key,
+           {{"text", update.text},
+            {"sampleRateHz", effective_sample_rate},
+            {"segmentIndex", update.segment_index},
+            {"durationMs", update.duration_ms},
+            {"averageLevel", update.average_level},
+            {"peakLevel", update.peak_level},
+            {"endReason", update.end_reason}}));
   if (!update.is_final) {
     return true;
   }
@@ -1245,7 +1257,8 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
   session_manager_.GetOrCreate(session_key, "", "mobile");
   session_manager_.AppendMessage(session_key, "user", text);
   if (emit_asr_final) {
-    Emit(kEventMobileAsrFinal, {{"text", text}});
+    Emit(kEventMobileAsrFinal,
+         with_session_key(session_key, {{"text", text}}));
   }
 
   SetAvatarState(AvatarState::kThink);
@@ -1297,7 +1310,8 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
           response_text = round_response_text;
           finish_reason = round_finish_reason;
           for (const auto& chunk : delta_chunks) {
-            Emit(kEventAssistantDelta, {{"text", chunk}});
+            Emit(kEventAssistantDelta,
+                 with_session_key(session_key, {{"text", chunk}}));
           }
           break;
         }
@@ -1324,28 +1338,34 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
         tool_result_message.role = "user";
         for (const auto& tool_call : streamed_tool_calls) {
           Emit(kEventToolStart,
-               {{"id", tool_call.id},
-                {"name", tool_call.name},
-                {"arguments", tool_call.arguments}});
+               with_session_key(
+                   session_key,
+                   {{"id", tool_call.id},
+                    {"name", tool_call.name},
+                    {"arguments", tool_call.arguments}}));
 
           try {
             const std::string result = ExecuteToolCall(session_key, tool_call);
             tool_result_message.content.push_back(
                 ContentBlock::MakeToolResult(tool_call.id, result));
             Emit(kEventToolResult,
-                 {{"id", tool_call.id},
-                  {"name", tool_call.name},
-                  {"status", "ok"},
-                  {"result", result}});
+                 with_session_key(
+                     session_key,
+                     {{"id", tool_call.id},
+                      {"name", tool_call.name},
+                      {"status", "ok"},
+                      {"result", result}}));
           } catch (const std::exception& e) {
             const std::string error = e.what();
             tool_result_message.content.push_back(
                 ContentBlock::MakeToolResult(tool_call.id, error));
             Emit(kEventToolResult,
-                 {{"id", tool_call.id},
-                  {"name", tool_call.name},
-                  {"status", "error"},
-                  {"error", error}});
+                 with_session_key(
+                     session_key,
+                     {{"id", tool_call.id},
+                      {"name", tool_call.name},
+                      {"status", "error"},
+                      {"error", error}}));
           }
         }
 
@@ -1358,7 +1378,8 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
         response_text = round_response_text;
         finish_reason = round_finish_reason;
         for (const auto& chunk : delta_chunks) {
-          Emit(kEventAssistantDelta, {{"text", chunk}});
+          Emit(kEventAssistantDelta,
+               with_session_key(session_key, {{"text", chunk}}));
         }
         break;
       }
@@ -1380,12 +1401,15 @@ bool MobileEngine::HandleUserTextTurn(const std::string& session_key,
 
   session_manager_.AppendMessage(session_key, "assistant", response_text);
   Emit(kEventAssistantFinal,
-       {{"text", response_text}, {"finishReason", finish_reason}});
+       with_session_key(session_key,
+                        {{"text", response_text},
+                         {"finishReason", finish_reason}}));
 
   if (!response_text.empty()) {
     SetAvatarState(AvatarState::kSpeak);
     Emit(kEventMobileTtsState,
-         {{"state", "requested"}, {"text", response_text}});
+         with_session_key(session_key,
+                          {{"state", "requested"}, {"text", response_text}}));
     if (auto bridge = CopyDeviceBridge(); bridge) {
       bridge->RequestSpeechPlayback(response_text);
     }

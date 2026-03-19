@@ -156,6 +156,7 @@ TEST_F(MobileCApiTest, SendTextTurnEmitsAssistantFinalEvent) {
     }
     if (event.name == "assistant_final") {
       saw_final = true;
+      EXPECT_EQ(event.payload["sessionKey"], "agent:main:capi");
       EXPECT_TRUE(event.payload.contains("text"));
       EXPECT_FALSE(event.payload["text"].get<std::string>().empty());
     }
@@ -215,6 +216,7 @@ TEST_F(MobileCApiTest, CameraFrameEmitsVisionObservationByDefault) {
   for (const auto& event : sink.events) {
     if (event.name == "mobile.vision_observation") {
       saw_vision = true;
+      EXPECT_EQ(event.payload["sessionKey"], "agent:main:camera");
       EXPECT_TRUE(event.payload.contains("summary"));
     }
   }
@@ -245,6 +247,7 @@ TEST_F(MobileCApiTest, ReportTtsStateEmitsPlaybackUpdate) {
     if (event.name == "mobile.tts_state" &&
         event.payload.value("state", "") == "speaking") {
       saw_tts = true;
+      EXPECT_EQ(event.payload["sessionKey"], "agent:main:tts");
     }
   }
   EXPECT_TRUE(saw_tts);
@@ -314,11 +317,13 @@ TEST_F(MobileCApiTest, FlushAudioTurnPromotesBufferedSpeechToFinalTurn) {
   for (const auto& event : sink.events) {
     if (event.name == "mobile.asr_partial") {
       saw_partial = true;
+      EXPECT_EQ(event.payload["sessionKey"], "agent:main:flush");
       EXPECT_EQ(event.payload["segmentIndex"], 1);
       EXPECT_EQ(event.payload["endReason"], "streaming");
     }
     if (event.name == "mobile.asr_final") {
       saw_final = true;
+      EXPECT_EQ(event.payload["sessionKey"], "agent:main:flush");
       EXPECT_NE(event.payload.value("text", "").find("audio segment 1"),
                 std::string::npos);
       EXPECT_EQ(event.payload["segmentIndex"], 1);

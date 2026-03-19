@@ -1052,6 +1052,7 @@ TEST_F(MobileEngineTest, PushPcm16UsesAsrProviderForFinalTurn) {
         return event.name == ravbot::mobile::kEventMobileAsrFinal;
       });
   ASSERT_NE(asr_final, events.end());
+  EXPECT_EQ(asr_final->payload["sessionKey"], "agent:main:speech");
   EXPECT_EQ(asr_final->payload["segmentIndex"], 1);
   EXPECT_EQ(asr_final->payload["durationMs"], 120);
   EXPECT_EQ(asr_final->payload["sampleRateHz"], 16000);
@@ -1085,6 +1086,7 @@ TEST_F(MobileEngineTest, FlushAudioTurnFinalizesBufferedSpeechTurn) {
         return event.name == ravbot::mobile::kEventMobileAsrPartial;
       });
   ASSERT_NE(asr_partial, events.end());
+  EXPECT_EQ(asr_partial->payload["sessionKey"], "agent:main:speech-flush");
   EXPECT_EQ(asr_partial->payload["endReason"], "streaming");
 
   auto asr_final = std::find_if(
@@ -1093,6 +1095,7 @@ TEST_F(MobileEngineTest, FlushAudioTurnFinalizesBufferedSpeechTurn) {
         return event.name == ravbot::mobile::kEventMobileAsrFinal;
       });
   ASSERT_NE(asr_final, events.end());
+  EXPECT_EQ(asr_final->payload["sessionKey"], "agent:main:speech-flush");
   EXPECT_EQ(asr_final->payload["segmentIndex"], 1);
   EXPECT_EQ(asr_final->payload["durationMs"], 180);
   EXPECT_EQ(asr_final->payload["endReason"], "flush");
@@ -1127,7 +1130,8 @@ TEST_F(MobileEngineTest, PushCameraFrameRequiresForegroundWhenConfigured) {
       [](const ravbot::mobile::MobileEvent& event) {
         return event.name == ravbot::mobile::kEventMobileVisionObservation;
       });
-  EXPECT_NE(it, events.end());
+  ASSERT_NE(it, events.end());
+  EXPECT_EQ(it->payload["sessionKey"], "agent:main:vision");
   EXPECT_EQ(vision->last_width, 320);
 }
 
@@ -1352,6 +1356,7 @@ TEST_F(MobileEngineTest, ReportTtsPlaybackStateEmitsEventAndAvatarState) {
                event.payload.value("state", "") == "speaking";
       });
   ASSERT_NE(speaking, events.end());
+  EXPECT_EQ(speaking->payload["sessionKey"], "agent:main:tts");
 
   auto avatar_idle = std::find_if(
       events.begin(), events.end(),
@@ -1386,6 +1391,11 @@ TEST_F(MobileEngineTest, SendTextTurnStreamsAssistantDeltaChunks) {
   ASSERT_EQ(delta_texts.size(), 2u);
   EXPECT_EQ(delta_texts[0], "hello ");
   EXPECT_EQ(delta_texts[1], "stream");
+  for (const auto& event : events) {
+    if (event.name == ravbot::mobile::kEventAssistantDelta) {
+      EXPECT_EQ(event.payload["sessionKey"], "agent:main:stream");
+    }
+  }
 
   auto history = engine.session_manager().GetHistory("agent:main:stream");
   ASSERT_EQ(history.size(), 2u);
@@ -1475,6 +1485,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
         return event.name == ravbot::mobile::kEventToolStart;
       });
   ASSERT_NE(tool_start, events.end());
+  EXPECT_EQ(tool_start->payload["sessionKey"], "agent:main:tooling");
   EXPECT_EQ(tool_start->payload["name"], "device_status");
 
   auto tool_result = std::find_if(
@@ -1483,6 +1494,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
         return event.name == ravbot::mobile::kEventToolResult;
       });
   ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["sessionKey"], "agent:main:tooling");
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"runtimeStatus\""),
@@ -1506,6 +1518,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
         return event.name == ravbot::mobile::kEventAssistantFinal;
       });
   ASSERT_NE(assistant_final, events.end());
+  EXPECT_EQ(assistant_final->payload["sessionKey"], "agent:main:tooling");
   EXPECT_EQ(assistant_final->payload["finishReason"], "stop");
 }
 
@@ -1584,6 +1597,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
                event.payload.value("name", "") == "camera_snapshot";
       });
   ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["sessionKey"], "agent:main:camera-tool");
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"timestampMs\": 4242"),
