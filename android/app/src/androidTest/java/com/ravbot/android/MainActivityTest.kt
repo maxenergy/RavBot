@@ -3,6 +3,7 @@ package com.ravbot.android
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.ravbot.android.service.RavbotForegroundService
 import org.junit.Assert.assertEquals
@@ -24,6 +25,24 @@ class MainActivityTest {
   fun hostScreenShowsCaptureControls() {
     composeRule.onNodeWithText("Live capture").assertIsDisplayed()
     composeRule.onNodeWithText("Start sensors").assertIsDisplayed()
+  }
+
+  @Test
+  fun hostScreenShowsAndTogglesHostWebControls() {
+    composeRule.onNodeWithText("Disable web search").assertIsDisplayed()
+    composeRule.onNodeWithText("Disable web fetch").assertIsDisplayed()
+    composeRule.onNodeWithText("Host web search toggle: enabled").assertIsDisplayed()
+    composeRule.onNodeWithText("Host web fetch toggle: enabled").assertIsDisplayed()
+
+    composeRule.onNodeWithText("Disable web search").performClick()
+    composeRule.onNodeWithText("Disable web fetch").performClick()
+
+    composeRule.onNodeWithText("Enable web search").assertIsDisplayed()
+    composeRule.onNodeWithText("Enable web fetch").assertIsDisplayed()
+    composeRule.onNodeWithText("Host web search toggle: disabled")
+        .assertIsDisplayed()
+    composeRule.onNodeWithText("Host web fetch toggle: disabled")
+        .assertIsDisplayed()
   }
 
   @Test
