@@ -41,6 +41,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - `camera_snapshot` now stays scoped to the active mobile session and reports
   freshness metadata such as `ageMs`, `stale`, and
   `capturedWhileForeground`
+- Native vision sampling cadence and scene-change throttling are now also
+  scoped per mobile session, so one conversation's camera frames do not
+  suppress another session's first observation
 - `camera_snapshot` also carries the latest published `deviceStatus`, so the
   local model can tell whether the camera is currently running or whether it
   is looking at an older observation

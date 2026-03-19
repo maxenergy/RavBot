@@ -89,11 +89,17 @@ class MobileEngine {
   SessionManager& session_manager() { return session_manager_; }
 
  private:
+  struct VisionSamplingState {
+    int64_t last_timestamp_ms = 0;
+    std::optional<double> last_scene_signature;
+  };
+
   void Emit(const std::string& event_name, const nlohmann::json& payload) const;
   nlohmann::json BuildRuntimeStatusPayload() const;
   void EmitRuntimeStatus() const;
   void SetAvatarState(AvatarState state);
-  bool ShouldProcessVisionFrame(const CameraFrame& frame);
+  bool ShouldProcessVisionFrame(const std::string& session_key,
+                                const CameraFrame& frame);
   std::optional<double> EstimateFrameSceneSignature(
       const CameraFrame& frame) const;
   bool HandleAsrUpdate(const std::string& session_key,
@@ -143,8 +149,7 @@ class MobileEngine {
   DeviceStatusSnapshot device_status_;
   bool has_device_status_ = false;
   std::unordered_map<std::string, nlohmann::json> last_vision_observations_;
-  int64_t last_vision_timestamp_ms_ = 0;
-  std::optional<double> last_vision_scene_signature_;
+  std::unordered_map<std::string, VisionSamplingState> vision_sampling_states_;
 
   mutable std::shared_mutex subscriber_mutex_;
   std::unordered_map<std::string, EventCallback> subscribers_;

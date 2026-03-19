@@ -300,7 +300,7 @@ bool MobileEngine::PushCameraFrame(const std::string& session_key,
   if (foreground_only && !IsForeground()) {
     return false;
   }
-  if (!ShouldProcessVisionFrame(frame)) {
+  if (!ShouldProcessVisionFrame(session_key, frame)) {
     return true;
   }
 
@@ -475,34 +475,37 @@ void MobileEngine::SetAvatarState(AvatarState state) {
   Emit(kEventMobileAvatarState, make_avatar_payload(state));
 }
 
-bool MobileEngine::ShouldProcessVisionFrame(const CameraFrame& frame) {
+bool MobileEngine::ShouldProcessVisionFrame(const std::string& session_key,
+                                            const CameraFrame& frame) {
   std::unique_lock<std::shared_mutex> lock(state_mutex_);
+  auto& sampling_state = vision_sampling_states_[session_key];
 
   const double sample_fps = config_.mobile.vision.sample_fps;
   if (sample_fps > 0.0 && frame.timestamp_ms > 0 &&
-      last_vision_timestamp_ms_ > 0) {
+      sampling_state.last_timestamp_ms > 0) {
     const auto min_interval_ms =
         static_cast<int64_t>(std::max(1.0, 1000.0 / sample_fps));
-    if (frame.timestamp_ms - last_vision_timestamp_ms_ < min_interval_ms) {
+    if (frame.timestamp_ms - sampling_state.last_timestamp_ms <
+        min_interval_ms) {
       return false;
     }
   }
 
   const auto scene_signature = EstimateFrameSceneSignature(frame);
-  if (scene_signature && last_vision_scene_signature_ &&
+  if (scene_signature && sampling_state.last_scene_signature &&
       config_.mobile.vision.scene_change_threshold > 0.0) {
     const double delta =
-        std::abs(*scene_signature - *last_vision_scene_signature_);
+        std::abs(*scene_signature - *sampling_state.last_scene_signature);
     if (delta < config_.mobile.vision.scene_change_threshold) {
       return false;
     }
   }
 
   if (frame.timestamp_ms > 0) {
-    last_vision_timestamp_ms_ = frame.timestamp_ms;
+    sampling_state.last_timestamp_ms = frame.timestamp_ms;
   }
   if (scene_signature) {
-    last_vision_scene_signature_ = scene_signature;
+    sampling_state.last_scene_signature = scene_signature;
   }
   return true;
 }

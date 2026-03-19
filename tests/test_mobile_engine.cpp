@@ -1184,6 +1184,29 @@ TEST_F(MobileEngineTest, PushCameraFrameSkipsSmallSceneChanges) {
   EXPECT_EQ(vision->call_count, 2);
 }
 
+TEST_F(MobileEngineTest, PushCameraFrameSamplingStateIsScopedPerSession) {
+  auto config = MakeConfig();
+  config.mobile.vision.sample_fps = 1.0;
+  config.mobile.vision.scene_change_threshold = 0.5;
+  ravbot::mobile::MobileEngine engine(config, test_dir_, test_dir_, logger_);
+  auto vision = std::make_shared<FakeVisionProvider>();
+  engine.SetVisionProvider(vision);
+
+  ravbot::mobile::CameraFrame frame_a;
+  frame_a.width = 64;
+  frame_a.height = 64;
+  frame_a.format = "YUV420_LUMA";
+  frame_a.timestamp_ms = 1000;
+  frame_a.data.assign(64 * 64, static_cast<uint8_t>(32));
+
+  ravbot::mobile::CameraFrame frame_b = frame_a;
+  frame_b.timestamp_ms = 1500;
+
+  ASSERT_TRUE(engine.PushCameraFrame("agent:main:vision-session-a", frame_a));
+  ASSERT_TRUE(engine.PushCameraFrame("agent:main:vision-session-b", frame_b));
+  EXPECT_EQ(vision->call_count, 2);
+}
+
 TEST_F(MobileEngineTest, StartSessionEmitsRuntimeStatusWithResolvedModelPaths) {
   auto config = MakeConfig();
   config.mobile.models.llm_model = "Qwen3.5-0.8B-Q4_K_M.gguf";
