@@ -29,10 +29,13 @@ class DeviceCapabilityBridge {
     (void)session_key;
     (void)duration_ms;
   }
-  virtual std::string WebSearch(const std::string& query,
+  virtual std::string WebSearch(const std::string& session_key,
+                                const std::string& query,
                                 int count,
                                 const std::string& freshness) = 0;
-  virtual std::string WebFetch(const std::string& url, int max_chars) = 0;
+  virtual std::string WebFetch(const std::string& session_key,
+                               const std::string& url,
+                               int max_chars) = 0;
 };
 
 }  // namespace ravbot::mobile

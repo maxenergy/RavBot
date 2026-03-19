@@ -14,10 +14,12 @@ import org.json.JSONObject
 
 class HostWebToolClient {
   fun webSearch(
+      sessionId: String,
       query: String,
       count: Int,
       freshness: String?,
   ): String {
+    require(sessionId.isNotBlank()) { "sessionId is required" }
     require(query.isNotBlank()) { "query is required" }
 
     val cappedCount = count.coerceIn(1, 10)
@@ -72,6 +74,7 @@ class HostWebToolClient {
 
     return JSONObject()
         .put("provider", "android_host_duckduckgo")
+        .put("sessionKey", sessionId)
         .put("query", query)
         .put("freshness", freshness ?: "")
         .put("results", results)
@@ -79,9 +82,11 @@ class HostWebToolClient {
   }
 
   fun webFetch(
+      sessionId: String,
       url: String,
       maxChars: Int,
   ): String {
+    require(sessionId.isNotBlank()) { "sessionId is required" }
     require(url.isNotBlank()) { "url is required" }
     val cappedMaxChars = maxChars.coerceIn(256, 100_000)
     val parsed = URI(url)
@@ -112,6 +117,7 @@ class HostWebToolClient {
         )
 
     return JSONObject()
+        .put("sessionKey", sessionId)
         .put("url", url)
         .put("content", text)
         .put("contentType", contentType)

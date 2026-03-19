@@ -26,6 +26,8 @@ struct EventSink {
   std::vector<std::string> speech_requests;
   std::vector<std::string> speech_interrupt_sessions;
   std::vector<std::string> vibration_requests;
+  std::vector<std::string> web_search_requests;
+  std::vector<std::string> web_fetch_requests;
 };
 
 void capture_event(const char* event_name,
@@ -88,17 +90,35 @@ void capture_vibrate(const char* session_key,
       std::to_string(duration_ms));
 }
 
-const char* capture_web_search(const char* /*query*/,
+const char* capture_web_search(const char* session_key,
+                               const char* query,
                                int /*count*/,
                                const char* /*freshness*/,
-                               void* /*user_data*/) {
-  return R"({"results":[{"title":"RavBot","url":"https://example.com"}]})";
+                               void* user_data) {
+  auto* sink = static_cast<EventSink*>(user_data);
+  if (sink == nullptr) {
+    return nullptr;
+  }
+  std::lock_guard<std::mutex> lock(sink->mutex);
+  sink->web_search_requests.push_back(
+      std::string(session_key != nullptr ? session_key : "") + ":" +
+      (query != nullptr ? query : ""));
+  return R"({"sessionKey":"agent:main:web-search-only","results":[{"title":"RavBot","url":"https://example.com"}]})";
 }
 
-const char* capture_web_fetch(const char* /*url*/,
+const char* capture_web_fetch(const char* session_key,
+                              const char* url,
                               int /*max_chars*/,
-                              void* /*user_data*/) {
-  return "RavBot Android page";
+                              void* user_data) {
+  auto* sink = static_cast<EventSink*>(user_data);
+  if (sink == nullptr) {
+    return nullptr;
+  }
+  std::lock_guard<std::mutex> lock(sink->mutex);
+  sink->web_fetch_requests.push_back(
+      std::string(session_key != nullptr ? session_key : "") + ":" +
+      (url != nullptr ? url : ""));
+  return R"({"sessionKey":"agent:main:web-fetch-only","content":"RavBot Android page"})";
 }
 
 class MobileCApiTest : public ::testing::Test {

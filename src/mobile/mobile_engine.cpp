@@ -997,6 +997,7 @@ std::string MobileEngine::BuildTimeToolResult() const {
 }
 
 std::string MobileEngine::BuildWebSearchToolResult(
+    const std::string& session_key,
     const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
   if (bridge == nullptr) {
@@ -1011,10 +1012,11 @@ std::string MobileEngine::BuildWebSearchToolResult(
   if (query.empty()) {
     throw std::runtime_error("query is required");
   }
-  return bridge->WebSearch(query, count, freshness);
+  return bridge->WebSearch(session_key, query, count, freshness);
 }
 
 std::string MobileEngine::BuildWebFetchToolResult(
+    const std::string& session_key,
     const nlohmann::json& arguments) const {
   const auto bridge = CopyDeviceBridge();
   if (bridge == nullptr) {
@@ -1028,7 +1030,7 @@ std::string MobileEngine::BuildWebFetchToolResult(
   if (url.empty()) {
     throw std::runtime_error("url is required");
   }
-  return bridge->WebFetch(url, max_chars);
+  return bridge->WebFetch(session_key, url, max_chars);
 }
 
 std::filesystem::path MobileEngine::WorkspaceRoot() const {
@@ -1265,10 +1267,10 @@ std::string MobileEngine::ExecuteToolCall(const std::string& session_key,
     return BuildTimeToolResult();
   }
   if (tool_call.name == kWebSearchToolName) {
-    return BuildWebSearchToolResult(tool_call.arguments);
+    return BuildWebSearchToolResult(session_key, tool_call.arguments);
   }
   if (tool_call.name == kWebFetchToolName) {
-    return BuildWebFetchToolResult(tool_call.arguments);
+    return BuildWebFetchToolResult(session_key, tool_call.arguments);
   }
   if (tool_call.name == kMemoryListToolName) {
     return BuildMemoryListToolResult(tool_call.arguments);

@@ -117,8 +117,10 @@ class MobileEngine {
   std::string BuildCameraSnapshotToolResult(
       const std::string& session_key) const;
   std::string BuildTimeToolResult() const;
-  std::string BuildWebSearchToolResult(const nlohmann::json& arguments) const;
-  std::string BuildWebFetchToolResult(const nlohmann::json& arguments) const;
+  std::string BuildWebSearchToolResult(const std::string& session_key,
+                                       const nlohmann::json& arguments) const;
+  std::string BuildWebFetchToolResult(const std::string& session_key,
+                                      const nlohmann::json& arguments) const;
   std::string BuildMemoryListToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemorySearchToolResult(const nlohmann::json& arguments) const;
   std::string BuildMemoryGetToolResult(const nlohmann::json& arguments) const;

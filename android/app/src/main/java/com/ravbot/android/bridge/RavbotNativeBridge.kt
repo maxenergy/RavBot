@@ -203,6 +203,7 @@ class RavbotNativeBridge {
 
   @Suppress("unused")
   fun onNativeWebSearch(
+      sessionId: String,
       query: String,
       count: Int,
       freshness: String,
@@ -210,6 +211,7 @@ class RavbotNativeBridge {
       ensureHostExecutor()
           .submit<String> {
             webToolClient.webSearch(
+                sessionId = sessionId,
                 query = query,
                 count = count,
                 freshness = freshness.ifBlank { null },
@@ -219,9 +221,13 @@ class RavbotNativeBridge {
 
   @Suppress("unused")
   fun onNativeWebFetch(
+      sessionId: String,
       url: String,
       maxChars: Int,
-  ): String = ensureHostExecutor().submit<String> { webToolClient.webFetch(url, maxChars) }.get()
+  ): String =
+      ensureHostExecutor().submit<String> {
+        webToolClient.webFetch(sessionId, url, maxChars)
+      }.get()
 
   @Synchronized
   private fun ensureHostExecutor(): ExecutorService {

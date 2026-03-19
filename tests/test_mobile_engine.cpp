@@ -727,12 +727,14 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
     vibration_calls.push_back(session_key + ":" + std::to_string(duration_ms));
   }
 
-  std::string WebSearch(const std::string& query,
+  std::string WebSearch(const std::string& session_key,
+                        const std::string& query,
                         int count,
                         const std::string& freshness) override {
-    web_search_calls.push_back({query, count, freshness});
+    web_search_calls.push_back({session_key, query, count, freshness});
     return nlohmann::json{
         {"provider", "android_host"},
+        {"sessionKey", session_key},
         {"query", query},
         {"freshness", freshness},
         {"results",
@@ -743,9 +745,12 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
         .dump(2);
   }
 
-  std::string WebFetch(const std::string& url, int max_chars) override {
-    web_fetch_calls.push_back({url, max_chars});
+  std::string WebFetch(const std::string& session_key,
+                       const std::string& url,
+                       int max_chars) override {
+    web_fetch_calls.push_back({session_key, url, max_chars});
     return nlohmann::json{
+        {"sessionKey", session_key},
         {"url", url},
         {"content", "Android embodied assistant page content."},
         {"contentType", "text/html"},
@@ -759,8 +764,9 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   int speech_interrupts = 0;
   std::string last_interrupt_session;
   std::vector<std::string> vibration_calls;
-  std::vector<std::tuple<std::string, int, std::string>> web_search_calls;
-  std::vector<std::pair<std::string, int>> web_fetch_calls;
+  std::vector<std::tuple<std::string, std::string, int, std::string>>
+      web_search_calls;
+  std::vector<std::tuple<std::string, std::string, int>> web_fetch_calls;
 };
 
 class FakeSpeechOnlyDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
@@ -776,12 +782,15 @@ class FakeSpeechOnlyDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge
   void RequestSpeechPlayback(const std::string& /*session_key*/,
                              const std::string& /*text*/) override {}
   void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
-  std::string WebSearch(const std::string& /*query*/,
+  std::string WebSearch(const std::string& /*session_key*/,
+                        const std::string& /*query*/,
                         int /*count*/,
                         const std::string& /*freshness*/) override {
     return "{}";
   }
-  std::string WebFetch(const std::string& /*url*/, int /*max_chars*/) override {
+  std::string WebFetch(const std::string& /*session_key*/,
+                       const std::string& /*url*/,
+                       int /*max_chars*/) override {
     return "{}";
   }
 };
@@ -800,12 +809,15 @@ class FakeWebSearchOnlyDeviceBridge
   void RequestSpeechPlayback(const std::string& /*session_key*/,
                              const std::string& /*text*/) override {}
   void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
-  std::string WebSearch(const std::string& /*query*/,
+  std::string WebSearch(const std::string& /*session_key*/,
+                        const std::string& /*query*/,
                         int /*count*/,
                         const std::string& /*freshness*/) override {
     return "{}";
   }
-  std::string WebFetch(const std::string& /*url*/, int /*max_chars*/) override {
+  std::string WebFetch(const std::string& /*session_key*/,
+                       const std::string& /*url*/,
+                       int /*max_chars*/) override {
     return "{}";
   }
 };
@@ -824,12 +836,15 @@ class FakeWebFetchOnlyDeviceBridge
   void RequestSpeechPlayback(const std::string& /*session_key*/,
                              const std::string& /*text*/) override {}
   void InterruptSpeechPlayback(const std::string& /*session_key*/) override {}
-  std::string WebSearch(const std::string& /*query*/,
+  std::string WebSearch(const std::string& /*session_key*/,
+                        const std::string& /*query*/,
                         int /*count*/,
                         const std::string& /*freshness*/) override {
     return "{}";
   }
-  std::string WebFetch(const std::string& /*url*/, int /*max_chars*/) override {
+  std::string WebFetch(const std::string& /*session_key*/,
+                       const std::string& /*url*/,
+                       int /*max_chars*/) override {
     return "{}";
   }
 };
@@ -2119,8 +2134,11 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebSearchToolThroughDeviceBridge) {
   const auto names = tool_names(provider->requests.front());
   EXPECT_NE(std::find(names.begin(), names.end(), "web_search"), names.end());
   ASSERT_EQ(bridge->web_search_calls.size(), 1u);
-  EXPECT_EQ(std::get<0>(bridge->web_search_calls.front()), "ravbot android mvp");
-  EXPECT_EQ(std::get<1>(bridge->web_search_calls.front()), 3);
+  EXPECT_EQ(std::get<0>(bridge->web_search_calls.front()),
+            "agent:main:web-search");
+  EXPECT_EQ(std::get<1>(bridge->web_search_calls.front()),
+            "ravbot android mvp");
+  EXPECT_EQ(std::get<2>(bridge->web_search_calls.front()), 3);
 
   auto tool_result = std::find_if(
       events.begin(), events.end(),
@@ -2132,6 +2150,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebSearchToolThroughDeviceBridge) {
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "RavBot Android MVP"),
+            std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"sessionKey\": \"agent:main:web-search\""),
             std::string::npos);
 
   auto history = engine.session_manager().GetHistory("agent:main:web-search");
@@ -2162,9 +2183,11 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebFetchToolThroughDeviceBridge) {
   const auto names = tool_names(provider->requests.front());
   EXPECT_NE(std::find(names.begin(), names.end(), "web_fetch"), names.end());
   ASSERT_EQ(bridge->web_fetch_calls.size(), 1u);
-  EXPECT_EQ(bridge->web_fetch_calls.front().first,
+  EXPECT_EQ(std::get<0>(bridge->web_fetch_calls.front()),
+            "agent:main:web-fetch");
+  EXPECT_EQ(std::get<1>(bridge->web_fetch_calls.front()),
             "https://example.com/ravbot-android");
-  EXPECT_EQ(bridge->web_fetch_calls.front().second, 4096);
+  EXPECT_EQ(std::get<2>(bridge->web_fetch_calls.front()), 4096);
 
   auto tool_result = std::find_if(
       events.begin(), events.end(),
@@ -2176,6 +2199,9 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesWebFetchToolThroughDeviceBridge) {
   EXPECT_EQ(tool_result->payload["status"], "ok");
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "Android embodied assistant page content."),
+            std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"sessionKey\": \"agent:main:web-fetch\""),
             std::string::npos);
 
   auto history = engine.session_manager().GetHistory("agent:main:web-fetch");

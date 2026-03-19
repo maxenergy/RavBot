@@ -9,7 +9,8 @@ class HostWebToolClientTest {
   @Test
   fun webFetchRejectsBlockedHost() {
     val error =
-        runCatching { client.webFetch("http://127.0.0.1/secret", 4096) }.exceptionOrNull()
+        runCatching { client.webFetch("session-a", "http://127.0.0.1/secret", 4096) }
+            .exceptionOrNull()
 
     requireNotNull(error)
     assertTrue(error is IllegalArgumentException)
@@ -19,7 +20,8 @@ class HostWebToolClientTest {
   @Test
   fun webFetchRejectsUnsupportedScheme() {
     val error =
-        runCatching { client.webFetch("ftp://example.com/file", 4096) }.exceptionOrNull()
+        runCatching { client.webFetch("session-a", "ftp://example.com/file", 4096) }
+            .exceptionOrNull()
 
     requireNotNull(error)
     assertTrue(error is IllegalArgumentException)
@@ -28,7 +30,8 @@ class HostWebToolClientTest {
 
   @Test
   fun webSearchRejectsBlankQuery() {
-    val error = runCatching { client.webSearch("", 5, null) }.exceptionOrNull()
+    val error =
+        runCatching { client.webSearch("session-a", "", 5, null) }.exceptionOrNull()
 
     requireNotNull(error)
     assertTrue(error is IllegalArgumentException)

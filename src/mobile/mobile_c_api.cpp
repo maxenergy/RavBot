@@ -73,27 +73,31 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
     callbacks_.on_vibrate(session_key.c_str(), duration_ms, user_data_);
   }
 
-  std::string WebSearch(const std::string& query,
+  std::string WebSearch(const std::string& session_key,
+                        const std::string& query,
                         int count,
                         const std::string& freshness) override {
     if (callbacks_.on_web_search == nullptr) {
       throw std::runtime_error("web_search callback is not configured");
     }
-    const char* result =
-        callbacks_.on_web_search(query.c_str(), count, freshness.c_str(),
-                                 user_data_);
+    const char* result = callbacks_.on_web_search(
+        session_key.c_str(), query.c_str(), count, freshness.c_str(),
+        user_data_);
     if (result == nullptr) {
       throw std::runtime_error("web_search callback returned null");
     }
     return result;
   }
 
-  std::string WebFetch(const std::string& url, int max_chars) override {
+  std::string WebFetch(const std::string& session_key,
+                       const std::string& url,
+                       int max_chars) override {
     if (callbacks_.on_web_fetch == nullptr) {
       throw std::runtime_error("web_fetch callback is not configured");
     }
-    const char* result =
-        callbacks_.on_web_fetch(url.c_str(), max_chars, user_data_);
+    const char* result = callbacks_.on_web_fetch(session_key.c_str(),
+                                                 url.c_str(), max_chars,
+                                                 user_data_);
     if (result == nullptr) {
       throw std::runtime_error("web_fetch callback returned null");
     }

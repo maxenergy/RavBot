@@ -48,6 +48,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
   ignores stale event traffic from older sessions when a new session is active
 - Host bridge events such as `device.avatar_state`, `device.speech_request`,
   `device.speech_interrupt`, and `device.vibrate` now also carry `sessionKey`
+- Host-backed `web_search` / `web_fetch` callbacks now also receive the mobile
+  `sessionKey`, so future per-session web policy, caching, and auditing do not
+  need another bridge break
 - `mobile.device_status` snapshots are now also scoped and replayed per mobile
   session, so host capture/runtime state no longer leaks across sessions in
   `device_status` and `camera_snapshot` flows

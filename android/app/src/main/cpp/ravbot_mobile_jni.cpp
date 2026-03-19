@@ -181,7 +181,8 @@ void OnDeviceVibrate(const char* session_key,
   ForwardEventToJava(engine, "device.vibrate", payload.dump().c_str());
 }
 
-const char* OnDeviceWebSearch(const char* query,
+const char* OnDeviceWebSearch(const char* session_key,
+                              const char* query,
                               int count,
                               const char* freshness,
                               void* user_data) {
@@ -216,7 +217,7 @@ const char* OnDeviceWebSearch(const char* query,
 
   jmethodID callback =
       env->GetMethodID(bridge_class, "onNativeWebSearch",
-                       "(Ljava/lang/String;ILjava/lang/String;)Ljava/lang/String;");
+                       "(Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;)Ljava/lang/String;");
   if (callback == nullptr) {
     env->DeleteLocalRef(bridge_class);
     if (should_detach) {
@@ -225,11 +226,15 @@ const char* OnDeviceWebSearch(const char* query,
     return nullptr;
   }
 
+  jstring j_session =
+      env->NewStringUTF(session_key != nullptr ? session_key : "");
   jstring j_query = env->NewStringUTF(query != nullptr ? query : "");
   jstring j_freshness = env->NewStringUTF(freshness != nullptr ? freshness : "");
   auto* result = static_cast<jstring>(
-      env->CallObjectMethod(engine->bridge_ref, callback, j_query, count,
+      env->CallObjectMethod(engine->bridge_ref, callback, j_session, j_query,
+                            count,
                             j_freshness));
+  env->DeleteLocalRef(j_session);
   env->DeleteLocalRef(j_query);
   env->DeleteLocalRef(j_freshness);
 
@@ -254,7 +259,8 @@ const char* OnDeviceWebSearch(const char* query,
   return result_storage.empty() ? nullptr : result_storage.c_str();
 }
 
-const char* OnDeviceWebFetch(const char* url,
+const char* OnDeviceWebFetch(const char* session_key,
+                             const char* url,
                              int max_chars,
                              void* user_data) {
   auto* engine = static_cast<EngineHandle*>(user_data);
@@ -288,7 +294,7 @@ const char* OnDeviceWebFetch(const char* url,
 
   jmethodID callback =
       env->GetMethodID(bridge_class, "onNativeWebFetch",
-                       "(Ljava/lang/String;I)Ljava/lang/String;");
+                       "(Ljava/lang/String;Ljava/lang/String;I)Ljava/lang/String;");
   if (callback == nullptr) {
     env->DeleteLocalRef(bridge_class);
     if (should_detach) {
@@ -297,9 +303,13 @@ const char* OnDeviceWebFetch(const char* url,
     return nullptr;
   }
 
+  jstring j_session =
+      env->NewStringUTF(session_key != nullptr ? session_key : "");
   jstring j_url = env->NewStringUTF(url != nullptr ? url : "");
   auto* result = static_cast<jstring>(
-      env->CallObjectMethod(engine->bridge_ref, callback, j_url, max_chars));
+      env->CallObjectMethod(engine->bridge_ref, callback, j_session, j_url,
+                            max_chars));
+  env->DeleteLocalRef(j_session);
   env->DeleteLocalRef(j_url);
 
   if (env->ExceptionCheck()) {

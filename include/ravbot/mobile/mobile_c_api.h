@@ -33,11 +33,13 @@ typedef void (*ravbot_mobile_vibrate_callback)(
     int duration_ms,
     void* user_data);
 typedef const char* (*ravbot_mobile_web_search_callback)(
+    const char* session_key,
     const char* query,
     int count,
     const char* freshness,
     void* user_data);
 typedef const char* (*ravbot_mobile_web_fetch_callback)(
+    const char* session_key,
     const char* url,
     int max_chars,
     void* user_data);
