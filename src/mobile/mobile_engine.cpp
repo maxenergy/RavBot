@@ -131,6 +131,12 @@ class PlaceholderMobileVisionProvider : public MobileVisionProvider {
     return stream.str();
   }
 
+  std::string ProviderName() const override {
+    return "placeholder_mobile_vision";
+  }
+
+  bool IsPlaceholder() const override { return true; }
+
  private:
   std::shared_ptr<spdlog::logger> logger_;
 };
@@ -832,10 +838,18 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
   nlohmann::json result;
   const auto stale_after_ms = camera_snapshot_stale_after_ms(config_);
   const auto current_time_ms = now_millis();
+  const std::string vision_provider_name =
+      vision_provider_ ? vision_provider_->ProviderName() : "not_configured";
+  const bool vision_provider_placeholder =
+      vision_provider_ != nullptr && vision_provider_->IsPlaceholder();
   {
     std::shared_lock<std::shared_mutex> lock(state_mutex_);
     const auto it = last_vision_observations_.find(session_key);
     const bool has_snapshot = it != last_vision_observations_.end();
+    const bool foreground_only =
+        config_.mobile.runtime.foreground_only ||
+        config_.mobile.vision.foreground_only;
+    const bool background_gated = foreground_only && !foreground_;
     result["available"] = has_snapshot;
     if (has_snapshot) {
       result["observation"] = it->second;
@@ -849,18 +863,39 @@ std::string MobileEngine::BuildCameraSnapshotToolResult(
         result["stale"] = false;
       }
     } else {
-      result["reason"] = config_.mobile.vision.enabled ? "no_frame_yet"
-                                                        : "vision_disabled";
-      result["detail"] =
+      std::string reason = "no_frame_yet";
+      std::string detail =
           "No camera observation has been captured in this session yet.";
+      if (!config_.mobile.vision.enabled) {
+        reason = "vision_disabled";
+        detail = "Continuous vision is disabled in the mobile runtime "
+                 "configuration.";
+      } else if (background_gated) {
+        reason = "background_gated";
+        detail =
+            "Camera snapshots are gated while the mobile host is backgrounded.";
+      } else if (has_device_status_ && !device_status_.capture_requested) {
+        reason = "capture_not_requested";
+        detail =
+            "The host has not requested camera capture for this mobile "
+            "session.";
+      } else if (has_device_status_ &&
+                 device_status_.camera_status != "running") {
+        reason = "camera_not_running";
+        detail = "The host camera pipeline is not currently running.";
+      } else if (!vision_provider_) {
+        reason = "vision_provider_unavailable";
+        detail = "No mobile vision provider is configured.";
+      }
+      result["reason"] = reason;
+      result["detail"] = detail;
     }
     result["visionEnabled"] = config_.mobile.vision.enabled;
-    result["foregroundOnly"] =
-        config_.mobile.runtime.foreground_only ||
-        config_.mobile.vision.foreground_only;
+    result["visionProvider"] = vision_provider_name;
+    result["visionProviderPlaceholder"] = vision_provider_placeholder;
+    result["foregroundOnly"] = foreground_only;
     result["foreground"] = foreground_;
-    result["backgroundGated"] =
-        result["foregroundOnly"].get<bool>() && !foreground_;
+    result["backgroundGated"] = background_gated;
     result["sampleFps"] = config_.mobile.vision.sample_fps;
     result["staleAfterMs"] = stale_after_ms;
     result["deviceStatusAvailable"] = has_device_status_;

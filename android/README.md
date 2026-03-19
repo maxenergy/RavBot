@@ -44,6 +44,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - `camera_snapshot` also carries the latest published `deviceStatus`, so the
   local model can tell whether the camera is currently running or whether it
   is looking at an older observation
+- `camera_snapshot` now includes `visionProvider` metadata plus structured
+  unavailable reasons such as `background_gated`, `capture_not_requested`,
+  and `camera_not_running`
 - Android CameraX frames now carry a capture-time-derived epoch timestamp into
   native `camera_snapshot` results instead of using only JNI receive time
 - Avatar mouth motion driven by microphone level while listening and by a

@@ -830,8 +830,68 @@ class FakeVisionProvider : public ravbot::mobile::MobileVisionProvider {
     return "desk with phone";
   }
 
+  std::string ProviderName() const override { return "fake_vision_provider"; }
+
   int call_count = 0;
   int last_width = 0;
+};
+
+class FakeUnavailableCameraReasonToolCallingTextProvider
+    : public ravbot::LLMProvider {
+ public:
+  explicit FakeUnavailableCameraReasonToolCallingTextProvider(
+      std::string expected_reason)
+      : expected_reason_(std::move(expected_reason)) {}
+
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("\"available\": false") !=
+              std::string::npos &&
+          last.content.front().content.find("\"reason\": \"" +
+                                                expected_reason_ + "\"") !=
+              std::string::npos) {
+        response.content =
+            "Camera snapshot unavailable because " + expected_reason_ + ".";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_camera_snapshot";
+    tool_call.name = "camera_snapshot";
+    tool_call.arguments = nlohmann::json::object();
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override {
+    return "fake-camera-unavailable-tool";
+  }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-camera-unavailable-tool-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+
+ private:
+  std::string expected_reason_;
 };
 
 class MobileEngineTest : public ::testing::Test {
@@ -1480,6 +1540,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"ageMs\":"),
             std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find(
+                "\"visionProvider\": \"fake_vision_provider\""),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find(
+                "\"visionProviderPlaceholder\": false"),
+            std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"cameraStatus\": \"running\""),
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"captureRequested\": true"),
@@ -1504,6 +1570,12 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesCameraSnapshotToolRoundTrip) {
             std::string::npos);
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"stale\": true"),
+            std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"visionProvider\": \"fake_vision_provider\""),
+            std::string::npos);
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"visionProviderPlaceholder\": false"),
             std::string::npos);
   EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
                 "\"deviceStatusAvailable\": true"),
@@ -1543,6 +1615,44 @@ TEST_F(MobileEngineTest, CameraSnapshotStaysScopedToCurrentSession) {
             std::string::npos);
   EXPECT_EQ(history[3].content[0].text,
             "No camera snapshot is available for this session.");
+}
+
+TEST_F(MobileEngineTest, CameraSnapshotReportsBackgroundGatedReason) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto provider =
+      std::make_shared<FakeUnavailableCameraReasonToolCallingTextProvider>(
+          "background_gated");
+  engine.SetTextProvider(provider);
+
+  ravbot::mobile::DeviceStatusSnapshot status;
+  status.service_running = true;
+  status.capture_requested = true;
+  status.permissions_granted = true;
+  status.camera_status = "running";
+  ASSERT_TRUE(engine.ReportDeviceStatus(status));
+
+  engine.SetForegroundState(false);
+  ASSERT_TRUE(
+      engine.SendTextTurn("agent:main:camera-bg", "What do you see now?"));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  auto history = engine.session_manager().GetHistory("agent:main:camera-bg");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "camera_snapshot");
+  EXPECT_NE(history[2].content[0].content.find("\"available\": false"),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find(
+                "\"reason\": \"background_gated\""),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find(
+                "\"visionProvider\": \"placeholder_mobile_vision\""),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find(
+                "\"visionProviderPlaceholder\": true"),
+            std::string::npos);
+  EXPECT_EQ(history[3].content[0].text,
+            "Camera snapshot unavailable because background_gated.");
 }
 
 TEST_F(MobileEngineTest, SendTextTurnExecutesMemoryWriteToolRoundTrip) {

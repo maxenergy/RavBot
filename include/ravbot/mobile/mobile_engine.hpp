@@ -45,6 +45,8 @@ class MobileVisionProvider {
 
   virtual std::optional<std::string> ObserveFrame(
       const CameraFrame& frame) = 0;
+  virtual std::string ProviderName() const { return "unknown_mobile_vision"; }
+  virtual bool IsPlaceholder() const { return false; }
 };
 
 class MobileEngine {
