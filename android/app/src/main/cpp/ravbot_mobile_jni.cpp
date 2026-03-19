@@ -25,6 +25,8 @@ struct EngineHandle {
   std::string session_id = kDefaultSessionId;
   std::string state_dir;
   std::string models_dir;
+  bool web_search_enabled = true;
+  bool web_fetch_enabled = true;
 };
 
 std::string ToString(JNIEnv* env, jstring value) {
@@ -295,6 +297,22 @@ const char* OnDeviceWebFetch(const char* url,
   return result_storage.empty() ? nullptr : result_storage.c_str();
 }
 
+void ApplyDeviceCallbacks(EngineHandle* engine) {
+  if (engine == nullptr || engine->engine == nullptr || engine->bridge_ref == nullptr) {
+    return;
+  }
+
+  ravbot_mobile_device_callbacks_t callbacks{};
+  callbacks.on_avatar_state = OnDeviceAvatarState;
+  callbacks.on_speech_request = OnDeviceSpeechRequest;
+  callbacks.on_speech_interrupt = OnDeviceSpeechInterrupt;
+  callbacks.on_web_search =
+      engine->web_search_enabled ? OnDeviceWebSearch : nullptr;
+  callbacks.on_web_fetch =
+      engine->web_fetch_enabled ? OnDeviceWebFetch : nullptr;
+  ravbot_mobile_set_device_callbacks(engine->engine, &callbacks, engine);
+}
+
 void EnsureSubscribed(JNIEnv* env, jobject thiz, EngineHandle* engine) {
   if (engine == nullptr || engine->engine == nullptr) {
     return;
@@ -312,13 +330,7 @@ void EnsureSubscribed(JNIEnv* env, jobject thiz, EngineHandle* engine) {
   }
   engine->subscription_id =
       ravbot_mobile_subscribe_events(engine->engine, OnMobileEvent, engine);
-  ravbot_mobile_device_callbacks_t callbacks{};
-  callbacks.on_avatar_state = OnDeviceAvatarState;
-  callbacks.on_speech_request = OnDeviceSpeechRequest;
-  callbacks.on_speech_interrupt = OnDeviceSpeechInterrupt;
-  callbacks.on_web_search = OnDeviceWebSearch;
-  callbacks.on_web_fetch = OnDeviceWebFetch;
-  ravbot_mobile_set_device_callbacks(engine->engine, &callbacks, engine);
+  ApplyDeviceCallbacks(engine);
 }
 
 void ClearSubscription(JNIEnv* env, EngineHandle* engine) {
@@ -560,4 +572,18 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeUnsubscribeEvents(
   }
 
   ClearSubscription(env, engine);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeSetHostWebCapabilities(
+    JNIEnv* /* env */, jobject /* thiz */, jlong handle,
+    jboolean web_search_enabled, jboolean web_fetch_enabled) {
+  auto* engine = FromHandle(handle);
+  if (engine == nullptr) {
+    return;
+  }
+
+  engine->web_search_enabled = web_search_enabled == JNI_TRUE;
+  engine->web_fetch_enabled = web_fetch_enabled == JNI_TRUE;
+  ApplyDeviceCallbacks(engine);
 }

@@ -161,6 +161,12 @@ private fun RavbotHostScreen() {
   var runtimeModelsDir by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeModelsDir)
   }
+  var hostWebSearchEnabled by rememberSaveable {
+    mutableStateOf(restoredSnapshot.hostWebSearchEnabled)
+  }
+  var hostWebFetchEnabled by rememberSaveable {
+    mutableStateOf(restoredSnapshot.hostWebFetchEnabled)
+  }
   var runtimeDeviceBridgeStatus by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeDeviceBridgeStatus)
   }
@@ -577,6 +583,8 @@ private fun RavbotHostScreen() {
           runtimeProvider = runtimeProvider,
           runtimeDetail = runtimeDetail,
           runtimeModelsDir = runtimeModelsDir,
+          hostWebSearchEnabled = hostWebSearchEnabled,
+          hostWebFetchEnabled = hostWebFetchEnabled,
           runtimeDeviceBridgeStatus = runtimeDeviceBridgeStatus,
           runtimeWebSearchStatus = runtimeWebSearchStatus,
           runtimeWebFetchStatus = runtimeWebFetchStatus,
@@ -620,6 +628,16 @@ private fun RavbotHostScreen() {
         microphoneStatus = microphoneStatus,
         cameraStatus = cameraStatus,
         speakerStatus = speakerStatus,
+    )
+  }
+
+  LaunchedEffect(nativeReady, hostWebSearchEnabled, hostWebFetchEnabled) {
+    if (!nativeReady) {
+      return@LaunchedEffect
+    }
+    bridge.setHostWebToolsEnabled(
+        webSearchEnabled = hostWebSearchEnabled,
+        webFetchEnabled = hostWebFetchEnabled,
     )
   }
 
@@ -743,6 +761,8 @@ private fun RavbotHostScreen() {
         lines =
             listOf(
                 "Provider: $runtimeProvider",
+                "Host web search toggle: ${if (hostWebSearchEnabled) "enabled" else "disabled"}",
+                "Host web fetch toggle: ${if (hostWebFetchEnabled) "enabled" else "disabled"}",
                 "Device bridge: $runtimeDeviceBridgeStatus",
                 "Web search: $runtimeWebSearchStatus",
                 "Web fetch: $runtimeWebFetchStatus",
@@ -824,6 +844,37 @@ private fun RavbotHostScreen() {
             label = { Text("Prompt") },
             maxLines = 3,
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          OutlinedButton(
+              onClick = {
+                hostWebSearchEnabled = !hostWebSearchEnabled
+                appendLog(
+                    logEntries,
+                    "host",
+                    "Host web search ${if (hostWebSearchEnabled) "enabled" else "disabled"}.",
+                )
+              },
+          ) {
+            Text(if (hostWebSearchEnabled) "Disable web search" else "Enable web search")
+          }
+
+          OutlinedButton(
+              onClick = {
+                hostWebFetchEnabled = !hostWebFetchEnabled
+                appendLog(
+                    logEntries,
+                    "host",
+                    "Host web fetch ${if (hostWebFetchEnabled) "enabled" else "disabled"}.",
+                )
+              },
+          ) {
+            Text(if (hostWebFetchEnabled) "Disable web fetch" else "Enable web fetch")
+          }
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),

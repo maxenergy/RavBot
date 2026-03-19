@@ -23,6 +23,8 @@ class RavbotNativeBridge {
   private val mainHandler = Handler(Looper.getMainLooper())
   private val webToolClient = HostWebToolClient()
   @Volatile private var hostExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+  private var hostWebSearchEnabled: Boolean = true
+  private var hostWebFetchEnabled: Boolean = true
 
   val loadStatus: NativeLoadStatus
     get() = sharedLoadStatus
@@ -47,6 +49,13 @@ class RavbotNativeBridge {
     engineHandle = nativeInitEngine(configJson, stateDir, modelsDir)
     if (engineHandle != 0L && eventListener != null) {
       nativeSubscribeEvents(engineHandle)
+    }
+    if (engineHandle != 0L) {
+      nativeSetHostWebCapabilities(
+          engineHandle,
+          hostWebSearchEnabled,
+          hostWebFetchEnabled,
+      )
     }
     return engineHandle != 0L
   }
@@ -129,6 +138,18 @@ class RavbotNativeBridge {
     eventListener = listener
     val handle = engineHandle.takeIf { it != 0L } ?: return
     nativeSubscribeEvents(handle)
+    nativeSetHostWebCapabilities(handle, hostWebSearchEnabled, hostWebFetchEnabled)
+  }
+
+  fun setHostWebToolsEnabled(
+      webSearchEnabled: Boolean,
+      webFetchEnabled: Boolean,
+  ) {
+    hostWebSearchEnabled = webSearchEnabled
+    hostWebFetchEnabled = webFetchEnabled
+
+    val handle = engineHandle.takeIf { it != 0L } ?: return
+    nativeSetHostWebCapabilities(handle, webSearchEnabled, webFetchEnabled)
   }
 
   fun unsubscribeEvents() {
@@ -236,6 +257,12 @@ class RavbotNativeBridge {
   private external fun nativeSubscribeEvents(handle: Long)
 
   private external fun nativeUnsubscribeEvents(handle: Long)
+
+  private external fun nativeSetHostWebCapabilities(
+      handle: Long,
+      webSearchEnabled: Boolean,
+      webFetchEnabled: Boolean,
+  )
 
   companion object {
     private val sharedLoadStatus: NativeLoadStatus by lazy {
