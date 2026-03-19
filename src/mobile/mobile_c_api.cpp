@@ -36,6 +36,9 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
   bool SupportsWebFetch() const override {
     return callbacks_.on_web_fetch != nullptr;
   }
+  bool SupportsVibration() const override {
+    return callbacks_.on_vibrate != nullptr;
+  }
 
   void SetAvatarState(AvatarState state) override {
     if (callbacks_.on_avatar_state == nullptr) {
@@ -57,6 +60,13 @@ class CallbackDeviceBridge : public DeviceCapabilityBridge {
       return;
     }
     callbacks_.on_speech_interrupt(user_data_);
+  }
+
+  void Vibrate(int duration_ms) override {
+    if (callbacks_.on_vibrate == nullptr) {
+      return;
+    }
+    callbacks_.on_vibrate(duration_ms, user_data_);
   }
 
   std::string WebSearch(const std::string& query,

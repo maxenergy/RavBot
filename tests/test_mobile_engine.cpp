@@ -397,6 +397,50 @@ class FakeTimeToolCallingTextProvider : public ravbot::LLMProvider {
   std::vector<ravbot::ChatCompletionRequest> requests;
 };
 
+class FakeVibrateToolCallingTextProvider : public ravbot::LLMProvider {
+ public:
+  ravbot::ChatCompletionResponse ChatCompletion(
+      const ravbot::ChatCompletionRequest& request) override {
+    ravbot::ChatCompletionResponse response;
+    response.finish_reason = "stop";
+    if (!request.messages.empty()) {
+      const auto& last = request.messages.back();
+      if (last.role == "user" && !last.content.empty() &&
+          last.content.front().type == "tool_result" &&
+          last.content.front().content.find("\"durationMs\": 180") !=
+              std::string::npos) {
+        response.content = "Device haptic pulse triggered.";
+        return response;
+      }
+    }
+
+    ravbot::ToolCall tool_call;
+    tool_call.id = "tool_vibrate";
+    tool_call.name = "vibrate";
+    tool_call.arguments = {{"durationMs", 180}};
+    response.tool_calls.push_back(tool_call);
+    response.finish_reason = "tool_calls";
+    return response;
+  }
+
+  void ChatCompletionStream(
+      const ravbot::ChatCompletionRequest& request,
+      std::function<void(const ravbot::ChatCompletionResponse&)> callback)
+      override {
+    requests.push_back(request);
+    auto response = ChatCompletion(request);
+    response.is_stream_end = true;
+    callback(response);
+  }
+
+  std::string GetProviderName() const override { return "fake-vibrate-tool"; }
+  std::vector<std::string> GetSupportedModels() const override {
+    return {"fake-vibrate-tool-model"};
+  }
+
+  std::vector<ravbot::ChatCompletionRequest> requests;
+};
+
 class FakeRuntimeStatusToolCallingTextProvider : public ravbot::LLMProvider {
  public:
   ravbot::ChatCompletionResponse ChatCompletion(
@@ -613,6 +657,7 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   bool IsForeground() const override { return true; }
   bool SupportsWebSearch() const override { return true; }
   bool SupportsWebFetch() const override { return true; }
+  bool SupportsVibration() const override { return true; }
 
   void SetAvatarState(ravbot::mobile::AvatarState state) override {
     avatar_states.push_back(ravbot::mobile::AvatarStateToString(state));
@@ -623,6 +668,10 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   }
 
   void InterruptSpeechPlayback() override { speech_interrupts += 1; }
+
+  void Vibrate(int duration_ms) override {
+    vibration_calls.push_back(duration_ms);
+  }
 
   std::string WebSearch(const std::string& query,
                         int count,
@@ -654,6 +703,7 @@ class FakeDeviceBridge : public ravbot::mobile::DeviceCapabilityBridge {
   std::vector<std::string> avatar_states;
   std::vector<std::string> speech_requests;
   int speech_interrupts = 0;
+  std::vector<int> vibration_calls;
   std::vector<std::tuple<std::string, int, std::string>> web_search_calls;
   std::vector<std::pair<std::string, int>> web_fetch_calls;
 };
@@ -1058,6 +1108,7 @@ TEST_F(MobileEngineTest, StartSessionEmitsRuntimeStatusWithResolvedModelPaths) {
   EXPECT_FALSE(it->payload["deviceBridgeAttached"].get<bool>());
   EXPECT_FALSE(it->payload["webSearchReady"].get<bool>());
   EXPECT_FALSE(it->payload["webFetchReady"].get<bool>());
+  EXPECT_FALSE(it->payload["vibrationReady"].get<bool>());
 }
 
 TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
@@ -1084,6 +1135,7 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_TRUE(speech_only_status->payload["deviceBridgeAttached"].get<bool>());
   EXPECT_FALSE(speech_only_status->payload["webSearchReady"].get<bool>());
   EXPECT_FALSE(speech_only_status->payload["webFetchReady"].get<bool>());
+  EXPECT_FALSE(speech_only_status->payload["vibrationReady"].get<bool>());
 
   ravbot::mobile::MobileEngine full_bridge_engine(MakeConfig(), test_dir_,
                                                   test_dir_, logger_);
@@ -1107,6 +1159,7 @@ TEST_F(MobileEngineTest, RuntimeStatusReflectsDeviceBridgeWebCapabilities) {
   EXPECT_TRUE(full_bridge_status->payload["deviceBridgeAttached"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["webSearchReady"].get<bool>());
   EXPECT_TRUE(full_bridge_status->payload["webFetchReady"].get<bool>());
+  EXPECT_TRUE(full_bridge_status->payload["vibrationReady"].get<bool>());
 }
 
 TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
@@ -1132,14 +1185,17 @@ TEST_F(MobileEngineTest, SetDeviceBridgeEmitsRuntimeStatusUpdate) {
   EXPECT_FALSE(runtime_payloads[0]["deviceBridgeAttached"].get<bool>());
   EXPECT_FALSE(runtime_payloads[0]["webSearchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[0]["webFetchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[0]["vibrationReady"].get<bool>());
 
   EXPECT_TRUE(runtime_payloads[1]["deviceBridgeAttached"].get<bool>());
   EXPECT_FALSE(runtime_payloads[1]["webSearchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[1]["webFetchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[1]["vibrationReady"].get<bool>());
 
   EXPECT_TRUE(runtime_payloads[2]["deviceBridgeAttached"].get<bool>());
   EXPECT_TRUE(runtime_payloads[2]["webSearchReady"].get<bool>());
   EXPECT_TRUE(runtime_payloads[2]["webFetchReady"].get<bool>());
+  EXPECT_TRUE(runtime_payloads[2]["vibrationReady"].get<bool>());
 }
 
 TEST_F(MobileEngineTest, ReportTtsPlaybackStateEmitsEventAndAvatarState) {
@@ -1261,6 +1317,8 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesDeviceStatusToolRoundTrip) {
   EXPECT_NE(history[2].content[0].content.find("\"webSearchReady\": false"),
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find("\"webFetchReady\": false"),
+            std::string::npos);
+  EXPECT_NE(history[2].content[0].content.find("\"vibrationReady\": false"),
             std::string::npos);
   EXPECT_NE(history[2].content[0].content.find(
                 "\"hostWebSearchEnabled\": false"),
@@ -1604,6 +1662,7 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   EXPECT_NE(result.find("\"deviceBridgeAttached\": true"), std::string::npos);
   EXPECT_NE(result.find("\"webSearchReady\": true"), std::string::npos);
   EXPECT_NE(result.find("\"webFetchReady\": true"), std::string::npos);
+  EXPECT_NE(result.find("\"vibrationReady\": true"), std::string::npos);
   EXPECT_NE(result.find("\"provider\": \"fake-runtime-tool\""),
             std::string::npos);
 
@@ -1612,6 +1671,47 @@ TEST_F(MobileEngineTest, SendTextTurnExecutesRuntimeStatusToolRoundTrip) {
   EXPECT_EQ(history[1].content[0].name, "runtime_status");
   EXPECT_EQ(history[3].content[0].text,
             "Runtime readiness snapshot received.");
+}
+
+TEST_F(MobileEngineTest, SendTextTurnExecutesVibrateToolRoundTrip) {
+  ravbot::mobile::MobileEngine engine(MakeConfig(), test_dir_, test_dir_,
+                                      logger_);
+  auto bridge = std::make_shared<FakeDeviceBridge>();
+  engine.SetDeviceBridge(bridge);
+  auto provider = std::make_shared<FakeVibrateToolCallingTextProvider>();
+  engine.SetTextProvider(provider);
+
+  std::vector<ravbot::mobile::MobileEvent> events;
+  engine.SubscribeEvents(
+      [&events](const ravbot::mobile::MobileEvent& event) {
+        events.push_back(event);
+      });
+
+  ASSERT_TRUE(
+      engine.SendTextTurn("agent:main:vibrate", "Trigger device haptics."));
+
+  ASSERT_EQ(provider->requests.size(), 2u);
+  const auto names = tool_names(provider->requests.front());
+  EXPECT_NE(std::find(names.begin(), names.end(), "vibrate"), names.end());
+  ASSERT_EQ(bridge->vibration_calls.size(), 1u);
+  EXPECT_EQ(bridge->vibration_calls.front(), 180);
+
+  auto tool_result = std::find_if(
+      events.begin(), events.end(),
+      [](const ravbot::mobile::MobileEvent& event) {
+        return event.name == ravbot::mobile::kEventToolResult &&
+               event.payload.value("name", "") == "vibrate";
+      });
+  ASSERT_NE(tool_result, events.end());
+  EXPECT_EQ(tool_result->payload["status"], "ok");
+  EXPECT_NE(tool_result->payload["result"].get<std::string>().find(
+                "\"durationMs\": 180"),
+            std::string::npos);
+
+  auto history = engine.session_manager().GetHistory("agent:main:vibrate");
+  ASSERT_EQ(history.size(), 4u);
+  EXPECT_EQ(history[1].content[0].name, "vibrate");
+  EXPECT_EQ(history[3].content[0].text, "Device haptic pulse triggered.");
 }
 
 TEST_F(MobileEngineTest, ToolSchemasExposeWebToolsOnlyWithDeviceBridge) {

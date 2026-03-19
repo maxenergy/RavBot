@@ -25,6 +25,7 @@ struct EventSink {
   std::vector<std::string> avatar_states;
   std::vector<std::string> speech_requests;
   int speech_interrupt_count = 0;
+  std::vector<int> vibration_requests;
 };
 
 void capture_event(const char* event_name,
@@ -65,6 +66,13 @@ void capture_speech_interrupt(void* user_data) {
   ASSERT_NE(sink, nullptr);
   std::lock_guard<std::mutex> lock(sink->mutex);
   sink->speech_interrupt_count += 1;
+}
+
+void capture_vibrate(int duration_ms, void* user_data) {
+  auto* sink = static_cast<EventSink*>(user_data);
+  ASSERT_NE(sink, nullptr);
+  std::lock_guard<std::mutex> lock(sink->mutex);
+  sink->vibration_requests.push_back(duration_ms);
 }
 
 const char* capture_web_search(const char* /*query*/,
@@ -142,6 +150,7 @@ TEST_F(MobileCApiTest, SendTextTurnEmitsAssistantFinalEvent) {
       EXPECT_FALSE(event.payload["deviceBridgeAttached"].get<bool>());
       EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
       EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
+      EXPECT_FALSE(event.payload["vibrationReady"].get<bool>());
       EXPECT_TRUE(event.payload.contains("detail"));
       EXPECT_TRUE(event.payload.contains("speechDetail"));
     }
@@ -379,6 +388,7 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsMissingWebDeviceCallbacks) {
     EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
     EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
     EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
+    EXPECT_FALSE(event.payload["vibrationReady"].get<bool>());
   }
 
   EXPECT_TRUE(saw_runtime);
@@ -415,6 +425,7 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsPartialWebDeviceCallbacks) {
       EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
       EXPECT_TRUE(event.payload["webSearchReady"].get<bool>());
       EXPECT_FALSE(event.payload["webFetchReady"].get<bool>());
+      EXPECT_FALSE(event.payload["vibrationReady"].get<bool>());
     }
     EXPECT_TRUE(saw_runtime);
   }
@@ -447,9 +458,42 @@ TEST_F(MobileCApiTest, RuntimeStatusReflectsPartialWebDeviceCallbacks) {
       EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
       EXPECT_FALSE(event.payload["webSearchReady"].get<bool>());
       EXPECT_TRUE(event.payload["webFetchReady"].get<bool>());
+      EXPECT_FALSE(event.payload["vibrationReady"].get<bool>());
     }
     EXPECT_TRUE(saw_runtime);
   }
+}
+
+TEST_F(MobileCApiTest, RuntimeStatusReflectsVibrationDeviceCallback) {
+  std::string config_json = MakeConfigJson();
+  ravbot_mobile_engine_t* engine = ravbot_mobile_init_engine(
+      config_json.c_str(), test_dir_.c_str(), test_dir_.c_str(), "info");
+  ASSERT_NE(engine, nullptr);
+
+  EventSink sink;
+  ravbot_mobile_device_callbacks_t callbacks{};
+  callbacks.on_vibrate = capture_vibrate;
+  ASSERT_TRUE(ravbot_mobile_set_device_callbacks(engine, &callbacks, &sink));
+
+  uint64_t subscription_id =
+      ravbot_mobile_subscribe_events(engine, capture_event, &sink);
+  ASSERT_NE(subscription_id, 0u);
+  EXPECT_TRUE(ravbot_mobile_start_session(engine, "agent:main:vibration-ready",
+                                          "Vibration ready"));
+
+  ravbot_mobile_unsubscribe_events(engine, subscription_id);
+  ravbot_mobile_free_engine(engine);
+
+  bool saw_runtime = false;
+  for (const auto& event : sink.events) {
+    if (event.name != "mobile.runtime_status") {
+      continue;
+    }
+    saw_runtime = true;
+    EXPECT_TRUE(event.payload["deviceBridgeAttached"].get<bool>());
+    EXPECT_TRUE(event.payload["vibrationReady"].get<bool>());
+  }
+  EXPECT_TRUE(saw_runtime);
 }
 
 TEST_F(MobileCApiTest, SettingDeviceCallbacksEmitsRuntimeStatusUpdate) {
@@ -482,10 +526,12 @@ TEST_F(MobileCApiTest, SettingDeviceCallbacksEmitsRuntimeStatusUpdate) {
   EXPECT_FALSE(runtime_payloads[0]["deviceBridgeAttached"].get<bool>());
   EXPECT_FALSE(runtime_payloads[0]["webSearchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[0]["webFetchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[0]["vibrationReady"].get<bool>());
 
   EXPECT_TRUE(runtime_payloads[1]["deviceBridgeAttached"].get<bool>());
   EXPECT_TRUE(runtime_payloads[1]["webSearchReady"].get<bool>());
   EXPECT_FALSE(runtime_payloads[1]["webFetchReady"].get<bool>());
+  EXPECT_FALSE(runtime_payloads[1]["vibrationReady"].get<bool>());
 }
 
 }  // namespace

@@ -58,6 +58,7 @@ import com.ravbot.android.bridge.NativeEvent
 import com.ravbot.android.bridge.RavbotNativeBridge
 import com.ravbot.android.media.AudioCaptureController
 import com.ravbot.android.media.CameraFrameController
+import com.ravbot.android.media.HapticsController
 import com.ravbot.android.media.SpeechPlaybackController
 import com.ravbot.android.service.RavbotForegroundService
 import java.io.File
@@ -176,6 +177,9 @@ private fun RavbotHostScreen() {
   var runtimeWebFetchStatus by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeWebFetchStatus)
   }
+  var runtimeHapticsStatus by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeHapticsStatus)
+  }
   var runtimeTextStatus by rememberSaveable {
     mutableStateOf(restoredSnapshot.runtimeTextStatus)
   }
@@ -274,6 +278,10 @@ private fun RavbotHostScreen() {
               bridge.reportTtsState(state)
             },
         )
+      }
+  val hapticsController =
+      remember(context.applicationContext) {
+        HapticsController(context.applicationContext)
       }
   val permissionLauncher =
       rememberLauncherForActivityResult(
@@ -400,6 +408,12 @@ private fun RavbotHostScreen() {
       if (event.name == "device.speech_interrupt") {
         speechController.stop()
       }
+      if (event.name == "device.vibrate") {
+        parseJsonInt(event.payload, "durationMs")?.let { durationMs ->
+          hapticsController.vibrate(durationMs)
+          appendLog(logEntries, "host", "Haptic pulse triggered for ${durationMs}ms.")
+        }
+      }
       if (event.name == "device.avatar_state") {
         parseJsonString(event.payload, "state")?.let { stateName ->
           AvatarState.entries.firstOrNull { state -> state.label == stateName }?.let { state ->
@@ -417,6 +431,8 @@ private fun RavbotHostScreen() {
             describeRuntimeFlag(parseJsonBoolean(event.payload, "webSearchReady"))
         runtimeWebFetchStatus =
             describeRuntimeFlag(parseJsonBoolean(event.payload, "webFetchReady"))
+        runtimeHapticsStatus =
+            describeRuntimeFlag(parseJsonBoolean(event.payload, "vibrationReady"))
         runtimeTextStatus =
             describeRuntimeFlag(parseJsonBoolean(event.payload, "textReady"))
         runtimeVisionStatus =
@@ -468,6 +484,7 @@ private fun RavbotHostScreen() {
       audioController.dispose()
       cameraController.dispose()
       speechController.dispose()
+      hapticsController.stop()
       bridge.dispose()
     }
   }
@@ -590,6 +607,7 @@ private fun RavbotHostScreen() {
           runtimeDeviceBridgeStatus = runtimeDeviceBridgeStatus,
           runtimeWebSearchStatus = runtimeWebSearchStatus,
           runtimeWebFetchStatus = runtimeWebFetchStatus,
+          runtimeHapticsStatus = runtimeHapticsStatus,
           runtimeTextStatus = runtimeTextStatus,
           runtimeVisionStatus = runtimeVisionStatus,
           runtimeVulkanStatus = runtimeVulkanStatus,
@@ -645,6 +663,13 @@ private fun RavbotHostScreen() {
         webSearchEnabled = hostWebSearchEnabled,
         webFetchEnabled = hostWebFetchEnabled,
     )
+  }
+
+  LaunchedEffect(nativeReady, hapticsController.isAvailable) {
+    if (!nativeReady) {
+      return@LaunchedEffect
+    }
+    bridge.setHapticsEnabled(hapticsController.isAvailable)
   }
 
   DisposableEffect(
@@ -772,6 +797,7 @@ private fun RavbotHostScreen() {
                 "Device bridge: $runtimeDeviceBridgeStatus",
                 "Web search: $runtimeWebSearchStatus",
                 "Web fetch: $runtimeWebFetchStatus",
+                "Haptics: $runtimeHapticsStatus",
                 "Text runtime: $runtimeTextStatus",
                 "Vision runtime: $runtimeVisionStatus",
                 "Vulkan: $runtimeVulkanStatus",

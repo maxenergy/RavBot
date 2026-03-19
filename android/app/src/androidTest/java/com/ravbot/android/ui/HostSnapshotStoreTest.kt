@@ -39,6 +39,7 @@ class HostSnapshotStoreTest {
             runtimeDeviceBridgeStatus = "ready",
             runtimeWebSearchStatus = "ready",
             runtimeWebFetchStatus = "disabled",
+            runtimeHapticsStatus = "ready",
             runtimeTextStatus = "ready",
             runtimeVisionStatus = "ready",
             runtimeVulkanStatus = "requested + enabled",
@@ -69,6 +70,7 @@ class HostSnapshotStoreTest {
     assertEquals("unknown", cleared.runtimeDeviceBridgeStatus)
     assertEquals("unknown", cleared.runtimeWebSearchStatus)
     assertEquals("unknown", cleared.runtimeWebFetchStatus)
+    assertEquals("unknown", cleared.runtimeHapticsStatus)
     assertFalse(cleared.shouldRestoreRuntime())
   }
 }

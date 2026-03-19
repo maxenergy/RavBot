@@ -24,6 +24,7 @@ namespace {
 
 constexpr char kDeviceStatusToolName[] = "device_status";
 constexpr char kRuntimeStatusToolName[] = "runtime_status";
+constexpr char kVibrateToolName[] = "vibrate";
 constexpr char kCameraSnapshotToolName[] = "camera_snapshot";
 constexpr char kTimeToolName[] = "time";
 constexpr char kWebSearchToolName[] = "web_search";
@@ -397,6 +398,8 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
   const bool web_search_ready =
       bridge != nullptr && bridge->SupportsWebSearch();
   const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
+  const bool vibration_ready =
+      bridge != nullptr && bridge->SupportsVibration();
   nlohmann::json payload = {{"modelsDir", models_dir_.string()},
                             {"sttModel", config_.mobile.models.stt_model},
                             {"ttsVoice", config_.mobile.models.tts_voice},
@@ -405,7 +408,8 @@ nlohmann::json MobileEngine::BuildRuntimeStatusPayload() const {
                              config_.mobile.runtime.continuous_vision},
                             {"deviceBridgeAttached", device_bridge_attached},
                             {"webSearchReady", web_search_ready},
-                            {"webFetchReady", web_fetch_ready}};
+                            {"webFetchReady", web_fetch_ready},
+                            {"vibrationReady", vibration_ready}};
 
   if (auto* llama_provider =
           dynamic_cast<ravbot::LlamaCppMobileProvider*>(text_provider_.get())) {
@@ -540,6 +544,8 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
   const bool web_search_ready =
       bridge != nullptr && bridge->SupportsWebSearch();
   const bool web_fetch_ready = bridge != nullptr && bridge->SupportsWebFetch();
+  const bool vibration_ready =
+      bridge != nullptr && bridge->SupportsVibration();
   std::vector<nlohmann::json> tools = {nlohmann::json{
       {"type", "function"},
       {"function",
@@ -572,7 +578,7 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
              "metadata captured by the Android host."},
             {"parameters",
              {{"type", "object"},
-              {"properties", nlohmann::json::object()},
+             {"properties", nlohmann::json::object()},
               {"additionalProperties", false}}}}}},
       nlohmann::json{
           {"type", "function"},
@@ -585,6 +591,28 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
              {{"type", "object"},
               {"properties", nlohmann::json::object()},
               {"additionalProperties", false}}}}}},
+  };
+  if (vibration_ready) {
+    tools.push_back(nlohmann::json{
+        {"type", "function"},
+        {"function",
+         {{"name", kVibrateToolName},
+          {"description",
+           "Trigger a short vibration pulse on the Android host device."},
+          {"parameters",
+           {{"type", "object"},
+            {"properties",
+             {{"durationMs",
+               {{"type", "integer"},
+                {"minimum", 10},
+                {"maximum", 5000},
+                {"description", "Vibration duration in milliseconds."}}}}},
+            {"required", {"durationMs"}},
+            {"additionalProperties", false}}}}}});
+  }
+  tools.insert(
+      tools.end(),
+      {
       nlohmann::json{
           {"type", "function"},
           {"function",
@@ -683,7 +711,7 @@ std::vector<nlohmann::json> MobileEngine::BuildToolSchemas() const {
                   {"description",
                    "Required when deleting a non-empty directory."}}}}},
               {"required", {"path"}},
-              {"additionalProperties", false}}}}}}};
+              {"additionalProperties", false}}}}}}});
   if (web_search_ready) {
     tools.push_back(nlohmann::json{
         {"type", "function"},
@@ -756,6 +784,28 @@ std::string MobileEngine::BuildDeviceStatusToolResult() const {
 
 std::string MobileEngine::BuildRuntimeStatusToolResult() const {
   return BuildRuntimeStatusPayload().dump(2);
+}
+
+std::string MobileEngine::BuildVibrateToolResult(
+    const nlohmann::json& arguments) const {
+  const auto bridge = CopyDeviceBridge();
+  if (!bridge) {
+    throw std::runtime_error("vibrate requires a device bridge");
+  }
+  if (!bridge->SupportsVibration()) {
+    throw std::runtime_error("vibrate is not supported by the device bridge");
+  }
+  if (!arguments.contains("durationMs")) {
+    throw std::runtime_error("durationMs is required");
+  }
+
+  const int duration_ms = arguments.value("durationMs", 0);
+  if (duration_ms < 10 || duration_ms > 5000) {
+    throw std::runtime_error("durationMs must be between 10 and 5000");
+  }
+
+  bridge->Vibrate(duration_ms);
+  return nlohmann::json{{"ok", true}, {"durationMs", duration_ms}}.dump(2);
 }
 
 std::string MobileEngine::BuildCameraSnapshotToolResult() const {
@@ -1068,6 +1118,9 @@ std::string MobileEngine::ExecuteToolCall(const ToolCall& tool_call) const {
   }
   if (tool_call.name == kRuntimeStatusToolName) {
     return BuildRuntimeStatusToolResult();
+  }
+  if (tool_call.name == kVibrateToolName) {
+    return BuildVibrateToolResult(tool_call.arguments);
   }
   if (tool_call.name == kCameraSnapshotToolName) {
     return BuildCameraSnapshotToolResult();

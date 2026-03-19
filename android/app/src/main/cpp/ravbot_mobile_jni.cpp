@@ -27,6 +27,7 @@ struct EngineHandle {
   std::string models_dir;
   bool web_search_enabled = true;
   bool web_fetch_enabled = true;
+  bool vibration_enabled = false;
 };
 
 std::string ToString(JNIEnv* env, jstring value) {
@@ -153,6 +154,12 @@ void OnDeviceSpeechRequest(const char* text, void* user_data) {
 void OnDeviceSpeechInterrupt(void* user_data) {
   auto* engine = static_cast<EngineHandle*>(user_data);
   ForwardEventToJava(engine, "device.speech_interrupt", "{}");
+}
+
+void OnDeviceVibrate(int duration_ms, void* user_data) {
+  nlohmann::json payload = {{"durationMs", duration_ms}};
+  auto* engine = static_cast<EngineHandle*>(user_data);
+  ForwardEventToJava(engine, "device.vibrate", payload.dump().c_str());
 }
 
 const char* OnDeviceWebSearch(const char* query,
@@ -306,6 +313,8 @@ void ApplyDeviceCallbacks(EngineHandle* engine) {
   callbacks.on_avatar_state = OnDeviceAvatarState;
   callbacks.on_speech_request = OnDeviceSpeechRequest;
   callbacks.on_speech_interrupt = OnDeviceSpeechInterrupt;
+  callbacks.on_vibrate =
+      engine->vibration_enabled ? OnDeviceVibrate : nullptr;
   callbacks.on_web_search =
       engine->web_search_enabled ? OnDeviceWebSearch : nullptr;
   callbacks.on_web_fetch =
@@ -587,5 +596,18 @@ Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeSetHostWebCapabilities(
 
   engine->web_search_enabled = web_search_enabled == JNI_TRUE;
   engine->web_fetch_enabled = web_fetch_enabled == JNI_TRUE;
+  ApplyDeviceCallbacks(engine);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_ravbot_android_bridge_RavbotNativeBridge_nativeSetHapticsCapability(
+    JNIEnv* /* env */, jobject /* thiz */, jlong handle,
+    jboolean vibration_enabled) {
+  auto* engine = FromHandle(handle);
+  if (engine == nullptr) {
+    return;
+  }
+
+  engine->vibration_enabled = vibration_enabled == JNI_TRUE;
   ApplyDeviceCallbacks(engine);
 }

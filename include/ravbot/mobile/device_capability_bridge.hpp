@@ -18,10 +18,12 @@ class DeviceCapabilityBridge {
   virtual bool IsForeground() const = 0;
   virtual bool SupportsWebSearch() const = 0;
   virtual bool SupportsWebFetch() const = 0;
+  virtual bool SupportsVibration() const { return false; }
 
   virtual void SetAvatarState(AvatarState state) = 0;
   virtual void RequestSpeechPlayback(const std::string& text) = 0;
   virtual void InterruptSpeechPlayback() = 0;
+  virtual void Vibrate(int duration_ms) { (void)duration_ms; }
   virtual std::string WebSearch(const std::string& query,
                                 int count,
                                 const std::string& freshness) = 0;

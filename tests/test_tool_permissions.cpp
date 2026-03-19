@@ -89,6 +89,7 @@ TEST_F(ToolPermissionsTest, MobileSafeGroupAllowsOnlyMobileFriendlyTools) {
     EXPECT_TRUE(checker.IsAllowed("web_search"));
     EXPECT_TRUE(checker.IsAllowed("device_status"));
     EXPECT_TRUE(checker.IsAllowed("runtime_status"));
+    EXPECT_TRUE(checker.IsAllowed("vibrate"));
     EXPECT_TRUE(checker.IsAllowed("camera_snapshot"));
     EXPECT_TRUE(checker.IsAllowed("time"));
     EXPECT_TRUE(checker.IsAllowed("memory_list"));
@@ -153,6 +154,7 @@ TEST_F(ToolPermissionsTest, GroupAllIncludesMobileSafeTools) {
     auto checker = ravbot::ToolPermissionChecker(make_config({"group:all"}, {}));
     EXPECT_TRUE(checker.IsAllowed("device_status"));
     EXPECT_TRUE(checker.IsAllowed("runtime_status"));
+    EXPECT_TRUE(checker.IsAllowed("vibrate"));
     EXPECT_TRUE(checker.IsAllowed("camera_snapshot"));
     EXPECT_TRUE(checker.IsAllowed("time"));
     EXPECT_TRUE(checker.IsAllowed("memory_list"));

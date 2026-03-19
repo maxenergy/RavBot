@@ -25,6 +25,7 @@ class RavbotNativeBridge {
   @Volatile private var hostExecutor: ExecutorService = Executors.newSingleThreadExecutor()
   private var hostWebSearchEnabled: Boolean = true
   private var hostWebFetchEnabled: Boolean = true
+  private var hostHapticsEnabled: Boolean = false
 
   val loadStatus: NativeLoadStatus
     get() = sharedLoadStatus
@@ -56,6 +57,7 @@ class RavbotNativeBridge {
           hostWebSearchEnabled,
           hostWebFetchEnabled,
       )
+      nativeSetHapticsCapability(engineHandle, hostHapticsEnabled)
     }
     return engineHandle != 0L
   }
@@ -143,6 +145,7 @@ class RavbotNativeBridge {
     val handle = engineHandle.takeIf { it != 0L } ?: return
     nativeSubscribeEvents(handle)
     nativeSetHostWebCapabilities(handle, hostWebSearchEnabled, hostWebFetchEnabled)
+    nativeSetHapticsCapability(handle, hostHapticsEnabled)
   }
 
   fun setHostWebToolsEnabled(
@@ -154,6 +157,12 @@ class RavbotNativeBridge {
 
     val handle = engineHandle.takeIf { it != 0L } ?: return
     nativeSetHostWebCapabilities(handle, webSearchEnabled, webFetchEnabled)
+  }
+
+  fun setHapticsEnabled(enabled: Boolean) {
+    hostHapticsEnabled = enabled
+    val handle = engineHandle.takeIf { it != 0L } ?: return
+    nativeSetHapticsCapability(handle, enabled)
   }
 
   fun unsubscribeEvents() {
@@ -268,6 +277,11 @@ class RavbotNativeBridge {
       handle: Long,
       webSearchEnabled: Boolean,
       webFetchEnabled: Boolean,
+  )
+
+  private external fun nativeSetHapticsCapability(
+      handle: Long,
+      enabled: Boolean,
   )
 
   companion object {

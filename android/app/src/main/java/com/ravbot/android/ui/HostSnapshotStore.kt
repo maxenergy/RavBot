@@ -28,6 +28,7 @@ data class HostSnapshot(
     val runtimeDeviceBridgeStatus: String = "unknown",
     val runtimeWebSearchStatus: String = "unknown",
     val runtimeWebFetchStatus: String = "unknown",
+    val runtimeHapticsStatus: String = "unknown",
     val runtimeTextStatus: String = "unknown",
     val runtimeVisionStatus: String = "unknown",
     val runtimeVulkanStatus: String = "unknown",
@@ -71,6 +72,7 @@ data class HostSnapshot(
         .put("runtimeDeviceBridgeStatus", runtimeDeviceBridgeStatus)
         .put("runtimeWebSearchStatus", runtimeWebSearchStatus)
         .put("runtimeWebFetchStatus", runtimeWebFetchStatus)
+        .put("runtimeHapticsStatus", runtimeHapticsStatus)
         .put("runtimeTextStatus", runtimeTextStatus)
         .put("runtimeVisionStatus", runtimeVisionStatus)
         .put("runtimeVulkanStatus", runtimeVulkanStatus)
@@ -146,6 +148,8 @@ data class HostSnapshot(
                     parsed.optString("runtimeWebSearchStatus", "unknown"),
                 runtimeWebFetchStatus =
                     parsed.optString("runtimeWebFetchStatus", "unknown"),
+                runtimeHapticsStatus =
+                    parsed.optString("runtimeHapticsStatus", "unknown"),
                 runtimeTextStatus =
                     parsed.optString("runtimeTextStatus", "unknown"),
                 runtimeVisionStatus =
