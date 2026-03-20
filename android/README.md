@@ -12,6 +12,9 @@ embodied assistant MVP. It is intentionally limited to the Android shell:
 - Runtime permission handling and a foreground service shell
 - Foreground service notification with `Open` / `Stop` actions plus live
   session, capture, microphone, camera, speaker, and assistant status
+- Foreground service notification now also mirrors live `speech_state` plus
+  `speech_status` / `set_capture_enabled` runtime readiness, so notification
+  diagnostics stay aligned with the host UI and persisted restore snapshot
 - `AudioRecord` microphone capture with simple silence-based turn detection
 - Active speech turn flush when capture stops or the host backgrounds, so
   partially spoken input is promoted to a final ASR turn instead of being lost

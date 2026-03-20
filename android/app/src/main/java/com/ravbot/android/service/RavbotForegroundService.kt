@@ -23,6 +23,9 @@ class RavbotForegroundService : Service() {
   private var hostWebFetchEnabled = true
   private var hostHapticsEnabled = true
   private var runtimeHapticsStatus = "unknown"
+  private var runtimeSpeechToolStatus = "unknown"
+  private var runtimeCaptureControlStatus = "unknown"
+  private var speechStateStatus = "No live speech state yet."
   private var runtimeForegroundStarted = false
 
   override fun onBind(intent: Intent?): IBinder? = null
@@ -101,10 +104,14 @@ class RavbotForegroundService : Service() {
   private fun buildNotificationSummary(): String {
     val sessionLine = if (sessionReady) "session ready" else "session idle"
     val captureLine = if (captureRequested) "capture on" else "capture off"
-    val webSearchLine = if (hostWebSearchEnabled) "web search on" else "web search off"
-    val webFetchLine = if (hostWebFetchEnabled) "web fetch on" else "web fetch off"
-    val hapticsLine = if (hostHapticsEnabled) "haptics on" else "haptics off"
-    return "$sessionLine | $captureLine | $webSearchLine | $webFetchLine | $hapticsLine"
+    return listOf(
+            sessionLine,
+            captureLine,
+            "capture ctrl $runtimeCaptureControlStatus",
+            "speech tool $runtimeSpeechToolStatus",
+            "speech ${speechStateStatus.lowercase()}",
+        )
+        .joinToString(" | ")
   }
 
   private fun buildNotificationDetails(): String {
@@ -112,10 +119,13 @@ class RavbotForegroundService : Service() {
             getString(R.string.foreground_service_text),
             "Session: ${if (sessionReady) "ready" else "idle"}",
             "Capture: ${if (captureRequested) "requested" else "stopped"}",
+            "Capture control: $runtimeCaptureControlStatus",
             "Microphone: $microphoneStatus",
             "Camera: $cameraStatus",
             "Speaker: $speakerStatus",
             "Assistant: $assistantStatus",
+            "Speech state: $speechStateStatus",
+            "Speech tool: $runtimeSpeechToolStatus",
             "Host web search: ${if (hostWebSearchEnabled) "enabled" else "disabled"}",
             "Host web fetch: ${if (hostWebFetchEnabled) "enabled" else "disabled"}",
             "Host haptics: ${if (hostHapticsEnabled) "enabled" else "disabled"}",
@@ -173,6 +183,15 @@ class RavbotForegroundService : Service() {
     intent.getStringExtra(EXTRA_RUNTIME_HAPTICS_STATUS)?.let {
       runtimeHapticsStatus = it
     }
+    intent.getStringExtra(EXTRA_RUNTIME_SPEECH_TOOL_STATUS)?.let {
+      runtimeSpeechToolStatus = it
+    }
+    intent.getStringExtra(EXTRA_RUNTIME_CAPTURE_CONTROL_STATUS)?.let {
+      runtimeCaptureControlStatus = it
+    }
+    intent.getStringExtra(EXTRA_SPEECH_STATE_STATUS)?.let {
+      speechStateStatus = it
+    }
   }
 
   private fun ensureNotificationChannel() {
@@ -213,6 +232,9 @@ class RavbotForegroundService : Service() {
     const val EXTRA_HOST_WEB_FETCH_ENABLED = "host_web_fetch_enabled"
     const val EXTRA_HOST_HAPTICS_ENABLED = "host_haptics_enabled"
     const val EXTRA_RUNTIME_HAPTICS_STATUS = "runtime_haptics_status"
+    const val EXTRA_RUNTIME_SPEECH_TOOL_STATUS = "runtime_speech_tool_status"
+    const val EXTRA_RUNTIME_CAPTURE_CONTROL_STATUS = "runtime_capture_control_status"
+    const val EXTRA_SPEECH_STATE_STATUS = "speech_state_status"
     const val EXTRA_SERVICE_RUNNING = "service_running"
 
     private const val CHANNEL_ID = "ravbot.runtime"
@@ -234,6 +256,9 @@ class RavbotForegroundService : Service() {
         hostWebFetchEnabled: Boolean = true,
         hostHapticsEnabled: Boolean = true,
         runtimeHapticsStatus: String = "unknown",
+        runtimeSpeechToolStatus: String = "unknown",
+        runtimeCaptureControlStatus: String = "unknown",
+        speechStateStatus: String = "No live speech state yet.",
     ): Intent {
       return Intent(context, RavbotForegroundService::class.java)
           .setAction(ACTION_START)
@@ -247,6 +272,12 @@ class RavbotForegroundService : Service() {
           .putExtra(EXTRA_HOST_WEB_FETCH_ENABLED, hostWebFetchEnabled)
           .putExtra(EXTRA_HOST_HAPTICS_ENABLED, hostHapticsEnabled)
           .putExtra(EXTRA_RUNTIME_HAPTICS_STATUS, runtimeHapticsStatus)
+          .putExtra(EXTRA_RUNTIME_SPEECH_TOOL_STATUS, runtimeSpeechToolStatus)
+          .putExtra(
+              EXTRA_RUNTIME_CAPTURE_CONTROL_STATUS,
+              runtimeCaptureControlStatus,
+          )
+          .putExtra(EXTRA_SPEECH_STATE_STATUS, speechStateStatus)
     }
 
     fun createStopIntent(context: Context): Intent {
@@ -266,6 +297,9 @@ class RavbotForegroundService : Service() {
         hostWebFetchEnabled: Boolean,
         hostHapticsEnabled: Boolean,
         runtimeHapticsStatus: String,
+        runtimeSpeechToolStatus: String,
+        runtimeCaptureControlStatus: String,
+        speechStateStatus: String,
     ): Intent {
       return Intent(context, RavbotForegroundService::class.java)
           .setAction(ACTION_UPDATE_STATUS)
@@ -279,6 +313,12 @@ class RavbotForegroundService : Service() {
           .putExtra(EXTRA_HOST_WEB_FETCH_ENABLED, hostWebFetchEnabled)
           .putExtra(EXTRA_HOST_HAPTICS_ENABLED, hostHapticsEnabled)
           .putExtra(EXTRA_RUNTIME_HAPTICS_STATUS, runtimeHapticsStatus)
+          .putExtra(EXTRA_RUNTIME_SPEECH_TOOL_STATUS, runtimeSpeechToolStatus)
+          .putExtra(
+              EXTRA_RUNTIME_CAPTURE_CONTROL_STATUS,
+              runtimeCaptureControlStatus,
+          )
+          .putExtra(EXTRA_SPEECH_STATE_STATUS, speechStateStatus)
     }
 
     fun createServiceStateChangedIntent(

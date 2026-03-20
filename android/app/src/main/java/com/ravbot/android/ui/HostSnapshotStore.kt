@@ -44,6 +44,8 @@ data class HostSnapshot(
     val speechBackendStatus: String = "unknown",
     val speechAsrStatus: String = "unknown",
     val speechTtsStatus: String = "unknown",
+    val runtimeSpeechToolStatus: String = "unknown",
+    val runtimeCaptureControlStatus: String = "unknown",
     val speechSttModel: String = "not resolved",
     val speechTtsVoice: String = "not resolved",
     val speechDetail: String = "No native speech diagnostics emitted yet.",
@@ -94,6 +96,8 @@ data class HostSnapshot(
         .put("speechBackendStatus", speechBackendStatus)
         .put("speechAsrStatus", speechAsrStatus)
         .put("speechTtsStatus", speechTtsStatus)
+        .put("runtimeSpeechToolStatus", runtimeSpeechToolStatus)
+        .put("runtimeCaptureControlStatus", runtimeCaptureControlStatus)
         .put("speechSttModel", speechSttModel)
         .put("speechTtsVoice", speechTtsVoice)
         .put("speechDetail", speechDetail)
@@ -200,6 +204,10 @@ data class HostSnapshot(
                     parsed.optString("speechAsrStatus", "unknown"),
                 speechTtsStatus =
                     parsed.optString("speechTtsStatus", "unknown"),
+                runtimeSpeechToolStatus =
+                    parsed.optString("runtimeSpeechToolStatus", "unknown"),
+                runtimeCaptureControlStatus =
+                    parsed.optString("runtimeCaptureControlStatus", "unknown"),
                 speechSttModel =
                     parsed.optString("speechSttModel", "not resolved"),
                 speechTtsVoice =

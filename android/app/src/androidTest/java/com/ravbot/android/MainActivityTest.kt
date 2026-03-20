@@ -58,6 +58,12 @@ class MainActivityTest {
   }
 
   @Test
+  fun hostScreenShowsSpeechToolAndCaptureControlRuntimeLines() {
+    composeRule.onNodeWithText("Speech tool: unknown").assertIsDisplayed()
+    composeRule.onNodeWithText("Capture control: unknown").assertIsDisplayed()
+  }
+
+  @Test
   fun hostScreenShowsVisionProviderRuntimeLine() {
     composeRule.onNodeWithText("Vision provider: unknown").assertIsDisplayed()
   }
@@ -84,6 +90,9 @@ class MainActivityTest {
             hostWebFetchEnabled = true,
             hostHapticsEnabled = false,
             runtimeHapticsStatus = "ready",
+            runtimeSpeechToolStatus = "ready",
+            runtimeCaptureControlStatus = "host_toggle_off",
+            speechStateStatus = "speech capturing seg 2 320ms",
         )
 
     assertEquals(RavbotForegroundService.ACTION_UPDATE_STATUS, intent.action)
@@ -120,6 +129,18 @@ class MainActivityTest {
     assertEquals(
         "ready",
         intent.getStringExtra(RavbotForegroundService.EXTRA_RUNTIME_HAPTICS_STATUS),
+    )
+    assertEquals(
+        "ready",
+        intent.getStringExtra(RavbotForegroundService.EXTRA_RUNTIME_SPEECH_TOOL_STATUS),
+    )
+    assertEquals(
+        "host_toggle_off",
+        intent.getStringExtra(RavbotForegroundService.EXTRA_RUNTIME_CAPTURE_CONTROL_STATUS),
+    )
+    assertEquals(
+        "speech capturing seg 2 320ms",
+        intent.getStringExtra(RavbotForegroundService.EXTRA_SPEECH_STATE_STATUS),
     )
   }
 

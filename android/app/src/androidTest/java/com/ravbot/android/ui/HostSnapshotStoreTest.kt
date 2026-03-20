@@ -1,6 +1,7 @@
 package com.ravbot.android.ui
 
 import androidx.test.core.app.ApplicationProvider
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -55,6 +56,8 @@ class HostSnapshotStoreTest {
             speechBackendStatus = "ready",
             speechAsrStatus = "ready",
             speechTtsStatus = "ready",
+            runtimeSpeechToolStatus = "ready",
+            runtimeCaptureControlStatus = "host_toggle_off",
             speechSttModel = "present: /models/sensevoice",
             speechTtsVoice = "present: /models/kokoro",
             speechDetail = "speech backend linked",
@@ -86,6 +89,28 @@ class HostSnapshotStoreTest {
     assertEquals("unknown", cleared.runtimeWebSearchStatus)
     assertEquals("unknown", cleared.runtimeWebFetchStatus)
     assertEquals("unknown", cleared.runtimeHapticsStatus)
+    assertEquals("unknown", cleared.runtimeSpeechToolStatus)
+    assertEquals("unknown", cleared.runtimeCaptureControlStatus)
     assertFalse(cleared.shouldRestoreRuntime())
+  }
+
+  @Test
+  fun loadOlderSnapshotWithoutSpeechToolFieldsFallsBackToDefaults() {
+    val legacyJson =
+        JSONObject()
+            .put("sessionId", "legacy-session")
+            .put("promptText", "legacy prompt")
+            .put("runtimeProvider", "llama.cpp")
+            .put("speechStateStatus", "speech idle")
+            .toString()
+
+    val restored = HostSnapshot.fromJson(legacyJson)
+
+    assertEquals("legacy-session", restored.sessionId)
+    assertEquals("legacy prompt", restored.promptText)
+    assertEquals("llama.cpp", restored.runtimeProvider)
+    assertEquals("speech idle", restored.speechStateStatus)
+    assertEquals("unknown", restored.runtimeSpeechToolStatus)
+    assertEquals("unknown", restored.runtimeCaptureControlStatus)
   }
 }

@@ -232,6 +232,12 @@ private fun RavbotHostScreen() {
   var speechTtsStatus by rememberSaveable {
     mutableStateOf(restoredSnapshot.speechTtsStatus)
   }
+  var runtimeSpeechToolStatus by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeSpeechToolStatus)
+  }
+  var runtimeCaptureControlStatus by rememberSaveable {
+    mutableStateOf(restoredSnapshot.runtimeCaptureControlStatus)
+  }
   var speechSttModel by rememberSaveable {
     mutableStateOf(restoredSnapshot.speechSttModel)
   }
@@ -397,6 +403,9 @@ private fun RavbotHostScreen() {
             hostWebFetchEnabled = hostWebFetchEnabled,
             hostHapticsEnabled = effectiveHostHapticsEnabled,
             runtimeHapticsStatus = runtimeHapticsStatus,
+            runtimeSpeechToolStatus = runtimeSpeechToolStatus,
+            runtimeCaptureControlStatus = runtimeCaptureControlStatus,
+            speechStateStatus = speechStateStatus,
         ),
     )
     serviceRunning = true
@@ -555,6 +564,10 @@ private fun RavbotHostScreen() {
             describeRuntimeFlag(parseJsonBoolean(event.payload, "webFetchReady"))
         runtimeHapticsStatus =
             describeRuntimeFlag(parseJsonBoolean(event.payload, "vibrationReady"))
+        runtimeSpeechToolStatus =
+            describeSingleToolAvailability(event.payload, "speech_status")
+        runtimeCaptureControlStatus =
+            describeSingleToolAvailability(event.payload, "set_capture_enabled")
         runtimeTextStatus =
             describeRuntimeFlag(parseJsonBoolean(event.payload, "textReady"))
         runtimeVisionStatus =
@@ -715,6 +728,9 @@ private fun RavbotHostScreen() {
               hostWebFetchEnabled = hostWebFetchEnabled,
               hostHapticsEnabled = effectiveHostHapticsEnabled,
               runtimeHapticsStatus = runtimeHapticsStatus,
+              runtimeSpeechToolStatus = runtimeSpeechToolStatus,
+              runtimeCaptureControlStatus = runtimeCaptureControlStatus,
+              speechStateStatus = speechStateStatus,
           ),
       )
       serviceRunning = true
@@ -784,6 +800,8 @@ private fun RavbotHostScreen() {
           runtimeWebSearchStatus = runtimeWebSearchStatus,
           runtimeWebFetchStatus = runtimeWebFetchStatus,
           runtimeHapticsStatus = runtimeHapticsStatus,
+          runtimeSpeechToolStatus = runtimeSpeechToolStatus,
+          runtimeCaptureControlStatus = runtimeCaptureControlStatus,
           runtimeTextStatus = runtimeTextStatus,
           runtimeVisionStatus = runtimeVisionStatus,
           runtimeVulkanStatus = runtimeVulkanStatus,
@@ -971,6 +989,8 @@ private fun RavbotHostScreen() {
                 "Web search: $runtimeWebSearchStatus",
                 "Web fetch: $runtimeWebFetchStatus",
                 "Haptics: $runtimeHapticsStatus",
+                "Speech tool: $runtimeSpeechToolStatus",
+                "Capture control: $runtimeCaptureControlStatus",
                 "Text runtime: $runtimeTextStatus",
                 "Vision runtime: $runtimeVisionStatus",
                 "Vision provider: $runtimeVisionProvider",
@@ -1306,6 +1326,10 @@ private fun RavbotHostScreen() {
       hostWebSearchEnabled,
       hostWebFetchEnabled,
       hostHapticsEnabled,
+      runtimeHapticsStatus,
+      runtimeSpeechToolStatus,
+      runtimeCaptureControlStatus,
+      speechStateStatus,
       hapticsController.isAvailable,
   ) {
     if (!serviceRunning) {
@@ -1324,6 +1348,9 @@ private fun RavbotHostScreen() {
             hostWebFetchEnabled = hostWebFetchEnabled,
             hostHapticsEnabled = effectiveHostHapticsEnabled,
             runtimeHapticsStatus = runtimeHapticsStatus,
+            runtimeSpeechToolStatus = runtimeSpeechToolStatus,
+            runtimeCaptureControlStatus = runtimeCaptureControlStatus,
+            speechStateStatus = speechStateStatus,
         ),
     )
   }
@@ -1810,6 +1837,45 @@ internal fun describeToolAvailability(payload: String): String {
         }
       }
       .getOrDefault("No per-tool availability diagnostics emitted yet.")
+}
+
+internal fun describeSingleToolAvailability(
+    payload: String,
+    toolName: String,
+): String {
+  return runCatching {
+        val json = JSONObject(payload)
+        val availability = json.optJSONObject("toolAvailability")
+        val entry = availability?.optJSONObject(toolName)
+        if (entry != null) {
+          val available =
+              if (entry.has("available")) {
+                entry.optBoolean("available")
+              } else {
+                false
+              }
+          if (available) {
+            "ready"
+          } else {
+            entry.optString("reason").takeIf { value -> value.isNotBlank() } ?: "not ready"
+          }
+        } else {
+          val tools =
+              json.optJSONArray("availableTools")?.let { array ->
+                buildSet {
+                  for (index in 0 until array.length()) {
+                    array.optString(index).takeIf { value -> value.isNotBlank() }?.let(::add)
+                  }
+                }
+              } ?: emptySet()
+          if (toolName in tools) {
+            "ready"
+          } else {
+            "not advertised"
+          }
+        }
+      }
+      .getOrDefault("unknown")
 }
 
 internal fun describeHostCapabilities(payload: String): String? {

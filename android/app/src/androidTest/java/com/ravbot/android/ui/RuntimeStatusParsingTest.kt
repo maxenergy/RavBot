@@ -105,6 +105,45 @@ class RuntimeStatusParsingTest {
   }
 
   @Test
+  fun describeSingleToolAvailabilityReturnsReasonForBlockedTool() {
+    val payload =
+        """
+          {
+            "toolAvailability": {
+              "set_capture_enabled": {
+                "available": false,
+                "reason": "host_toggle_off"
+              }
+            }
+          }
+        """.trimIndent()
+
+    assertEquals(
+        "host_toggle_off",
+        describeSingleToolAvailability(payload, "set_capture_enabled"),
+    )
+  }
+
+  @Test
+  fun describeSingleToolAvailabilityFallsBackToAdvertisedReadyTool() {
+    val payload =
+        """
+          {
+            "availableTools": [
+              "speech_status",
+              "device_status"
+            ]
+          }
+        """.trimIndent()
+
+    assertEquals("ready", describeSingleToolAvailability(payload, "speech_status"))
+    assertEquals(
+        "not advertised",
+        describeSingleToolAvailability(payload, "set_capture_enabled"),
+    )
+  }
+
+  @Test
   fun describeHostCapabilitiesListsBlockedCapabilitiesWithReasons() {
     val payload =
         """
