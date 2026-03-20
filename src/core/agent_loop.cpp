@@ -439,6 +439,66 @@ static bool looks_like_follow_up_message(const std::string& text) {
                      });
 }
 
+static std::string collect_message_text(const Message& msg);
+
+static bool looks_like_opaque_identifier_message(const std::string& text) {
+  std::string trimmed = text;
+  const auto is_ascii_space = [](unsigned char ch) {
+    return std::isspace(ch) != 0;
+  };
+
+  while (!trimmed.empty() &&
+         is_ascii_space(static_cast<unsigned char>(trimmed.front()))) {
+    trimmed.erase(trimmed.begin());
+  }
+  while (!trimmed.empty() &&
+         is_ascii_space(static_cast<unsigned char>(trimmed.back()))) {
+    trimmed.pop_back();
+  }
+
+  if (trimmed.empty() || trimmed.size() > 64 || trimmed.find("http://") == 0 ||
+      trimmed.find("https://") == 0) {
+    return false;
+  }
+
+  int digit_count = 0;
+  int separator_count = 0;
+  int alpha_count = 0;
+
+  for (unsigned char ch : trimmed) {
+    if ((ch & 0x80u) != 0) {
+      return false;
+    }
+    if (std::isalnum(ch) != 0) {
+      if (std::isdigit(ch) != 0) {
+        ++digit_count;
+      } else {
+        ++alpha_count;
+      }
+      continue;
+    }
+    switch (ch) {
+      case '-':
+      case '_':
+      case '.':
+      case ':':
+      case '/':
+      case '#':
+        ++separator_count;
+        break;
+      default:
+        return false;
+    }
+  }
+
+  if (digit_count == 0) {
+    return false;
+  }
+
+  return separator_count >= 1 || trimmed.size() >= 12 ||
+         (digit_count >= 4 && alpha_count >= 2);
+}
+
 static bool is_brief_continuation_prompt(const std::string& text) {
   auto trimmed = text;
   const auto is_ascii_space = [](unsigned char ch) {
@@ -479,6 +539,72 @@ static bool is_brief_continuation_prompt(const std::string& text) {
       u8"请继续",     u8"继续吧",        u8"继续呀",        u8"继续说",
       u8"接着",       u8"接着说",        u8"接着来",        u8"继续下去"};
   return kExactMarkers.count(lower) > 0;
+}
+
+static bool contains_ascii_word(const std::string& text,
+                                const std::string& word) {
+  if (text.empty() || word.empty()) {
+    return false;
+  }
+
+  size_t pos = text.find(word);
+  while (pos != std::string::npos) {
+    const bool left_ok =
+        pos == 0 || !std::isalnum(static_cast<unsigned char>(text[pos - 1]));
+    const size_t end = pos + word.size();
+    const bool right_ok = end >= text.size() ||
+                          !std::isalnum(static_cast<unsigned char>(text[end]));
+    if (left_ok && right_ok) {
+      return true;
+    }
+    pos = text.find(word, pos + 1);
+  }
+
+  return false;
+}
+
+static bool looks_like_identifier_request_prompt_text(const std::string& text) {
+  if (text.empty()) {
+    return false;
+  }
+
+  std::string lower = text;
+  std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+  const bool asks_for_value = lower.find("send") != std::string::npos ||
+                              lower.find("provide") != std::string::npos ||
+                              lower.find("paste") != std::string::npos ||
+                              lower.find("share") != std::string::npos ||
+                              lower.find("what is") != std::string::npos ||
+                              text.find(u8"发给我") != std::string::npos ||
+                              text.find(u8"贴给我") != std::string::npos ||
+                              text.find(u8"告诉我") != std::string::npos ||
+                              text.find(u8"把") != std::string::npos;
+  const bool mentions_identifier =
+      lower.find("identifier") != std::string::npos ||
+      lower.find("session id") != std::string::npos ||
+      lower.find("session key") != std::string::npos ||
+      contains_ascii_word(lower, "ticket") ||
+      lower.find("reference") != std::string::npos ||
+      contains_ascii_word(lower, "id") || contains_ascii_word(lower, "code") ||
+      contains_ascii_word(lower, "token") ||
+      contains_ascii_word(lower, "link") || contains_ascii_word(lower, "url") ||
+      contains_ascii_word(lower, "path") ||
+      contains_ascii_word(lower, "filename") ||
+      lower.find("file name") != std::string::npos ||
+      text.find(u8"编号") != std::string::npos ||
+      text.find(u8"标识") != std::string::npos ||
+      text.find(u8"代号") != std::string::npos ||
+      text.find(u8"会话") != std::string::npos ||
+      text.find(u8"链接") != std::string::npos ||
+      text.find(u8"地址") != std::string::npos ||
+      text.find(u8"路径") != std::string::npos ||
+      text.find(u8"文件名") != std::string::npos ||
+      text.find(u8"ID") != std::string::npos;
+
+  return asks_for_value && mentions_identifier;
 }
 
 static bool
@@ -545,6 +671,32 @@ looks_like_short_contextual_decision_reply(const std::string& text) {
   }
 
   return has_context_marker && decision_hits >= 1;
+}
+
+static bool opaque_identifier_continues_identifier_prompt(
+    const std::string& latest_user_text, const std::vector<Message>& history,
+    const std::shared_ptr<spdlog::logger>& logger) {
+  if (!looks_like_opaque_identifier_message(latest_user_text) ||
+      history.empty()) {
+    return false;
+  }
+
+  for (size_t i = history.size(); i-- > 0;) {
+    if (history[i].role != "assistant") {
+      continue;
+    }
+    const auto assistant_text = collect_message_text(history[i]);
+    const bool continues =
+        looks_like_identifier_request_prompt_text(assistant_text);
+    if (continues && logger) {
+      logger->info(
+          "Context preservation: opaque identifier follows assistant request "
+          "for an identifier-like value");
+    }
+    return continues;
+  }
+
+  return false;
 }
 
 static bool looks_like_explicit_choice_prompt_text(const std::string& text) {
@@ -935,10 +1087,15 @@ focus_history_on_latest_turn(const std::vector<Message>& history,
   }
 
   const auto recent_turn_text = collect_turn_text(history, last_user_turn);
+  const bool keep_identifier_prompt_context =
+      opaque_identifier_continues_identifier_prompt(latest_user_text, history,
+                                                    logger);
   const bool keep_recent_turn =
       looks_like_follow_up_message(latest_user_text) ||
       looks_like_short_contextual_decision_reply(latest_user_text) ||
-      latest_message_relates_to_recent_turn(latest_user_text, recent_turn_text);
+      latest_message_relates_to_recent_turn(latest_user_text,
+                                            recent_turn_text) ||
+      keep_identifier_prompt_context;
 
   if (!keep_recent_turn) {
     if (logger) {
@@ -1941,6 +2098,11 @@ std::vector<Message> AgentLoop::ProcessMessage(
       !require_choice_clarification &&
       brief_continuation_after_execution_commit_requires_clarification(
           message, effective_history, logger_);
+  const bool require_identifier_clarification =
+      !require_choice_clarification && !require_execution_clarification &&
+      looks_like_opaque_identifier_message(message) &&
+      !opaque_identifier_continues_identifier_prompt(message, effective_history,
+                                                     logger_);
   const bool require_brief_continuation_clarification =
       require_choice_clarification || require_execution_clarification;
   const std::string clarification_notice =
@@ -1951,9 +2113,16 @@ std::vector<Message> AgentLoop::ProcessMessage(
             "continuation prompt. Do not assume which option or action to "
             "execute and do not call tools yet. Ask one short clarification "
             "question first.]"
+      : require_identifier_clarification
+          ? "[SYSTEM NOTICE: The user's latest message is only a "
+            "standalone identifier/code without enough task context. "
+            "Do not assume what action to take and do not call tools "
+            "yet. Ask one short clarification question about what they "
+            "want done with it.]"
           : "";
   std::vector<nlohmann::json> request_tools = built_request_tools;
-  if (require_brief_continuation_clarification) {
+  if (require_brief_continuation_clarification ||
+      require_identifier_clarification) {
     request_tools.clear();
   }
 
@@ -2030,13 +2199,18 @@ std::vector<Message> AgentLoop::ProcessMessage(
   request.tool_choice_auto = true;
 
   logger_->info("Request has {} tools", request.tools.size());
-  if (request.tools.empty() && !require_brief_continuation_clarification) {
+  if (request.tools.empty() && !require_brief_continuation_clarification &&
+      !require_identifier_clarification) {
     logger_->error(
         "CRITICAL: request_tools is empty! Tool registry may have failed.");
   } else if (require_brief_continuation_clarification) {
     logger_->info(
         "Request tool access suppressed pending clarification for brief "
         "continuation after ambiguous assistant handoff");
+  } else if (require_identifier_clarification) {
+    logger_->info(
+        "Request tool access suppressed pending clarification for standalone "
+        "identifier/code message");
   }
 
   // CRITICAL: Force tool usage for search/lookup queries (ONLY for first
@@ -2329,6 +2503,11 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
       !require_choice_clarification &&
       brief_continuation_after_execution_commit_requires_clarification(
           message, effective_history, logger_);
+  const bool require_identifier_clarification =
+      !require_choice_clarification && !require_execution_clarification &&
+      looks_like_opaque_identifier_message(message) &&
+      !opaque_identifier_continues_identifier_prompt(message, effective_history,
+                                                     logger_);
   const bool require_brief_continuation_clarification =
       require_choice_clarification || require_execution_clarification;
   const std::string clarification_notice =
@@ -2339,9 +2518,16 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
             "continuation prompt. Do not assume which option or action to "
             "execute and do not call tools yet. Ask one short clarification "
             "question first.]"
+      : require_identifier_clarification
+          ? "[SYSTEM NOTICE: The user's latest message is only a "
+            "standalone identifier/code without enough task context. "
+            "Do not assume what action to take and do not call tools "
+            "yet. Ask one short clarification question about what they "
+            "want done with it.]"
           : "";
   std::vector<nlohmann::json> request_tools = built_request_tools;
-  if (require_brief_continuation_clarification) {
+  if (require_brief_continuation_clarification ||
+      require_identifier_clarification) {
     request_tools.clear();
   }
 
@@ -2405,6 +2591,10 @@ std::vector<Message> AgentLoop::ProcessMessageStream(
     logger_->info(
         "Streaming request tool access suppressed pending clarification for "
         "brief continuation after ambiguous assistant handoff");
+  } else if (require_identifier_clarification) {
+    logger_->info(
+        "Streaming request tool access suppressed pending clarification for "
+        "standalone identifier/code message");
   }
 
   std::string original_model_stream = agent_config_.model;

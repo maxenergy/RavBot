@@ -1230,6 +1230,103 @@ TEST_F(AgentLoopTest,
 }
 
 TEST_F(AgentLoopTest,
+       StandaloneOpaqueIdentifierSuppressesToolsAndRequestsClarification) {
+  mock_provider_->response_text = "ok";
+
+  agent_loop_->ProcessMessage("sess_9f27-11aa-7788", {}, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("standalone identifier/code without enough task "
+                        "context") != std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+
+  EXPECT_TRUE(has_clarification_notice);
+  EXPECT_TRUE(mock_provider_->last_request.tools.empty());
+}
+
+TEST_F(AgentLoopTest,
+       OpaqueIdentifierAfterAssistantPromptKeepsPromptContextAndTools) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{"assistant",
+                      u8"把 session id 发给我，我先检查一下当前状态。"},
+  };
+
+  agent_loop_->ProcessMessage("sess_9f27-11aa-7788", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("standalone identifier/code without enough task "
+                        "context") != std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+
+  EXPECT_FALSE(has_clarification_notice);
+  EXPECT_FALSE(mock_provider_->last_request.tools.empty());
+  ASSERT_EQ(sent.size(), 3u);
+  EXPECT_EQ(sent[0].role, "system");
+  EXPECT_EQ(sent[1].role, "assistant");
+  EXPECT_NE(sent[1].text().find("session id"), std::string::npos);
+  EXPECT_EQ(sent[2].role, "user");
+  EXPECT_EQ(sent[2].text(), "sess_9f27-11aa-7788");
+}
+
+TEST_F(AgentLoopTest,
+       NaturalLanguageTicketRequestDoesNotTriggerIdentifierClarification) {
+  mock_provider_->response_text = "ok";
+
+  agent_loop_->ProcessMessage(u8"帮我查一下 ticket 1234 的状态", {}, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("standalone identifier/code without enough task "
+                        "context") != std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+
+  EXPECT_FALSE(has_clarification_notice);
+  EXPECT_FALSE(mock_provider_->last_request.tools.empty());
+}
+
+TEST_F(AgentLoopTest,
+       OpaqueIdentifierAfterGenericProvidePromptStillRequestsClarification) {
+  mock_provider_->response_text = "ok";
+
+  std::vector<ravbot::Message> history = {
+      ravbot::Message{
+          "assistant",
+          "Please provide a little more detail about the bug before I dig in."},
+  };
+
+  agent_loop_->ProcessMessage("sess_9f27-11aa-7788", history, "System.");
+
+  const auto& sent = mock_provider_->last_request.messages;
+  bool has_clarification_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("standalone identifier/code without enough task "
+                        "context") != std::string::npos) {
+      has_clarification_notice = true;
+    }
+  }
+
+  EXPECT_TRUE(has_clarification_notice);
+  EXPECT_TRUE(mock_provider_->last_request.tools.empty());
+}
+
+TEST_F(AgentLoopTest,
        StreamingBriefContinuationAfterExecutionCommitSuppressesTools) {
   mock_provider_->response_text = "ok";
 
