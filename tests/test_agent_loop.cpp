@@ -1327,6 +1327,41 @@ TEST_F(AgentLoopTest,
 }
 
 TEST_F(AgentLoopTest,
+       RepeatedOpaqueIdentifierSuppressesDuplicateNoticeAndTools) {
+  auto embedding_manager = CreateEmbeddingManager();
+  agent_loop_->SetEmbeddingManager(embedding_manager);
+  mock_provider_->response_text = "ok";
+
+  const std::string session_key = "dup-opaque-id";
+  ASSERT_TRUE(embedding_manager->IndexText(
+      "seed-opaque-id", "auto-probe-fix2-094101",
+      std::string("{\"role\":\"user\",\"session\":\"") + session_key +
+          "\"}"));
+
+  agent_loop_->ProcessMessage("auto-probe-fix2-094101", {}, "System.",
+                              session_key);
+  const auto& sent = mock_provider_->last_request.messages;
+
+  bool has_duplicate_notice = false;
+  bool has_identifier_notice = false;
+  for (const auto& msg : sent) {
+    if (msg.role == "system" &&
+        msg.text().find("very similar message") != std::string::npos) {
+      has_duplicate_notice = true;
+    }
+    if (msg.role == "system" &&
+        msg.text().find("standalone identifier/code without enough task "
+                        "context") != std::string::npos) {
+      has_identifier_notice = true;
+    }
+  }
+
+  EXPECT_FALSE(has_duplicate_notice);
+  EXPECT_TRUE(has_identifier_notice);
+  EXPECT_TRUE(mock_provider_->last_request.tools.empty());
+}
+
+TEST_F(AgentLoopTest,
        StreamingBriefContinuationAfterExecutionCommitSuppressesTools) {
   mock_provider_->response_text = "ok";
 

@@ -2002,7 +2002,8 @@ std::vector<Message> AgentLoop::ProcessMessage(
   std::string duplicate_notice;
   const bool suppress_duplicate_notice =
       is_brief_continuation_prompt(message) ||
-      looks_like_short_contextual_decision_reply(message);
+      looks_like_short_contextual_decision_reply(message) ||
+      looks_like_opaque_identifier_message(message);
   if (embedding_manager_ && !effective_session_key.empty()) {
     try {
       auto similar_results = embedding_manager_->SearchText(message, 10, 0.80f);
