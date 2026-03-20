@@ -408,7 +408,6 @@ private fun RavbotHostScreen() {
             speechStateStatus = speechStateStatus,
         ),
     )
-    serviceRunning = true
   }
 
   val currentCaptureControlHandler =
@@ -733,7 +732,6 @@ private fun RavbotHostScreen() {
               speechStateStatus = speechStateStatus,
           ),
       )
-      serviceRunning = true
       appendLog(logEntries, "host", "Foreground service restored from host snapshot.")
     }
 
