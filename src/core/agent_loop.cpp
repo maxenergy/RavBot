@@ -699,6 +699,20 @@ static bool opaque_identifier_continues_identifier_prompt(
   return false;
 }
 
+static std::optional<std::string> duplicate_notice_suppression_reason(
+    const std::string& text) {
+  if (is_brief_continuation_prompt(text)) {
+    return "brief continuation prompt";
+  }
+  if (looks_like_short_contextual_decision_reply(text)) {
+    return "short contextual decision reply";
+  }
+  if (looks_like_opaque_identifier_message(text)) {
+    return "standalone identifier/code message";
+  }
+  return std::nullopt;
+}
+
 static bool looks_like_explicit_choice_prompt_text(const std::string& text) {
   if (text.empty()) {
     return false;
@@ -2000,10 +2014,10 @@ std::vector<Message> AgentLoop::ProcessMessage(
 
   // Check for duplicate messages
   std::string duplicate_notice;
+  const auto duplicate_suppression_reason =
+      duplicate_notice_suppression_reason(message);
   const bool suppress_duplicate_notice =
-      is_brief_continuation_prompt(message) ||
-      looks_like_short_contextual_decision_reply(message) ||
-      looks_like_opaque_identifier_message(message);
+      duplicate_suppression_reason.has_value();
   if (embedding_manager_ && !effective_session_key.empty()) {
     try {
       auto similar_results = embedding_manager_->SearchText(message, 10, 0.80f);
@@ -2033,9 +2047,8 @@ std::vector<Message> AgentLoop::ProcessMessage(
         int repeat_count = total_occurrences + 1;
         if (suppress_duplicate_notice) {
           logger_->info(
-              "Duplicate notice suppressed for brief continuation prompt "
-              "(occurrences={})",
-              repeat_count);
+              "Duplicate notice suppressed for {} (occurrences={})",
+              *duplicate_suppression_reason, repeat_count);
         } else {
           duplicate_notice =
               "[SYSTEM NOTICE: The user has sent a very similar message " +

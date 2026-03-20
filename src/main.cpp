@@ -111,6 +111,7 @@ static std::shared_ptr<spdlog::logger> create_logger(
     auto logger = std::make_shared<spdlog::logger>(
         "ravbot", sinks.begin(), sinks.end());
     logger->set_level(spdlog::level::trace);  // sinks control their own levels
+    logger->flush_on(spdlog::level::info);
     spdlog::set_default_logger(logger);
     return logger;
 }
