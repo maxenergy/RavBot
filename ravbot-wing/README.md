@@ -4,6 +4,27 @@
 
 > Independent project. Ravbot Wing is not affiliated with, endorsed by, or sponsored by Pollen Robotics or Hugging Face. Microduck is referenced only for technical comparison and ecosystem context.
 
+## 30-Day Build Challenge
+
+**Day 1 / 30 — September 1, 2026**
+
+We are building the first working Ravbot Wing prototype in 30 days using an existing compact **RK3588 8GB/64GB board**, off-the-shelf components, serial-bus servos, and 3D-printed mechanical parts.
+
+**Crowdfunding prototype acceptance target:**
+
+- [ ] stable stand for 30 seconds
+- [ ] walk 3–5 meters indoors
+- [ ] turn left and right
+- [ ] recover from at least one fall pose
+- [ ] expressive head + articulated beak
+- [ ] independent dual-wing gestures
+- [ ] camera-based visual interaction
+- [ ] voice input + spoken response
+- [ ] local multimodal agent on RK3588
+- [ ] 20–30 minute continuous demo without crash or brownout
+
+Follow the daily build notes in [BUILD_LOG.md](BUILD_LOG.md) and the execution plan in [PROTOTYPE_30_DAYS.md](PROTOTYPE_30_DAYS.md).
+
 ## Why Ravbot Wing?
 
 Tiny Physical AI robots are having a moment. Projects such as **Microduck** demonstrate how far reinforcement-learning locomotion can go on a small biped platform. Ravbot Wing explores a different direction:
@@ -43,28 +64,62 @@ The goal is **not to clone Microduck**. Ravbot Wing is an independent robot arch
 - microphone array + speaker
 - Wi-Fi / Bluetooth
 
-## 30-day prototype mission
+## Prototype architecture
 
-By Day 30 the robot should stand reliably, walk several meters, turn, recover from at least one fall pose, move its head/beak/wings expressively, see and respond to a person, run a local voice/vision agent on RK3588, and demonstrate continuously for 20–30 minutes.
+```text
+                    RK3588 8GB/64GB
+              vision / voice / agent
+                         |
+                  RL policy @50Hz
+                         |
+             +-----------+-----------+
+             |                       |
+       10-DoF leg bus          expression bus
+                              head / beak / wings
+```
 
-See [PROTOTYPE_30_DAYS.md](PROTOTYPE_30_DAYS.md).
+The first prototype intentionally uses existing servo adapters and modules. A dedicated motion-control MCU board is a post-crowdfunding production milestone.
 
-## RavPort
+## RavPort — Wings today, hands tomorrow
 
-Each shoulder is an expansion port, not a fixed wing mount. Planned modules include 1-DoF wings, 3-DoF arms, grippers, wing-shaped 3-finger hands, and sensor payloads.
+Each shoulder is an expansion port, not a fixed wing mount.
+
+```text
+Left RavPort / Right RavPort
+        |
+        +-- 1-DoF expressive wing
+        +-- 3-DoF robot arm
+        +-- gripper
+        +-- wing-shaped 3-finger hand
+        +-- sensor payload
+        +-- community modules
+```
 
 See [RAVPORT.md](RAVPORT.md).
 
+## Crowdfunding demo
+
+The first public demo is intentionally focused on a small number of high-value moments:
+
+1. wake up and look at the user,
+2. walk toward the user,
+3. answer a spoken question,
+4. express emotion using head + beak + wings,
+5. recover after a fall,
+6. finish with both wings fully extended.
+
+Advanced navigation, charging docks, manipulation, and full SDK work come after the prototype proves market demand.
+
 ## Roadmap
 
-- M0 — Public project launch
-- M1 — 30-day 3D-printed prototype
-- M2 — crowdfunding demo
-- M3 — open simulation + `ravbot_rl`
-- M4 — motion-control board
-- M5 — RavPort arm / hand expansion
-- M6 — DFM / EVT / DVT
-- M7 — first production batch
+- **M0 — Public project launch** ← now
+- **M1 — 30-day 3D-printed prototype**
+- **M2 — crowdfunding demo**
+- **M3 — open simulation + `ravbot_rl`**
+- **M4 — motion-control board**
+- **M5 — RavPort arm / hand expansion**
+- **M6 — DFM / EVT / DVT**
+- **M7 — first production batch**
 
 ## Discovery keywords
 
@@ -72,6 +127,8 @@ Microduck alternative · Microduck RK3588 · open-source biped robot · Physical
 
 ## Status
 
-🚧 **Very early prototype phase — September 2026**
+🚧 **Prototype phase — September 2026**
+
+Current focus: actuator bench test → first 3D-printed body → real/sim joint alignment → locomotion → crowdfunding demo.
 
 **Wings today. Hands tomorrow. Physical AI in the real world.**
